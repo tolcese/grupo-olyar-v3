@@ -25,7 +25,7 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v2.25.56</title>
+<title>Grupo Olyar — Solicitudes v2.25.57</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* CRITICAL: Forzar paint inicial en Chrome Android — va ANTES de todo */
@@ -5279,7 +5279,7 @@ async function savePEEdit() {
     if (r) { r.obs = obs; r.finalizada = finalizada; r.fechaEntregada = fechaEntregada; r.entregada = entregada; }
     toast('Guardado ✓', 'ok');
     closePEEdit();
-    renderPrendasEntregadas();
+    refreshAllPrendaViews();
   } catch(e) { toast('Error: ' + e.message, 'er'); }
 }
 
@@ -5292,7 +5292,7 @@ async function delPERecord(id) {
     const r = RECORDS.find(x => x.id === id);
     if (r) { r.finalizada = ''; r.gestorAsignado = ''; r.gestorId = ''; }
     toast('Registro eliminado', 'in');
-    renderPrendasEntregadas();
+    refreshAllPrendaViews();
   } catch(e) { toast('Error: ' + e.message, 'er'); }
 }
 
@@ -9208,6 +9208,14 @@ function closePrendas() {
   document.getElementById('tn-sol').classList.add('active');
 }
 
+// Refresca TODAS las vistas de prendas de una (secciones + reporte).
+// Se llama tras cualquier guardado/borrado de fechas para que el cambio se vea al instante,
+// sin importar en qué sección esté parado el usuario.
+function refreshAllPrendaViews() {
+  const fns = [renderPrendas, renderPrendasFinalizadas, renderPrendasEntregadas, renderPrendasRechazadas, renderPrendasPendientes, renderListadoPrendas];
+  for (const fn of fns) { try { fn(); } catch(e) { console.warn('refresh prenda view:', e); } }
+}
+
 function renderPrendas() {
   const q = (document.getElementById('prendas-srch')?.value || '').toLowerCase();
   let data = RECORDS.filter(r => r.gestorAsignado && r.gestorAsignado.trim() !== '' && (!r.finalizada || r.finalizada.trim() === ''));
@@ -9306,9 +9314,7 @@ async function savePrenda() {
     registrarHistorial('prenda', id, cambiosPrenda);
     toast('Prenda actualizada ✓', 'ok');
     closePrendaEdit();
-    renderPrendas();
-    renderPrendasPendientes();
-    renderPrendasFinalizadas();
+    refreshAllPrendaViews();
   } catch(e) { toast('Error: ' + e.message, 'er'); }
 }
 
@@ -9325,8 +9331,7 @@ async function delPrenda(id) {
     const r = RECORDS.find(x => x.id === id);
     if (r) { r.gestorAsignado = ''; r.gestorId = ''; r.enProceso = false; r.presentada = false; r.finalizada = ''; }
     toast('Registro eliminado de Prendas en curso', 'in');
-    renderPrendas();
-    renderPrendasPendientes();
+    refreshAllPrendaViews();
   } catch(e) { toast('Error: ' + e.message, 'er'); }
 }
 
