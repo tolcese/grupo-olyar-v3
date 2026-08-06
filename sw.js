@@ -1,15 +1,18 @@
-const CACHE_NAME = 'grupo-olyar-v2.25.57';
+const CACHE_NAME = 'grupo-olyar-v3.0.3';
 
 // Solo cacheamos iconos y manifest — el index.html siempre va a la red
 const STATIC_ASSETS = [
-  '/grupo-olyar-v2/manifest.json',
-  '/grupo-olyar-v2/icons/icon-192.png',
-  '/grupo-olyar-v2/icons/icon-512.png'
+  '/grupo-olyar-v3/manifest.json',
+  '/grupo-olyar-v3/icons/icon-192.png',
+  '/grupo-olyar-v3/icons/icon-512.png'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
+    // add() individual con catch: si falta un icono, el install NO falla
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.all(STATIC_ASSETS.map(u => cache.add(u).catch(() => {})))
+    )
   );
   self.skipWaiting();
 });
