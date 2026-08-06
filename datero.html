@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitud Crediticia — Grupo Olyar</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --navy: #0f1f3d;
+      --blue: #1a4bbd;
+      --blue-light: #e8eeff;
+      --accent: #f0a500;
+      --text: #1c1c2e;
+      --muted: #6b7280;
+      --border: #dde2ef;
+      --bg: #f4f6fb;
+      --white: #ffffff;
+      --red: #dc2626;
+      --green: #16a34a;
+      --green-bg: #dcfce7;
+      --red-bg: #fee2e2;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    .site-header {
+      background: var(--navy);
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .site-header .logo-mark {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .site-header .logo-text h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.2rem;
+      color: var(--white);
+      letter-spacing: 0.01em;
+    }
+    .site-header .logo-text p {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* MAIN */
+    .main {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .intro {
+      text-align: center;
+      padding: 2rem 0 1.5rem;
+    }
+    .intro h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.75rem;
+      color: var(--navy);
+      margin-bottom: 0.5rem;
+    }
+    .intro p {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    /* CARD */
+    .card {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 1.75rem;
+      margin-bottom: 1.25rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 4px rgba(15,31,61,0.06);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.9rem;
+      border-bottom: 1.5px solid var(--blue-light);
+    }
+    .section-icon {
+      width: 34px;
+      height: 34px;
+      background: var(--blue-light);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .section-header h3 {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue);
+    }
+
+    /* GRID */
+    .grid { display: grid; gap: 1rem; }
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .col-span-2 { grid-column: span 2; }
+
+    /* FIELD */
+    .field { display: flex; flex-direction: column; gap: 0.35rem; }
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.01em;
+    }
+    label .req { color: var(--red); margin-left: 2px; }
+    .hint {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 0.15rem;
+    }
+
+    input, select {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      padding: 0.6rem 0.85rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      background: var(--white);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      width: 100%;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(26,75,189,0.1);
+    }
+    input.invalid, select.invalid {
+      border-color: var(--red);
+      background: #fff8f8;
+    }
+    input::placeholder { color: #b0b8cc; }
+
+    /* FILE UPLOAD */
+    .file-drop {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--bg);
+    }
+    .file-drop:hover, .file-drop.dragover {
+      border-color: var(--blue);
+      background: var(--blue-light);
+    }
+    .file-drop.invalid-file { border-color: var(--red); background: #fff8f8; }
+    .file-drop input { display: none; }
+    .file-drop-icon { font-size: 2.2rem; margin-bottom: 0.5rem; }
+    .file-drop p { color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
+    .file-drop strong { color: var(--blue); }
+
+    .file-list { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; }
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.85rem;
+      background: var(--blue-light);
+      border-radius: 7px;
+      font-size: 0.82rem;
+      color: var(--navy);
+    }
+    .file-item-name { display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0; }
+    .file-item-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-item-size { color: var(--muted); font-size: 0.75rem; flex-shrink: 0; margin: 0 0.75rem; }
+    .file-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0;
+      flex-shrink: 0;
+      transition: color 0.15s;
+    }
+    .file-remove:hover { color: var(--red); }
+
+    /* SUBMIT */
+    .submit-area { margin-top: 0.5rem; }
+    .btn-submit {
+      width: 100%;
+      padding: 1.05rem;
+      background: var(--navy);
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      position: relative;
+    }
+    .btn-submit:hover:not(:disabled) { background: var(--blue); }
+    .btn-submit:active:not(:disabled) { transform: scale(0.99); }
+    .btn-submit:disabled { background: #9aa5c4; cursor: not-allowed; }
+
+    /* STATUS */
+    .status-msg {
+      display: none;
+      padding: 1rem 1.25rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-top: 1rem;
+      text-align: center;
+    }
+    .status-msg.show { display: block; }
+    .status-msg.success { background: var(--green-bg); color: var(--green); }
+    .status-msg.error { background: var(--red-bg); color: var(--red); }
+
+    /* SUCCESS SCREEN */
+    .success-screen {
+      display: none;
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+    .success-screen.show { display: block; }
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      background: var(--green-bg);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      margin: 0 auto 1.5rem;
+    }
+    .success-screen h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.8rem;
+      color: var(--navy);
+      margin-bottom: 0.75rem;
+    }
+    .success-screen p { color: var(--muted); font-size: 0.95rem; line-height: 1.6; }
+
+    /* PROGRESS */
+    .progress-bar {
+      height: 3px;
+      background: var(--blue-light);
+      border-radius: 2px;
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--blue);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    /* ── Mobile ─────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .col-span-2 { grid-column: span 1; }
+
+      .site-header { padding: 1rem; }
+      .site-header .logo-text h1 { font-size: 1rem; }
+
+      .main { padding: 1rem 0.75rem 3rem; }
+
+      .intro { padding: 1.25rem 0 1rem; }
+      .intro h2 { font-size: 1.4rem; }
+
+      .card { padding: 1.25rem; border-radius: 12px; }
+
+      /* Inputs más grandes para dedos */
+      input, select {
+        font-size: 16px;   /* evita zoom automático en iOS */
+        padding: 0.75rem 0.9rem;
+        min-height: 48px;
+      }
+
+      label { font-size: 0.85rem; }
+
+      .section-header { margin-bottom: 1.1rem; }
+
+      .file-drop { padding: 1.5rem 1rem; }
+      .file-drop-icon { font-size: 1.8rem; }
+      .file-drop p { font-size: 0.82rem; }
+
+      .btn-submit {
+        padding: 1.1rem;
+        font-size: 1.05rem;
+        min-height: 54px;
+        border-radius: 12px;
+      }
+
+      .success-screen { padding: 3rem 1rem; }
+      .success-screen h2 { font-size: 1.5rem; }
+    }
+
+    /* Teléfonos muy chicos */
+    @media (max-width: 380px) {
+      .main { padding: 0.75rem 0.5rem 3rem; }
+      .card { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="logo-mark">
+    <svg width="100" height="100" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="340" cy="340" r="260" fill="#0f172a"/>
+      <circle cx="340" cy="340" r="260" fill="none" stroke="#1d6fce" stroke-width="18"/>
+      <path d="M340 175 C244 175 166 253 166 349 C166 445 244 523 340 523 C404 523 460 488 492 435 L492 349 L368 349 L368 397 L436 397 C414 432 380 455 340 455 C282 455 236 409 236 349 C236 289 282 243 340 243 C372 243 400 256 420 278 L468 230 C438 196 392 175 340 175Z" fill="#ffffff"/>
+      <circle cx="476" cy="476" r="68" fill="#1d6fce"/>
+      <circle cx="476" cy="476" r="68" fill="none" stroke="#0f172a" stroke-width="8"/>
+      <ellipse cx="476" cy="476" rx="34" ry="34" fill="none" stroke="#ffffff" stroke-width="14"/>
+    </svg>
+  </div>
+  <div class="logo-text">
+    <h1>Grupo Olyar</h1>
+    <p>Sistema de gestión crediticia</p>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- INTRO -->
+  <div class="intro">
+    <h2>Formulario de Solicitud</h2>
+    <p>Completá todos los campos para enviar una solicitud crediticia. Todos los datos son obligatorios.</p>
+  </div>
+
+  <!-- PROGRESO -->
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <form id="dateroForm" novalidate>
+
+    <!-- 1. DATOS DE LA AGENCIA -->
+    <div class="card">
+      <div class="section-header">
+        <div class="section-icon">🏢</div>
+        <h3>Datos de la Agencia</h3>
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Provincia <span class="req">*</span></label>
+          <select id="provincia" required>
+            <option value="">Seleccioná...</option>
+            <option>Buenos Aires</option>
+            <option>CABA</option>
+            <option>Catamarca</option>
+            <option>Chaco</option>
+            <option>Chubut</option>
+            <option>Córdoba</option>
+            <option>Corrientes</option>
+            <option>Entre Ríos</option>
+            <option>Formosa</option>
+            <option>Jujuy</option>
+            <option>La Pampa</option>
+            <option>La Rioja</option>
+            <option>Mendoza</option>
+            <option>Misiones</option>
+            <option>Neuquén</option>
+            <option>Río Negro</option>
+            <option>Salta</option>
+            <option>San Juan</option>
+            <option>San Luis</option>
+            <option>Santa Cruz</option>
+            <option>Santa Fe</option>
+            <option>Santiago del Estero</option>
+            <option>Tierra del Fuego</option>
+            <option>Tucumán</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Nombre de la Concesionaria <span class="req">*</span></label>
+          <input type="text" id="nombre_concesionaria" required placeholder="Ej: Automotores XYZ">
+        </div>
+        <div class="field col-span-2">
+          <label>Encargado de Operación <span class="req">*</span></label>
+          <input type="text" id="encargado_operacion" required placeholder="Nombre completo del encargado">
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. DATOS SOLICITANTE -->
+    <div class="card">
+      <div class="section-header">
+        <div class="section-icon">👤</div>
+        <h3>Datos del Solicitante Crediticio</h3>
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Nombre y Apellido <span class="req">*</span></label>
+          <input type="text" id="nombre_apellido" required placeholder="Nombre completo">
+        </div>
+        <div class="field">
+          <label>Número de DNI <span class="req">*</span></label>
+          <input type="text" id="dni" required placeholder="Sin puntos ni espacios" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Número de Teléfono <span class="req">*</span></label>
+          <input type="tel" id="telefono" required placeholder="Ej: 3512345678" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Compañía de Teléfono <span class="req">*</span></label>
+          <select id="compania_telefono" required>
+            <option value="">Seleccioná...</option>
+            <option>Movistar</option>
+            <option>Claro</option>
+            <option>Personal</option>
+            <option>Tuenti</option>
+            <option>Otra</option>
+          </select>
+        </div>
+        <div class="field col-span-2">
+          <label>Email del Cliente <span class="req">*</span></label>
+          <input type="email" id="email_cliente" required placeholder="cliente@email.com">
+        </div>
+        <div class="field">
+          <label>Código Postal <span class="req">*</span></label>
+          <input type="text" id="codigo_postal" required placeholder="Ej: 5000" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Estado Civil <span class="req">*</span></label>
+          <select id="estado_civil" required>
+            <option value="">Seleccioná...</option>
+            <option>Soltero/a</option>
+            <option>Casado/a</option>
+            <option>Viudo/a</option>
+            <option>Divorciado/a</option>
+          </select>
+        </div>
+
+        <!-- DATOS DEL CÓNYUGE -->
+        <div class="field col-span-2" style="margin-top:8px" id="conyuge-section" style="display:none">
+          <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--blue);border-bottom:1.5px solid var(--blue-light);padding-bottom:6px">💍 Datos del Cónyuge (en caso de ser casado/a)</div>
+        </div>
+        <div id="conyuge-fields" class="field col-span-2" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="field">
+              <label>Nombre y Apellido</label>
+              <input type="text" id="conyuge_nombre" placeholder="Nombre completo">
+            </div>
+            <div class="field">
+              <label>CUIT/CUIL</label>
+              <input type="text" id="conyuge_cuit" placeholder="Ej: 20-12345678-9" inputmode="numeric">
+            </div>
+            <div class="field">
+              <label>Género</label>
+              <select id="conyuge_genero">
+                <option value="">Seleccioná...</option>
+                <option>Masculino</option>
+                <option>Femenino</option>
+                <option>No binario</option>
+                <option>Prefiero no decir</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Nacionalidad</label>
+              <input type="text" id="conyuge_nacionalidad" placeholder="Ej: Argentina">
+            </div>
+            <div class="field">
+              <label>Fecha de Nacimiento</label>
+              <input type="date" id="conyuge_fecha_nacimiento">
+            </div>
+            <div class="field">
+              <label>Actividad</label>
+              <input type="text" id="conyuge_actividad" placeholder="Ej: Empleado/a, Comerciante...">
+            </div>
+            <div class="field">
+              <label>Teléfono</label>
+              <input type="tel" id="conyuge_telefono" placeholder="Ej: 3512345678" inputmode="numeric">
+            </div>
+          </div>
+        </div>
+        <div class="field col-span-2" style="margin-top:8px">
+          <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--blue);border-bottom:1.5px solid var(--blue-light);padding-bottom:6px">📞 Teléfonos Alternativos</div>
+        </div>
+        <div class="field col-span-2">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+            <div class="field">
+              <label>Teléfono Alternativo</label>
+              <input type="tel" id="telefono_alt1" placeholder="Ej: 3512345678" inputmode="numeric">
+            </div>
+            <div class="field">
+              <label>Nombre</label>
+              <input type="text" id="telefono_alt1_nombre" placeholder="Ej: María García">
+            </div>
+            <div class="field">
+              <label>Relación</label>
+              <input type="text" id="telefono_alt1_relacion" placeholder="Ej: Esposa">
+            </div>
+          </div>
+        </div>
+        <div class="field col-span-2">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+            <div class="field">
+              <label>Teléfono Alternativo</label>
+              <input type="tel" id="telefono_alt2" placeholder="Ej: 3512345678" inputmode="numeric">
+            </div>
+            <div class="field">
+              <label>Nombre</label>
+              <input type="text" id="telefono_alt2_nombre" placeholder="Ej: Juan García">
+            </div>
+            <div class="field">
+              <label>Relación</label>
+              <input type="text" id="telefono_alt2_relacion" placeholder="Ej: Hijo">
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 3. FOTO DNI -->
+    <div class="card">
+      <div class="section-header">
+        <div class="section-icon">📎</div>
+        <h3>Foto DNI Solicitante Frente y Dorso</h3>
+      </div>
+      <div class="file-drop" id="fileDrop" onclick="document.getElementById('archivoInput').click()">
+        <input type="file" id="archivoInput" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif" onchange="handleFiles(this.files)">
+        <div class="file-drop-icon">📄</div>
+        <p><strong>Hacé click para adjuntar archivos</strong><br>
+        o arrastrá y soltá aquí<br>
+        <small>PDF, documento o imagen · Máx. 10 MB por archivo · Hasta 5 archivos</small></p>
+      </div>
+      <div class="file-list" id="fileList"></div>
+    </div>
+
+    <!-- 3b. FOTO DNI CONYUGE -->
+    <div class="card" id="dni-conyuge-section" style="display:none">
+      <div class="section-header">
+        <div class="section-icon">📎</div>
+        <h3>Foto DNI Cónyuge Frente y Dorso</h3>
+      </div>
+      <div class="file-drop" id="fileDropConyuge" onclick="document.getElementById('archivoInputConyuge').click()">
+        <input type="file" id="archivoInputConyuge" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif" onchange="handleFilesConyuge(this.files)">
+        <div class="file-drop-icon">📄</div>
+        <p><strong>Hacé click para adjuntar archivos</strong><br>
+        o arrastrá y soltá aquí<br>
+        <small>PDF, documento o imagen · Máx. 10 MB por archivo · Hasta 5 archivos</small></p>
+      </div>
+      <div class="file-list" id="fileListConyuge"></div>
+    </div>
+
+    <!-- 4. INFO LABORAL -->
+    <div class="card">
+      <div class="section-header">
+        <div class="section-icon">💼</div>
+        <h3>Información Laboral</h3>
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Nombre de la Empresa <span class="req">*</span></label>
+          <input type="text" id="nombre_empresa" required placeholder="Ej: Empresa S.A.">
+        </div>
+        <div class="field">
+          <label>Fecha de Ingreso <span class="req">*</span></label>
+          <input type="date" id="fecha_ingreso" required>
+        </div>
+        <div class="field">
+          <label>Domicilio Laboral <span class="req">*</span></label>
+          <input type="text" id="domicilio_laboral" required placeholder="Dirección completa">
+        </div>
+        <div class="field">
+          <label>Teléfono Laboral <span class="req">*</span></label>
+          <input type="tel" id="telefono_laboral" required placeholder="Ej: 3514567890" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. DATOS DEL VEHÍCULO -->
+    <div class="card">
+      <div class="section-header">
+        <div class="section-icon">🚗</div>
+        <h3>Datos del Vehículo</h3>
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Monto de Venta de la Unidad <span class="req">*</span></label>
+          <input type="number" id="monto_venta" required min="0" placeholder="$ 0" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Dominio <span class="req">*</span></label>
+          <input type="text" id="dominio" required placeholder="ABC123" style="text-transform:uppercase">
+          <span class="hint">De ser 0km ingresar XX000XX</span>
+        </div>
+        <div class="field">
+          <label>Marca <span class="req">*</span></label>
+          <input type="text" id="marca" required placeholder="Ej: Ford">
+        </div>
+        <div class="field">
+          <label>Modelo / Versión <span class="req">*</span></label>
+          <input type="text" id="modelo_version" required placeholder="Ej: Ranger XLS 4x4">
+        </div>
+        <div class="field">
+          <label>Año <span class="req">*</span></label>
+          <input type="number" id="anio" required min="1990" max="2030" placeholder="Ej: 2024" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Equipo de GNC <span class="req">*</span></label>
+          <select id="equipo_gnc" required>
+            <option value="">Seleccioná...</option>
+            <option>Sí</option>
+            <option>No</option>
+          </select>
+        </div>
+        <div class="field col-span-2">
+          <label>Título Completo del Automotor</label>
+          <div class="file-drop" id="fileDropTitulo" onclick="document.getElementById('tituloInput').click()">
+            <input type="file" id="tituloInput" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif" onchange="handleFilesTitulo(this.files)">
+            <div class="file-drop-icon">📃</div>
+            <p><strong>Hacé click para adjuntar archivos</strong><br>
+            PDF, documento o imagen · Máx. 10 MB por archivo · Hasta 5 archivos</p>
+          </div>
+          <div class="file-list" id="fileListTitulo"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 6. DATOS CREDITICIOS -->
+    <div class="card">
+      <div class="section-header">
+        <div class="section-icon">🏦</div>
+        <h3>Datos Crediticios</h3>
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Entidad Bancaria <span class="req">*</span></label>
+          <input type="text" id="entidad_bancaria" required placeholder="Ej: Banco Nación">
+        </div>
+        <div class="field">
+          <label>Tipo de Tasa <span class="req">*</span></label>
+          <select id="tipo_tasa" required>
+            <option value="">Seleccioná...</option>
+            <option>FIJA</option>
+            <option>UVA</option>
+          </select>
+        </div>
+        <div class="field col-span-2">
+          <label>Monto Total a Financiar <span class="req">*</span></label>
+          <input type="number" id="monto_financiar" required min="0" placeholder="$ 0 (sin descuento de comisión)" inputmode="numeric">
+          <span class="hint">Sin el descuento de comisión</span>
+        </div>
+        <div class="field">
+          <label>Cantidad de Cuotas <span class="req">*</span></label>
+          <select id="cantidad_cuotas" required>
+            <option value="">Seleccioná...</option>
+            <option>12</option>
+            <option>18</option>
+            <option>24</option>
+            <option>36</option>
+            <option>48</option>
+            <option>60</option>
+            <option>72</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="submit-area">
+      <button type="submit" class="btn-submit" id="btnSubmit">Enviar Solicitud</button>
+      <div class="status-msg" id="statusMsg"></div>
+    </div>
+
+  </form>
+
+  <!-- SUCCESS SCREEN -->
+  <div class="success-screen" id="successScreen">
+    <div class="success-icon">✅</div>
+    <h2>¡Solicitud enviada!</h2>
+    <p>Tu solicitud fue recibida exitosamente.<br>El equipo de Grupo Olyar se pondrá en contacto a la brevedad.</p>
+  </div>
+
+</main>
+
+<script>
+  const SUPABASE_URL = 'https://zohniclbfhvqmurtrhka.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvaG5pY2xiZmh2cW11cnRyaGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjIzNjIsImV4cCI6MjA5MDM5ODM2Mn0.1RTJAiwftxFFGrOFr3hV9W8DIjkESHBdV_PZnwKxOjQ';
+  const NOTIFY_TO   = 'tolcese@grupo-olyar.com';
+
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // ── File handling ──────────────────────────────────────────────
+  let selectedFiles = [];
+  let selectedFilesTitulo = [];
+
+  function handleFiles(incoming) {
+    for (const f of incoming) {
+      if (selectedFiles.length >= 5) { alert('Máximo 5 archivos.'); break; }
+      if (f.size > 10 * 1024 * 1024) { alert(`"${f.name}" supera los 10 MB.`); continue; }
+      selectedFiles.push(f);
+    }
+    renderFiles();
+    updateProgress();
+  }
+
+  function handleFilesTitulo(incoming) {
+    for (const f of incoming) {
+      if (selectedFilesTitulo.length >= 5) { alert('Máximo 5 archivos.'); break; }
+      if (f.size > 10 * 1024 * 1024) { alert(`"${f.name}" supera los 10 MB.`); continue; }
+      selectedFilesTitulo.push(f);
+    }
+    renderFilesTitulo();
+  }
+
+  function removeFile(i) {
+    selectedFiles.splice(i, 1);
+    renderFiles();
+    updateProgress();
+  }
+
+  function removeFileTitulo(i) {
+    selectedFilesTitulo.splice(i, 1);
+    renderFilesTitulo();
+  }
+
+  function renderFiles() {
+    const list = document.getElementById('fileList');
+    list.innerHTML = selectedFiles.map((f, i) => `
+      <div class="file-item">
+        <div class="file-item-name"><span>📄</span><span title="${f.name}">${f.name}</span></div>
+        <span class="file-item-size">${(f.size/1024/1024).toFixed(1)} MB</span>
+        <button type="button" class="file-remove" onclick="removeFile(${i})" title="Quitar">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function renderFilesTitulo() {
+    const list = document.getElementById('fileListTitulo');
+    list.innerHTML = selectedFilesTitulo.map((f, i) => `
+      <div class="file-item">
+        <div class="file-item-name"><span>📃</span><span title="${f.name}">${f.name}</span></div>
+        <span class="file-item-size">${(f.size/1024/1024).toFixed(1)} MB</span>
+        <button type="button" class="file-remove" onclick="removeFileTitulo(${i})" title="Quitar">✕</button>
+      </div>
+    `).join('');
+  }
+
+  // Drag & drop DNI
+  const dropZone = document.getElementById('fileDrop');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files);
+  });
+
+  // Drag & drop Título
+  const dropZoneTitulo = document.getElementById('fileDropTitulo');
+  dropZoneTitulo.addEventListener('dragover', e => { e.preventDefault(); dropZoneTitulo.classList.add('dragover'); });
+  dropZoneTitulo.addEventListener('dragleave', () => dropZoneTitulo.classList.remove('dragover'));
+  dropZoneTitulo.addEventListener('drop', e => {
+    e.preventDefault(); dropZoneTitulo.classList.remove('dragover'); handleFilesTitulo(e.dataTransfer.files);
+  });
+
+  // ── Progress bar ───────────────────────────────────────────────
+  const requiredIds = [
+    'provincia','nombre_concesionaria','encargado_operacion',
+    'nombre_apellido','dni','telefono','compania_telefono','email_cliente','codigo_postal','estado_civil',
+    'fecha_ingreso','nombre_empresa','domicilio_laboral','telefono_laboral',
+    'monto_venta','dominio','marca','modelo_version','anio','equipo_gnc',
+    'entidad_bancaria','tipo_tasa','monto_financiar','cantidad_cuotas'
+  ];
+
+  function updateProgress() {
+    let filled = requiredIds.filter(id => document.getElementById(id)?.value.trim()).length;
+    if (selectedFiles.length > 0) filled++;
+    const total = requiredIds.length + 1;
+    document.getElementById('progressFill').style.width = (filled / total * 100) + '%';
+  }
+
+  requiredIds.forEach(id => {
+    document.getElementById(id)?.addEventListener('input', () => {
+      document.getElementById(id).classList.remove('invalid');
+      updateProgress();
+    });
+    document.getElementById(id)?.addEventListener('change', updateProgress);
+  });
+
+  // ── Validation ─────────────────────────────────────────────────
+  function validate() {
+    let ok = true;
+    requiredIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el || !el.value.trim()) { el?.classList.add('invalid'); ok = false; }
+      else el?.classList.remove('invalid');
+    });
+    if (selectedFiles.length === 0) {
+      dropZone.classList.add('invalid-file');
+      ok = false;
+    } else {
+      dropZone.classList.remove('invalid-file');
+    }
+    return ok;
+  }
+
+  function getVal(id) { return document.getElementById(id).value.trim(); }
+
+  document.getElementById('estado_civil').addEventListener('change', function() {
+    const show = this.value === 'Casado/a';
+    document.getElementById('conyuge-section').style.display = show ? '' : 'none';
+    document.getElementById('conyuge-fields').style.display = show ? '' : 'none';
+    document.getElementById('dni-conyuge-section').style.display = show ? '' : 'none';
+  });
+
+  // DNI Conyuge upload
+  let selectedFilesConyuge = [];
+  function handleFilesConyuge(files) {
+    const maxSize = 10 * 1024 * 1024;
+    const maxFiles = 5;
+    for (const file of files) {
+      if (selectedFilesConyuge.length >= maxFiles) break;
+      if (file.size > maxSize) { alert(`${file.name} supera el límite de 10 MB`); continue; }
+      if (!selectedFilesConyuge.find(f => f.name === file.name)) selectedFilesConyuge.push(file);
+    }
+    renderFilesConyuge();
+  }
+  function renderFilesConyuge() {
+    const list = document.getElementById('fileListConyuge');
+    list.innerHTML = selectedFilesConyuge.map((f, i) => `
+      <div class="file-item">
+        <span>📎 ${f.name} (${(f.size/1024).toFixed(0)} KB)</span>
+        <button type="button" onclick="removeFileConyuge(${i})">✕</button>
+      </div>`).join('');
+  }
+  function removeFileConyuge(i) {
+    selectedFilesConyuge.splice(i, 1);
+    renderFilesConyuge();
+  }
+  const dropZoneConyuge = document.getElementById('fileDropConyuge');
+  dropZoneConyuge.addEventListener('dragover', e => { e.preventDefault(); dropZoneConyuge.classList.add('drag-over'); });
+  dropZoneConyuge.addEventListener('dragleave', () => dropZoneConyuge.classList.remove('drag-over'));
+  dropZoneConyuge.addEventListener('drop', e => { e.preventDefault(); dropZoneConyuge.classList.remove('drag-over'); handleFilesConyuge(e.dataTransfer.files); });
+
+  function fmt(n) { return Number(n).toLocaleString('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:0 }); }
+
+  // ── Submit ─────────────────────────────────────────────────────
+  document.getElementById('dateroForm').addEventListener('submit', async e => {
+    e.preventDefault();
+
+    if (!validate()) {
+      showStatus('error', 'Por favor completá todos los campos obligatorios y adjuntá al menos un archivo.');
+      document.querySelector('.invalid, .invalid-file')?.scrollIntoView({ behavior:'smooth', block:'center' });
+      return;
+    }
+
+    const btn = document.getElementById('btnSubmit');
+    btn.disabled = true;
+    btn.textContent = 'Subiendo archivos…';
+    clearStatus();
+
+    try {
+      // 1. Upload files to Supabase Storage
+      const timestamp = Date.now();
+      const archivoUrls = [];
+
+      for (const file of selectedFiles) {
+        const path = `${timestamp}/${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+        const { error: upErr } = await db.storage.from('datero-dni').upload(path, file, { upsert: true });
+        if (upErr) throw upErr;
+        const { data: urlData } = db.storage.from('datero-dni').getPublicUrl(path);
+        archivoUrls.push(urlData.publicUrl);
+      }
+
+      // Subir DNI cónyuge
+      const conugeUrls = [];
+      for (const file of selectedFilesConyuge) {
+        const path = `conyuge/${timestamp}/${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+        const { error: upErr } = await db.storage.from('datero-dni').upload(path, file, { upsert: true });
+        if (upErr) throw upErr;
+        const { data: urlData } = db.storage.from('datero-dni').getPublicUrl(path);
+        conugeUrls.push(urlData.publicUrl);
+      }
+
+      btn.textContent = 'Guardando solicitud…';
+
+      // Subir archivos del título
+      const tituloUrls = [];
+      for (const file of selectedFilesTitulo) {
+        const path = `titulo/${timestamp}/${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+        const { error: upErr } = await db.storage.from('datero-dni').upload(path, file, { upsert: true });
+        if (upErr) throw upErr;
+        const { data: urlData } = db.storage.from('datero-dni').getPublicUrl(path);
+        tituloUrls.push(urlData.publicUrl);
+      }
+
+      // 2. Insert into datero table
+      const payload = {
+        provincia:            getVal('provincia'),
+        nombre_concesionaria: getVal('nombre_concesionaria'),
+        encargado_operacion:  getVal('encargado_operacion'),
+        nombre_apellido:      getVal('nombre_apellido'),
+        dni:                  getVal('dni'),
+        telefono:             getVal('telefono'),
+        compania_telefono:    getVal('compania_telefono'),
+        telefono_alt1:        getVal('telefono_alt1') || null,
+        telefono_alt1_nombre: getVal('telefono_alt1_nombre') || null,
+        telefono_alt1_relacion: getVal('telefono_alt1_relacion') || null,
+        telefono_alt2:        getVal('telefono_alt2') || null,
+        telefono_alt2_nombre: getVal('telefono_alt2_nombre') || null,
+        telefono_alt2_relacion: getVal('telefono_alt2_relacion') || null,
+
+        email_cliente:        getVal('email_cliente'),
+        codigo_postal:        getVal('codigo_postal'),
+        estado_civil:         getVal('estado_civil'),
+        conyuge_nombre:       getVal('conyuge_nombre') || null,
+        conyuge_cuit:         getVal('conyuge_cuit') || null,
+        conyuge_genero:       getVal('conyuge_genero') || null,
+        conyuge_nacionalidad: getVal('conyuge_nacionalidad') || null,
+        conyuge_fecha_nacimiento: document.getElementById('conyuge_fecha_nacimiento').value || null,
+        conyuge_actividad:    getVal('conyuge_actividad') || null,
+        conyuge_telefono:     getVal('conyuge_telefono') || null,
+        archivos_dni:         archivoUrls,
+        conyuge_dni_urls:     conugeUrls.length ? conugeUrls : null,
+        fecha_ingreso:        getVal('fecha_ingreso'),
+        nombre_empresa:       getVal('nombre_empresa'),
+        fecha:                new Date().toISOString().split('T')[0],
+        domicilio_laboral:    getVal('domicilio_laboral'),
+        telefono_laboral:     getVal('telefono_laboral'),
+        monto_venta:          parseFloat(getVal('monto_venta')),
+        dominio:              getVal('dominio').toUpperCase(),
+        marca:                getVal('marca'),
+        modelo_version:       getVal('modelo_version'),
+        anio:                 parseInt(getVal('anio')),
+        equipo_gnc:           getVal('equipo_gnc'),
+        entidad_bancaria:     getVal('entidad_bancaria'),
+        tipo_tasa:            getVal('tipo_tasa'),
+        monto_financiar:      parseFloat(getVal('monto_financiar')),
+        cantidad_cuotas:      parseInt(getVal('cantidad_cuotas')),
+        titulo_automotor:     tituloUrls.length ? tituloUrls : null,
+      };
+
+      const { error: insertErr } = await db.from('datero').insert(payload);
+      if (insertErr) throw insertErr;
+
+      // 3. Email via Edge Function (server-side)
+      try {
+        btn.textContent = 'Enviando notificación…';
+        await fetch('https://zohniclbfhvqmurtrhka.supabase.co/functions/v1/resend-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch (emailErr) {
+        console.warn('Email no enviado (no fatal):', emailErr);
+      }
+
+      // 4. Show success
+      document.getElementById('dateroForm').style.display = 'none';
+      document.getElementById('successScreen').classList.add('show');
+      document.getElementById('progressFill').style.width = '100%';
+
+    } catch (err) {
+      console.error('Error detalle:', err);
+      const msg = err?.message || err?.error_description || (typeof err === 'object' ? JSON.stringify(err) : String(err)) || 'Error desconocido';
+      showStatus('error', `Error: ${msg}`);
+      btn.disabled = false;
+      btn.textContent = 'Enviar Solicitud';
+    }
+  });
+
+  function showStatus(type, msg) {
+    const el = document.getElementById('statusMsg');
+    el.className = `status-msg show ${type}`;
+    el.textContent = msg;
+  }
+  function clearStatus() {
+    const el = document.getElementById('statusMsg');
+    el.className = 'status-msg';
+    el.textContent = '';
+  }
+</script>
+
+</body>
+</html>

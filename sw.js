@@ -39,8 +39,8 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // index.html: siempre network-first para garantizar versión actualizada
-  if (url.pathname.endsWith('/') || url.pathname.endsWith('index.html')) {
+  // Páginas .html (index, datero): siempre network-first para versión actualizada
+  if (url.pathname.endsWith('/') || url.pathname.endsWith('.html')) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
     );
