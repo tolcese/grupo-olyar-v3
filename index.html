@@ -25,7 +25,7 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v2.25.57</title>
+<title>Grupo Olyar — Solicitudes v3.0.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* CRITICAL: Forzar paint inicial en Chrome Android — va ANTES de todo */
@@ -201,6 +201,12 @@ tbody tr:hover td{background:#f8faff;}
 .b-aprobado{background:#dcfce7;color:#14532d;border:1px solid #86efac;} .b-aprobado .bd{background:#059669;}
 .b-rechazado{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5;} .b-rechazado .bd{background:#dc2626;}
 .b-avanza{background:var(--purple-soft);color:#4c1d95;} .b-avanza .bd{background:var(--purple);}
+.mstat{display:inline-block;font-weight:800;font-size:16px;line-height:1;cursor:default}
+.mstat.ap{color:#059669}.mstat.re{color:#dc2626}.mstat.av{color:#d97706}
+td.mcell{text-align:center}
+.mcell-empty{color:#d0d7e2}
+.bank-block .fc label{font-size:11px}
+
 .abtns{display:flex;gap:5px;}
 .ibtn{width:29px;height:29px;border-radius:7px;border:1.5px solid var(--line);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .12s;}
 .ibtn:hover{border-color:var(--blue);}
@@ -741,34 +747,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       <div class="tw">
         <div class="tscroll" id="table-desktop">
           <table>
-            <thead><tr>
-              <th>#</th>
-              <th class="th-sort" onclick="sortBy('fecha')" id="th-fecha">Fecha <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('anio')" id="th-anio">Año <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('banco')" id="th-banco">Banco <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('concesionaria')" id="th-concesionaria">Concesionaria <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('provincia')" id="th-provincia">Provincia <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('localidad')" id="th-localidad">Localidad <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('dni')" id="th-dni">DNI <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('nombrecliente')" id="th-nombrecliente">Cliente <span class="sort-icon">↕</span></th>
-              <th class="th-sort admin-only" onclick="sortBy('dominio')" id="th-dominio">Dominio <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('marca')" id="th-marca">Marca <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('descripcion')" id="th-descripcion">Descripción <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('tipocta')" id="th-tipocta">Tipo CTA <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('importe')" id="th-importe">Imp. Solicitado <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('agencia')" id="th-agencia">Monto Agencia <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('vehiculo')" id="th-vehiculo">Monto Vehículo <span class="sort-icon">↕</span></th>
-              <th class="th-sort admin-only" onclick="sortBy('comision')" id="th-comision">Comisión <span class="sort-icon">↕</span></th>
-              <th class="th-sort" onclick="sortBy('estado')" id="th-estado">Estado <span class="sort-icon">↕</span></th>
-              <th title="Documento 01/08" class="admin-only">Doc 01/08</th>
-              <th title="Título Unidad" class="admin-only">Título</th>
-              <th title="Verificación Policial (12)" class="admin-only">Ver. Pol.</th>
-              <th title="Informe Dominio" class="admin-only">Inf. Dom.</th>
-              <th class="th-sort" onclick="sortBy('tasa')" id="th-tasa">Tasa <span class="sort-icon">↕</span></th>
-              <th>Observaciones</th>
-              <th class="th-sort" onclick="sortBy('usuario')" id="th-usuario">Usuario <span class="sort-icon">↕</span></th>
-              <th id="th-acc" style="position:sticky;right:0;background:var(--surface);z-index:2;box-shadow:-2px 0 6px rgba(0,0,0,.06)">Acciones</th>
-            </tr></thead>
+            <thead id="thead-sol"></thead>
             <tbody id="tbody"></tbody>
           </table>
         </div>
@@ -798,19 +777,18 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       </div>
       <div class="card" style="padding:26px">
         <div class="fg">
-          <div class="fc"><label>Fecha de solicitud *</label><input type="date" id="f-fecha"></div>
-          <div class="fc"><label>Banco *</label><select id="f-banco"></select></div>
-          <div class="fc"><label>Concesionaria</label>
+          <div class="fc"><label>FECHA DE SOLICITUD *</label><input type="date" id="f-fecha"></div>
+          <div class="fc"><label>CONCESIONARIA</label>
             <div class="combo"><input id="f-concesionaria" placeholder="Seleccioná o escribí..." oninput="checkConcEstafadora()">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('concesionaria')" type="button">▾</button><button class="cb" onclick="addOpt('concesionaria')" type="button">＋</button></div>
               <div class="cdd" id="dd-concesionaria"></div></div>
             <div id="alerta-estafadora" style="display:none;margin-top:6px;padding:8px 12px;background:#fed7d7;border:1.5px solid #fc8181;border-radius:8px;font-size:12px;color:#c53030;font-weight:700">🚫 Esta concesionaria está marcada como ESTAFADORA — <span id="alerta-estafadora-motivo"></span></div>
           </div>
-          <div class="fc"><label>Provincia</label>
+          <div class="fc"><label>PROVINCIA</label>
             <div class="combo"><input id="f-provincia" placeholder="Seleccioná o escribí...">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('provincia')" type="button">▾</button><button class="cb" onclick="addOpt('provincia')" type="button">＋</button></div>
               <div class="cdd" id="dd-provincia"></div></div></div>
-          <div class="fc"><label>Localidad</label>
+          <div class="fc"><label>LOCALIDAD</label>
             <div class="combo"><input id="f-localidad" placeholder="Seleccioná o escribí...">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('localidad')" type="button">▾</button><button class="cb" onclick="addOpt('localidad')" type="button">＋</button></div>
               <div class="cdd" id="dd-localidad"></div></div></div>
@@ -818,52 +796,38 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <div class="combo"><input id="f-dni" inputmode="numeric" placeholder="Número de documento">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('dni')" type="button">▾</button></div>
               <div class="cdd" id="dd-dni"></div></div></div>
-          <div class="fc"><label>Nombre cliente</label>
+          <div class="fc"><label>NOMBRE Y APELLIDO</label>
             <div class="combo"><input id="f-nombrecliente" placeholder="Apellido, Nombre">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('nombrecliente')" type="button">▾</button></div>
               <div class="cdd" id="dd-nombrecliente"></div></div></div>
-          <div class="fc admin-only"><label>Dominio vehículo</label>
+          <div class="fc admin-only"><label>DOMINIO VEHÍCULO</label>
             <div class="combo"><input id="f-dominio" placeholder="Ej. ABC123" style="text-transform:uppercase">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('dominio')" type="button">▾</button></div>
               <div class="cdd" id="dd-dominio"></div></div></div>
-          <div class="fc"><label>Marca vehículo</label>
+          <div class="fc"><label>MARCA VEHÍCULO</label>
             <div class="combo"><input id="f-marca" placeholder="Ford, Toyota...">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('marca')" type="button">▾</button><button class="cb" onclick="addOpt('marca')" type="button">＋</button></div>
               <div class="cdd" id="dd-marca"></div></div></div>
-          <div class="fc"><label>Descripción vehículo</label>
+          <div class="fc"><label>DESCRIPCIÓN VEHÍCULO</label>
             <div class="combo"><input id="f-descripcion" placeholder="Modelo, año, versión...">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('descripcion')" type="button">▾</button></div>
               <div class="cdd" id="dd-descripcion"></div></div></div>
-          <div class="fc"><label>Año</label>
+          <div class="fc"><label>AÑO</label>
             <select id="f-anio"><option value="">— Seleccioná —</option></select></div>
-          <div class="fc"><label>Tipo de CTA</label>
-            <select id="f-tipocta"><option value="">— Seleccioná —</option><option>FIJA</option><option>UVA</option></select></div>
-          <div class="fc"><label>Importe solicitado ($)</label>
-            <div class="cur"><span class="cur-s">$</span><input id="f-importe" type="number" min="0" placeholder="0" oninput="calcMontoAgencia();calcPctPrestado()"></div></div>
-          <div class="fc"><label>Monto para agencia ($)</label>
-            <div class="cur"><span class="cur-s">$</span><input id="f-agencia" type="number" min="0" placeholder="0"></div></div>
-          <div class="fc"><label>Monto vehículo ($)</label>
-            <div class="cur"><span class="cur-s">$</span><input id="f-vehiculo" type="number" min="0" placeholder="0" oninput="calcPctPrestado()"></div></div>
-          <div class="fc"><label>% prestado por el banco</label>
-            <div id="f-pct-prestado" style="padding:9px 11px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;font-weight:700;color:var(--muted);background:var(--surface)">—</div>
-          </div>
-          <div class="fc"><label>Comisión ($)</label>
-            <div class="cur"><span class="cur-s">$</span><input id="f-comision" type="number" min="0" placeholder="0" style="background:#f0fdf4"></div></div>
-          <div class="fc"><label>Estado</label>
-            <select id="f-estado"><option value="">— Seleccioná —</option><option>APROBADO</option><option>RECHAZADO</option><option>AVANZA</option></select></div>
-          <div class="fc"><label>Tasa</label>
-            <div class="combo"><input id="f-tasa" placeholder="Ej. 3.2" oninput="calcMontoAgencia()">
-              <div class="combo-btns"><button class="cb" onclick="toggleDD('tasa')" type="button">▾</button><button class="cb" onclick="addOpt('tasa')" type="button">＋</button></div>
-              <div class="cdd" id="dd-tasa"></div></div></div>
-          <div class="fc span3 admin-only"><label>Documentación</label>
+          <div class="fc span3 admin-only"><label>DOCUMENTACIÓN</label>
             <div class="chk-grid">
               <label class="chk-row"><input type="checkbox" id="f-doc01"><span>Documento 01/08</span></label>
               <label class="chk-row"><input type="checkbox" id="f-titulo"><span>Título unidad</span></label>
               <label class="chk-row"><input type="checkbox" id="f-verif"><span>Verificación policial (12)</span></label>
               <label class="chk-row"><input type="checkbox" id="f-infdom"><span>Informe dominio</span></label>
             </div></div>
-          <div class="fc span3"><label>Observaciones</label>
-            <textarea id="f-obs" placeholder="Notas adicionales..."></textarea></div>
+        </div>
+        <div style="margin-top:24px;padding-top:20px;border-top:2px solid var(--line)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+            <div class="ph-t" style="font-size:16px;margin:0">🏦 Bancos / Simulaciones</div>
+            <button type="button" class="btn btn-p" onclick="addBankBlock()">＋ AGREGAR BANCO</button>
+          </div>
+          <div id="bancos-container"></div>
         </div>
         <div class="mfoot">
           <button class="btn btn-s" onclick="resetForm()">Limpiar</button>
@@ -3134,6 +3098,166 @@ function colorBanco(banco) {
   const b = (banco || '').toUpperCase();
   const color = b.includes('COLUMBIA') ? '#1d6fce' : b.includes('GALICIA') ? '#e8821a' : b.includes('SANTANDER') ? '#ec0000' : b.includes('SUPERVIELLE') ? '#682489' : b.includes('BANCOR') ? '#005f5b' : b.includes('ICBC') ? '#c8102e' : 'var(--ink)';
   return `<span style="color:${color};font-weight:700">${banco || '—'}</span>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// BANCOS MÚLTIPLES (v3) — helpers
+// ══════════════════════════════════════════════════════════════
+function bancoColorHex(banco){
+  const b=(banco||'').toUpperCase();
+  return b.includes('COLUMBIA')?'#1d6fce':b.includes('GALICIA')?'#e8821a':b.includes('SANTANDER')?'#ec0000':b.includes('SUPERVIELLE')?'#682489':b.includes('BANCOR')?'#005f5b':b.includes('ICBC')?'#c8102e':'#334155';
+}
+function getBancos(r){
+  if(Array.isArray(r.bancos)&&r.bancos.length) return r.bancos;
+  if(r.banco) return [{banco:r.banco,tipocta:r.tipocta,importe:r.importe,agencia:r.agencia,vehiculo:r.vehiculo,comision:r.comision,estado:r.estado,tasa:r.tasa,obs:r.obs}];
+  return [];
+}
+function bancoRepresentativo(bancos){
+  if(!bancos||!bancos.length) return null;
+  const up=e=>(e.estado||'').toUpperCase();
+  return bancos.find(b=>up(b)==='APROBADO')||bancos.find(b=>up(b)==='AVANZA')||bancos.find(b=>up(b)==='RECHAZADO')||bancos[0];
+}
+function bancosMatrizCols(){
+  return (LISTS.banco||[]).slice().sort((a,b)=>String(a).localeCompare(String(b),'es'));
+}
+function iconoEstadoBanco(b){
+  const est=(b.estado||'').toUpperCase();
+  const $=v=>v?'$'+Number(String(v).replace(/[$,]/g,'')).toLocaleString('es-AR'):'—';
+  const imp=parseFloat(String(b.importe||0).replace(/[$,]/g,''))||0;
+  const veh=parseFloat(String(b.vehiculo||0).replace(/[$,]/g,''))||0;
+  const pct=(imp&&veh)?((imp/veh)*100).toFixed(1)+'%':'—';
+  const tip=[`Importe: ${$(b.importe)}`,`Agencia: ${$(b.agencia)}`,`Vehículo: ${$(b.vehiculo)}`,`% prestado: ${pct}`,`Comisión: ${$(b.comision)}`,`Tasa: ${b.tasa||'—'}`,b.tipocta?`Tipo: ${b.tipocta}`:''].filter(Boolean).join(' · ').replace(/"/g,'&quot;');
+  if(est==='APROBADO') return `<span class="mstat ap" title="${tip}">✓</span>`;
+  if(est==='RECHAZADO')return `<span class="mstat re" title="${tip}">✗</span>`;
+  if(est==='AVANZA')   return `<span class="mstat av" title="${tip}">→</span>`;
+  return `<span class="mstat" title="${tip}">•</span>`;
+}
+function celdaBancoMatriz(r, bancoName){
+  const b=getBancos(r).find(x=>(x.banco||'').toUpperCase()===String(bancoName).toUpperCase());
+  if(!b) return '<span class="mcell-empty">·</span>';
+  return iconoEstadoBanco(b);
+}
+function calcPrestamoBanco(banco, tipocta, anioStr, vehiculo){
+  const b=(banco||'').toUpperCase(); const tipo=(tipocta||'').toUpperCase();
+  const a=String(anioStr||'').toUpperCase(); const es0km=a.includes('0KM')||a.includes('0 KM');
+  let pct=null;
+  if(es0km){ pct=PCT_CACHE.find(p=>p.banco.toUpperCase()===b&&p.tipo_cta.toUpperCase()===tipo&&p.condicion==='0KM'); }
+  else{ const anioVeh=parseInt(a); if(anioVeh){ const antig=new Date().getFullYear()-anioVeh;
+    const todos=PCT_CACHE.filter(p=>p.banco.toUpperCase()===b&&p.tipo_cta.toUpperCase()===tipo&&p.condicion==='USADO'&&p.anios_antiguedad!=null);
+    const cand=todos.filter(p=>p.anios_antiguedad<=antig);
+    if(cand.length) pct=cand.reduce((x,y)=>y.anios_antiguedad>x.anios_antiguedad?y:x);
+    else if(todos.length) pct=todos.reduce((x,y)=>x.anios_antiguedad<y.anios_antiguedad?x:y);
+  }}
+  const veh=parseFloat(String(vehiculo||0).replace(/[$.,]/g,''))||0;
+  if(!pct||!veh) return null;
+  return {porcentaje:pct.porcentaje, monto:Math.round(veh*pct.porcentaje/100)};
+}
+
+// ── Form: bloques de banco dinámicos ──
+let _bankIdx = 0;
+function bankBlockHTML(i, d){
+  d=d||{};
+  const opts='<option value="">— Seleccioná —</option>'+(LISTS.banco||[]).map(b=>`<option${(d.banco||'')===b?' selected':''}>${b}</option>`).join('')+'<option value="__add__">＋ Agregar banco...</option>';
+  const est=(d.estado||'').toUpperCase(); const se=v=>est===v?' selected':'';
+  const tc=(d.tipocta||''); const stc=v=>tc===v?' selected':'';
+  return `<div class="bank-block" data-bi="${i}" style="border:1.5px solid var(--line);border-left:4px solid ${bancoColorHex(d.banco)};border-radius:12px;padding:18px;margin-bottom:14px;background:#f8faff">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;gap:12px;flex-wrap:wrap">
+      <div class="fc" style="flex:1;min-width:220px;max-width:320px;margin:0"><label>BANCO *</label>
+        <select class="bb-banco" onchange="onBancoChange(this)">${opts}</select></div>
+      <button type="button" class="btn btn-s bb-del" onclick="removeBankBlock(${i})" title="Quitar banco">🗑 Quitar</button>
+    </div>
+    <div class="fg bb-fields">
+      <div class="fc"><label>TIPO DE CTA</label><select class="bb-tipocta"><option value="">— Seleccioná —</option><option${stc('FIJA')}>FIJA</option><option${stc('UVA')}>UVA</option></select></div>
+      <div class="fc"><label>IMPORTE SOLICITADO ($)</label><div class="cur"><span class="cur-s">$</span><input type="number" min="0" class="bb-importe" value="${d.importe||''}" placeholder="0" oninput="calcBloqueBanco(this)"></div></div>
+      <div class="fc"><label>MONTO PARA AGENCIA ($)</label><div class="cur"><span class="cur-s">$</span><input type="number" min="0" class="bb-agencia" value="${d.agencia||''}" placeholder="0"></div></div>
+      <div class="fc"><label>MONTO VEHÍCULO ($)</label><div class="cur"><span class="cur-s">$</span><input type="number" min="0" class="bb-vehiculo" value="${d.vehiculo||''}" placeholder="0" oninput="calcBloqueBanco(this)"></div></div>
+      <div class="fc"><label>% PRESTADO POR EL BANCO</label><div class="bb-pct" style="padding:9px 11px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;font-weight:700;color:var(--muted);background:#fff">—</div></div>
+      <div class="fc"><label>COMISIÓN ($)</label><div class="cur"><span class="cur-s">$</span><input type="number" min="0" class="bb-comision" value="${d.comision||''}" placeholder="0" style="background:#f0fdf4"></div></div>
+      <div class="fc"><label>ESTADO *</label><select class="bb-estado" onchange="pintarBloqueBanco(this)"><option value="">— Seleccioná —</option><option${se('APROBADO')}>APROBADO</option><option${se('RECHAZADO')}>RECHAZADO</option><option${se('AVANZA')}>AVANZA</option></select></div>
+      <div class="fc"><label>TASA</label><input class="bb-tasa" value="${d.tasa||''}" placeholder="Ej. 3.2" oninput="calcBloqueBanco(this)"></div>
+      <div class="fc span3"><label>OBSERVACIÓN</label><textarea class="bb-obs" placeholder="Notas de este banco...">${d.obs||''}</textarea></div>
+    </div>
+  </div>`;
+}
+function addBankBlock(d){
+  const cont=document.getElementById('bancos-container'); if(!cont) return;
+  cont.insertAdjacentHTML('beforeend', bankBlockHTML(_bankIdx++, d));
+  actualizarBotonesQuitar();
+}
+function removeBankBlock(i){
+  const el=document.querySelector('.bank-block[data-bi="'+i+'"]'); if(el) el.remove();
+  const cont=document.getElementById('bancos-container');
+  if(cont && !cont.querySelector('.bank-block')) addBankBlock();
+  actualizarBotonesQuitar();
+}
+function actualizarBotonesQuitar(){
+  const bs=document.querySelectorAll('#bancos-container .bank-block');
+  bs.forEach(b=>{ const d=b.querySelector('.bb-del'); if(d) d.style.display=bs.length>1?'':'none'; });
+}
+function pintarBloqueBanco(el){
+  const block=el.closest('.bank-block'); if(!block) return;
+  const banco=block.querySelector('.bb-banco').value;
+  block.style.borderLeftColor=bancoColorHex(banco);
+}
+function calcBloqueBanco(elInside){
+  const block=elInside.closest('.bank-block'); if(!block) return;
+  const importe=parseFloat(block.querySelector('.bb-importe').value)||0;
+  const veh=parseFloat(block.querySelector('.bb-vehiculo').value)||0;
+  const tasa=parseFloat((block.querySelector('.bb-tasa').value||'').replace(',','.'))||0;
+  const pctEl=block.querySelector('.bb-pct');
+  if(importe>0&&veh>0){ pctEl.textContent=((importe/veh)*100).toFixed(1)+'%'; pctEl.style.color='var(--blue)'; }
+  else { pctEl.textContent='—'; pctEl.style.color='var(--muted)'; }
+  if(importe>0&&tasa>0){
+    block.querySelector('.bb-agencia').value=Math.round((importe-(importe*tasa/100))*100)/100;
+    block.querySelector('.bb-comision').value=Math.round((importe*tasa/100)*100)/100;
+  }
+  pintarBloqueBanco(elInside);
+}
+function onBancoChange(sel){
+  if(sel.value==='__add__'){
+    const n=prompt('Nombre del nuevo banco:');
+    if(n&&n.trim()){ const nm=n.trim().toUpperCase();
+      if(!(LISTS.banco||[]).includes(nm)){ if(!LISTS.banco)LISTS.banco=[]; LISTS.banco.push(nm); SB.from('listas').insert({campo:'banco',valor:nm}).then(()=>{}).catch(()=>{}); }
+      refreshBancoSelects(); sel.value=nm; if(typeof initBanco==='function') initBanco();
+    } else { sel.value=''; }
+  }
+  calcBloqueBanco(sel);
+}
+function refreshBancoSelects(){
+  document.querySelectorAll('#bancos-container .bb-banco').forEach(s=>{
+    const cur=s.value;
+    s.innerHTML='<option value="">— Seleccioná —</option>'+(LISTS.banco||[]).map(b=>`<option>${b}</option>`).join('')+'<option value="__add__">＋ Agregar banco...</option>';
+    s.value=cur;
+  });
+}
+function collectBancos(){
+  const out=[];
+  document.querySelectorAll('#bancos-container .bank-block').forEach(b=>{
+    const g=cls=>{ const el=b.querySelector(cls); return el?el.value.trim():''; };
+    const banco=g('.bb-banco'); const estado=g('.bb-estado');
+    if(!banco && !estado && !g('.bb-importe')) return;
+    out.push({banco, estado, tipocta:g('.bb-tipocta'), importe:g('.bb-importe'), agencia:g('.bb-agencia'), vehiculo:g('.bb-vehiculo'), comision:g('.bb-comision'), tasa:g('.bb-tasa'), obs:g('.bb-obs')});
+  });
+  return out;
+}
+function renderBancosForm(bancos){
+  const cont=document.getElementById('bancos-container'); if(!cont) return;
+  cont.innerHTML=''; _bankIdx=0;
+  if(bancos&&bancos.length) bancos.forEach(d=>addBankBlock(d)); else addBankBlock();
+  actualizarBotonesQuitar();
+}
+function buildTheadSol(){
+  const thead=document.getElementById('thead-sol'); if(!thead) return;
+  const isAdmin=ME?.rol==='admin';
+  const sc=(c,l)=>`<th class="th-sort${SORT_COL===c?(SORT_DIR===1?' asc':' desc'):''}" onclick="sortBy('${c}')" id="th-${c}">${l} <span class="sort-icon">↕</span></th>`;
+  let h='<tr><th>#</th>'+sc('fecha','Fecha')+sc('anio','Año')+sc('concesionaria','Concesionaria')+sc('provincia','Provincia')+sc('localidad','Localidad')+sc('dni','DNI')+sc('nombrecliente','Nombre y Apellido');
+  if(isAdmin) h+=sc('dominio','Dominio');
+  h+=sc('marca','Marca')+sc('descripcion','Descripción');
+  bancosMatrizCols().forEach(bn=>{ h+=`<th style="text-align:center;min-width:66px">${colorBanco(bn)}</th>`; });
+  if(isAdmin) h+='<th class="admin-only" title="Documento 01/08">Doc 01/08</th><th class="admin-only" title="Título Unidad">Título</th><th class="admin-only" title="Verificación Policial (12)">Ver. Pol.</th><th class="admin-only" title="Informe Dominio">Inf. Dom.</th>';
+  h+=sc('usuario','Usuario');
+  h+='<th id="th-acc" style="position:sticky;right:0;background:var(--surface);z-index:2;box-shadow:-2px 0 6px rgba(0,0,0,.06)">Acciones</th></tr>';
+  thead.innerHTML=h;
 }
 const LOGO_LUKAYA = 'data:image/png;base64,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2IWOes1CLs6JzaalbgPI4PceQHqU7Kfh63XTjb1erj4svUXM7amd9o2ZREV+zIiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiIC2KungqYXxTxMljeMOa4ZBW+sYXkxExtJG8TvHdFes9lFJU79Vp93ksuCfJ3H7WT6O76lE14tVxs9X5NcqWSCUHHnDg7wParWkAjBC42+2e3XqjdS3GljnjI4bw4t9IPYqDUNBt5G9drpPp5NRpfE+RibUXvip+quuldVXfTlSJKCpJiz58DzljvV2epTNo/aJZr81kNRIKGsP8AspXea79E9q6FrPZbcbf1lVY3OraccTCf5xg7h+Uo6kjlilMcjHRyMdgtcCC0/uVJby8zS6uW5HT6NHewtO1yjxLU7V+sd/nC2b2RzM3XNa9p55GQVrDWsbwAaB3clX3R+0W8WIsgqXuuFG3h1bz57fB37ites9pl5vIdT29zrbRHgQzjI8el3Z4BXsa9jTb557+38s3PCmd40W+nLPnv0/RJ2stoNk0818UbxWVo5Qxu4D9I9ihfVurr1qScmtqCyAHzaePgweI7T4rr7BJLJ5oc6Rx7AXE/vKkHRmzG5XRzKi6l9DRnB3cfbXD0d3rVJczczVK+S3G1P4NJY0/TtFt+Ldq3q9Z7/KHSLVbK661baShppKiZ3YwZx6T/APBSvo3ZRFEWVuoniV/whSsPmg/nHt9WFI+nbFa7JRtprdSMiAHF2Mud6Se1clut7grnB0G1a+O91n08me1Pii/k70Y/wU+vm2aSlgpIGQU0LIomDDWsbgALfHFEV/TTFMbR2ZWZmZmZnqyiIvQREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAWCsog0uBwut6s0bZdRRO8rphHUAeZPGMPHj3rsyKO7aovU8tyN4S2b9yxXFduraY9Fd9RbN9R2yrcylpnXCn5tlixvHxb3rRZNnOpbnO1klGaKInLpajIwP0eZP/wBlWLRUs8PY3Pzbz7eTQxxVmeHy7Rv6+bqWkNC2PTrGOjh8pq8edUSty71dgXa2jHDuWpFc2rNuzTy242hn8jIu5FfPdqmqfxYHJZRFKhEREBERAREQEREBERAREQEREBERAREQEREBERAR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r4rPa7faKMUVso4aOmaSWxRNDWgnnwC+1BDnSy1R/Imzd9pp5tyru7xBgHiIhxefRkYHrKpgDkZ7e0dxXo5fNP2a9PjfdLVSVroxhhniD932r4G6D0Y3GNMWoY5fczeH0IOi9FPSR07szhuFQ0trLw/yp+Rgtj5Rj+r53zlL626eKKngjggiZFDG0NYxgwGgDAAHYAtxAWiVjZInRvAc1wIcD2g9i1rB5IKB7btKP0htIudrDN2mfJ5RTHvjfxHs4j1L6dg2qnaO2k224vkDKOocKWs3jw6p5GT80hrvm47Vd276asF4qhU3WzUNbM1oaJJoWvIHdkj0r5PsH0eBw0zaf2Vv8EFVul+Li3akySrz5FLRx+RuHwS0Z3setRbpRtfJqe1x2rfNcauM0+5nIcHDB4e1X91fpDT+q7Y23321w1cLP5veGHR9mWkcRwXD6M2V6J0jXivstlZHVchLI4yOYPRnl6kHdmZDACckDBPpWpYHJZQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQf/Z';
 const LOGO_OLCESE = 'data:image/png;base64,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';
@@ -9736,6 +9860,7 @@ async function loadRecords() {
       descripcion: r.descripcion, tipocta: r.tipocta, importe: r.importe,
       agencia: r.agencia, vehiculo: r.vehiculo, estado: r.estado,
       doc01: r.doc01, titulo: r.titulo, verif: r.verif, infdom: r.infdom,
+      bancos: Array.isArray(r.bancos) ? r.bancos : [],
       tasa: r.tasa, obs: r.obs, comision: r.comision, usuario: r.usuario,
       fechaReg: r.fecha_reg, gestorAsignado: r.gestor_asignado, gestorId: r.gestor_id,
       enProceso: r.en_proceso, presentada: r.presentada, finalizada: r.finalizada,
@@ -9829,22 +9954,9 @@ async function loadClientes() {
 // BANCO
 // ══════════════════════════════════════════════
 function initBanco() {
-  const sel = document.getElementById('f-banco');
-  sel.innerHTML = '<option value="">— Seleccioná —</option>' +
-    LISTS.banco.map(b=>`<option>${b}</option>`).join('') +
-    '<option value="__add__">＋ Agregar banco...</option>';
-  sel.onchange = async function() {
-    if (this.value === '__add__') {
-      const n = prompt('Nombre del nuevo banco:');
-      if (n && n.trim() && !LISTS.banco.includes(n.trim())) {
-        LISTS.banco.push(n.trim());
-        SB.from('listas').insert({ campo: 'banco', valor: n.trim() }).then(()=>{}).catch(()=>{});
-        initBanco(); setTimeout(()=>{ sel.value=n.trim(); },30);
-      } else { this.value=''; }
-    }
-  };
   const fb = document.getElementById('f-ban');
-  if (fb) fb.innerHTML = '<option value="">Todos los bancos</option>'+LISTS.banco.map(b=>`<option>${b}</option>`).join('');
+  if (fb) { const cur=fb.value; fb.innerHTML = '<option value="">Todos los bancos</option>'+(LISTS.banco||[]).map(b=>`<option>${b}</option>`).join(''); fb.value=cur; }
+  refreshBancoSelects();
 }
 
 // ══════════════════════════════════════════════
@@ -9987,46 +10099,33 @@ function resetForm() {
   editId = null;
   document.getElementById('f-fecha').value = new Date().toISOString().slice(0,10);
   document.getElementById('f-anio').value = new Date().getFullYear();
-  document.getElementById('f-banco').value = '';
-  COMBO_KEYS.forEach(k => { const el=document.getElementById('f-'+k); if(el) el.value=''; });
-  ['importe','agencia','vehiculo','comision'].forEach(k=>document.getElementById('f-'+k).value='');
-  ['tipocta','estado'].forEach(k=>document.getElementById('f-'+k).value='');
+  ['concesionaria','provincia','localidad','marca','descripcion','dni','nombrecliente','dominio'].forEach(k=>{ const el=document.getElementById('f-'+k); if(el) el.value=''; });
   ['doc01','titulo','verif','infdom'].forEach(k=>document.getElementById('f-'+k).checked=false);
-  document.getElementById('f-obs').value='';
+  renderBancosForm(null);
 }
 
 function getForm() {
+  const g=id=>{ const el=document.getElementById(id); return el?el.value:''; };
+  const bancos=collectBancos();
+  const repr=bancoRepresentativo(bancos)||{};
   return {
-    fecha:document.getElementById('f-fecha').value,
-    anio:document.getElementById('f-anio').value,
-    banco:document.getElementById('f-banco').value,
-    concesionaria:document.getElementById('f-concesionaria').value,
-    provincia:document.getElementById('f-provincia').value,
-    localidad:document.getElementById('f-localidad').value,
-    dni:document.getElementById('f-dni').value,
-    nombrecliente:document.getElementById('f-nombrecliente').value,
-    dominio:document.getElementById('f-dominio').value.toUpperCase(),
-    marca:document.getElementById('f-marca').value,
-    descripcion:document.getElementById('f-descripcion').value,
-    tipocta:document.getElementById('f-tipocta').value,
-    importe:document.getElementById('f-importe').value,
-    agencia:document.getElementById('f-agencia').value,
-    vehiculo:document.getElementById('f-vehiculo').value,
-    estado:document.getElementById('f-estado').value,
-    doc01:document.getElementById('f-doc01').checked,
-    titulo:document.getElementById('f-titulo').checked,
-    verif:document.getElementById('f-verif').checked,
-    infdom:document.getElementById('f-infdom').checked,
-    tasa:document.getElementById('f-tasa').value,
-    obs:document.getElementById('f-obs').value,
-    comision:document.getElementById('f-comision').value,
+    fecha:g('f-fecha'), anio:g('f-anio'),
+    concesionaria:g('f-concesionaria'), provincia:g('f-provincia'),
+    localidad:g('f-localidad'), dni:g('f-dni'),
+    nombrecliente:g('f-nombrecliente'), dominio:g('f-dominio').toUpperCase(),
+    marca:g('f-marca'), descripcion:g('f-descripcion'),
+    doc01:document.getElementById('f-doc01').checked, titulo:document.getElementById('f-titulo').checked,
+    verif:document.getElementById('f-verif').checked, infdom:document.getElementById('f-infdom').checked,
+    bancos,
+    banco:repr.banco||'', tipocta:repr.tipocta||'', importe:repr.importe||'',
+    agencia:repr.agencia||'', vehiculo:repr.vehiculo||'', comision:repr.comision||'',
+    estado:repr.estado||'', tasa:repr.tasa||'', obs:repr.obs||''
   };
 }
 
 function fillForm(r) {
   document.getElementById('f-fecha').value=r.fecha||'';
   document.getElementById('f-anio').value=r.anio||'';
-  document.getElementById('f-banco').value=r.banco||'';
   document.getElementById('f-concesionaria').value=r.concesionaria||'';
   document.getElementById('f-provincia').value=r.provincia||'';
   document.getElementById('f-localidad').value=r.localidad||'';
@@ -10035,26 +10134,21 @@ function fillForm(r) {
   document.getElementById('f-dominio').value=r.dominio||'';
   document.getElementById('f-marca').value=r.marca||'';
   document.getElementById('f-descripcion').value=r.descripcion||'';
-  document.getElementById('f-tipocta').value=r.tipocta||'';
-  document.getElementById('f-importe').value=r.importe||'';
-  document.getElementById('f-agencia').value=r.agencia||'';
-  document.getElementById('f-vehiculo').value=r.vehiculo||'';
-  document.getElementById('f-estado').value=r.estado||'';
   document.getElementById('f-doc01').checked=!!r.doc01;
   document.getElementById('f-titulo').checked=!!r.titulo;
   document.getElementById('f-verif').checked=!!r.verif;
   document.getElementById('f-infdom').checked=!!r.infdom;
-  document.getElementById('f-tasa').value=r.tasa||'';
-  document.getElementById('f-obs').value=r.obs||'';
-  document.getElementById('f-comision').value=r.comision||'';
+  renderBancosForm(getBancos(r));
+  document.querySelectorAll('#bancos-container .bank-block .bb-importe').forEach(el=>calcBloqueBanco(el));
 }
 
 async function saveRecord() {
   if (!requireEdit()) return;
   const d = getForm();
   if (!d.fecha) { toast('La fecha es obligatoria','er'); return; }
-  if (!d.banco) { toast('El banco es obligatorio','er'); return; }
-  if (!d.estado) { toast('El estado es obligatorio','er'); return; }
+  if (!d.bancos || !d.bancos.length) { toast('Agregá al menos un banco','er'); return; }
+  const _bIncompleto = d.bancos.find(b => !b.banco || !b.estado);
+  if (_bIncompleto) { toast('Cada banco necesita entidad y estado','er'); return; }
 
   const btn = document.getElementById('save-btn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Guardando...';
@@ -10079,6 +10173,7 @@ async function saveRecord() {
     agencia: r.agencia ? parseFloat(String(r.agencia).replace(/[$,]/g,'')) : null,
     vehiculo: r.vehiculo ? parseFloat(String(r.vehiculo).replace(/[$,]/g,'')) : null,
     estado: r.estado || null,
+    bancos: Array.isArray(r.bancos) ? r.bancos : [],
     doc01: !!r.doc01, titulo: !!r.titulo, verif: !!r.verif, infdom: !!r.infdom,
     tasa: r.tasa || null, obs: r.obs || null,
     comision: r.comision ? parseFloat(String(r.comision).replace(/[$,]/g,'')) : null,
@@ -10248,9 +10343,13 @@ function renderTable() {
   const fBan = document.getElementById('f-ban')?.value||'';
 
   let data = [...RECORDS];
-  if (q)    data=data.filter(r=>[r.nombrecliente,r.dni,r.banco,r.dominio,r.concesionaria,r.marca,r.provincia].some(v=>(v||'').toLowerCase().includes(q)));
-  if (fEst) data=data.filter(r=>r.estado===fEst);
-  if (fBan) data=data.filter(r=>r.banco===fBan);
+  if (q)    data=data.filter(r=>{
+    const base=[r.nombrecliente,r.dni,r.dominio,r.concesionaria,r.marca,r.provincia];
+    const bcs=getBancos(r).map(b=>b.banco);
+    return [...base,...bcs].some(v=>(v||'').toLowerCase().includes(q));
+  });
+  if (fEst) data=data.filter(r=>getBancos(r).some(b=>(b.estado||'')===fEst));
+  if (fBan) data=data.filter(r=>getBancos(r).some(b=>(b.banco||'')===fBan));
   const fConc = document.getElementById('f-conc')?.value||'';
   const fUsu  = document.getElementById('f-usu')?.value||'';
   const fProv = document.getElementById('f-prov')?.value||'';
@@ -10293,6 +10392,7 @@ function renderTable() {
   // Solo resetear a página 1 si el usuario aplicó un filtro nuevo (no en auto-refresh)
   if (!renderTable._keepPage) CURRENT_PAGE = 1;
   renderTable._keepPage = false;
+  buildTheadSol();
   renderTablePage();
   document.getElementById('ph-count').textContent=`${data.length} registro${data.length!==1?'s':''}`;
   renderStats(data);
@@ -10333,13 +10433,15 @@ function renderTablePage() {
 
   const $=v=>v?'$'+Number(String(v).replace(/[$,]/g,'')).toLocaleString('es-AR'):'—';
   const chk=v=>v?'<span style="color:var(--green);font-weight:700">✓</span>':'<span style="color:var(--line)">—</span>';
+  const cols=bancosMatrizCols();
 
-  tbody.innerHTML=page.map((r,idx)=>`
+  tbody.innerHTML=page.map((r,idx)=>{
+    const matriz=cols.map(bn=>`<td class="mcell">${celdaBancoMatriz(r,bn)}</td>`).join('');
+    return `
       <tr style="cursor:pointer" onclick="openPanel('${r.id}')">
         <td class="td-id">${start+idx+1}</td>
         <td style="white-space:nowrap">${fmtFecha(r.fecha)}</td>
         <td>${r.anio||'—'}</td>
-        <td class="td-bold">${colorBanco(r.banco)}</td>
         <td>${r.concesionaria||'—'}</td>
         <td>${r.provincia||'—'}</td>
         <td>${r.localidad||'—'}</td>
@@ -10348,39 +10450,34 @@ function renderTablePage() {
         ${isAdmin ? `<td class="td-mono">${r.dominio||'—'}</td>` : ''}
         <td>${r.marca||'—'}</td>
         <td style="white-space:nowrap">${r.descripcion||'—'}</td>
-        <td>${r.tipocta||'—'}</td>
-        <td class="td-mono">${$(r.importe)}</td>
-        <td class="td-mono">${$(r.agencia)}</td>
-        <td class="td-mono">${$(r.vehiculo)}</td>
-        ${isAdmin ? `<td class="td-mono" style="color:var(--green);font-weight:600">${$(r.comision)}</td>` : ''}
-        <td>${r.estado?`<span class="badge b-${r.estado.toLowerCase()}"><span class="bd"></span>${r.estado}</span>`:'—'}</td>
+        ${matriz}
         ${isAdmin ? `<td class="chk">${chk(r.doc01)}</td>` : ''}
         ${isAdmin ? `<td class="chk">${chk(r.titulo)}</td>` : ''}
         ${isAdmin ? `<td class="chk">${chk(r.verif)}</td>` : ''}
         ${isAdmin ? `<td class="chk">${chk(r.infdom)}</td>` : ''}
-        <td>${r.tasa||'—'}</td>
-        <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.obs||''}">${r.obs||'—'}</td>
         <td style="font-size:11.5px;color:var(--muted)">${r.usuario||'—'}</td>
         <td style="position:sticky;right:0;background:#fff;box-shadow:-2px 0 6px rgba(0,0,0,.06)"><div class="abtns"><button class="ibtn" onclick="event.stopPropagation();editRec('${r.id}')" title="Editar">✏️</button>${isAdmin?`<button class="ibtn del" onclick="event.stopPropagation();delRec('${r.id}')" title="Eliminar">🗑️</button>`:''} ${isAdmin?`<button class="ibtn" onclick="event.stopPropagation();openHistorial('${r.id}')" title="Historial">🕐</button>`:''}</div></td>
-      </tr>`).join('');
+      </tr>`;
+  }).join('');
+  buildTheadSol();
 
   // CARDS MOBILE
   const cardsCont = document.getElementById('cards-mobile');
   if (cardsCont) {
     cardsCont.innerHTML = page.map((r, idx) => {
-      const estadoBadge = r.estado ? `<span class="badge b-${r.estado.toLowerCase()}" style="font-size:11px"><span class="bd"></span>${r.estado}</span>` : '—';
+      const chips=getBancos(r).map(b=>{
+        const e=(b.estado||'').toLowerCase();
+        const cls=e==='aprobado'?'b-aprobado':e==='rechazado'?'b-rechazado':e==='avanza'?'b-avanza':'';
+        return `<span class="badge ${cls}" style="font-size:10px"><span class="bd"></span>${b.banco||'—'}</span>`;
+      }).join(' ');
       return `<div class="sol-card" onclick="openPanel('${r.id}')">
-        <div class="sol-card-header">
-          <span class="sol-card-name">${r.nombrecliente||'—'}</span>
-          ${estadoBadge}
-        </div>
+        <div class="sol-card-header"><span class="sol-card-name">${r.nombrecliente||'—'}</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin:8px 0">${chips||'<span style="color:var(--muted);font-size:12px">Sin bancos</span>'}</div>
         <div class="sol-card-body">
-          <div class="sol-card-field"><span class="sol-card-label">Banco</span>${colorBanco(r.banco)}</div>
           <div class="sol-card-field"><span class="sol-card-label">Fecha</span>${fmtFecha(r.fecha)}</div>
           <div class="sol-card-field"><span class="sol-card-label">Concesionaria</span>${r.concesionaria||'—'}</div>
-          <div class="sol-card-field"><span class="sol-card-label">Importe</span><b>${$(r.importe)}</b></div>
           <div class="sol-card-field"><span class="sol-card-label">DNI</span>${r.dni||'—'}</div>
-          <div class="sol-card-field"><span class="sol-card-label">Tipo CTA</span>${r.tipocta||'—'}</div>
+          <div class="sol-card-field"><span class="sol-card-label">Año</span>${r.anio||'—'}</div>
         </div>
         <div class="sol-card-actions">
           <button class="ibtn" onclick="event.stopPropagation();editRec('${r.id}')">✏️</button>
@@ -12490,7 +12587,7 @@ function openPanel(id) {
   const r = RECORDS.find(x=>x.id===id);
   if (!r) return;
   document.getElementById('panel-name').textContent = r.nombrecliente || '—';
-  document.getElementById('panel-sub').textContent = (r.banco||'—') + ' · ' + (r.estado||'Sin estado');
+  { const _bs=getBancos(r); document.getElementById('panel-sub').textContent = _bs.length ? (_bs.length+' banco'+(_bs.length>1?'s':'')+' · '+_bs.map(b=>b.banco).filter(Boolean).join(', ')) : 'Sin bancos'; }
 
   const chk = v => v
     ? '<span class="pchk yes">✓ Sí</span>'
@@ -12503,9 +12600,7 @@ function openPanel(id) {
       <div class="panel-section-t">Datos generales</div>
       <div class="prow"><span class="pl">Fecha solicitud</span><span class="pv">${fmtFecha(r.fecha)}</span></div>
       <div class="prow"><span class="pl">Año</span><span class="pv">${val(r.anio)}</span></div>
-      <div class="prow"><span class="pl">Banco</span><span class="pv bold">${colorBanco(r.banco)}</span></div>
       <div class="prow"><span class="pl">Concesionaria</span><span class="pv">${val(r.concesionaria)}</span></div>
-      <div class="prow"><span class="pl">Estado</span><span class="pv">${r.estado?'<span class="badge b-'+r.estado.toLowerCase()+'"><span class="bd"></span>'+r.estado+'</span>':'—'}</span></div>
       <div class="prow"><span class="pl">Usuario</span><span class="pv">${val(r.usuario)}</span></div>
       <div class="prow"><span class="pl">Fecha registro</span><span class="pv">${fmtFecha(r.fechaReg)}</span></div>
     </div>
@@ -12522,44 +12617,26 @@ function openPanel(id) {
       <div class="prow"><span class="pl">Marca</span><span class="pv">${val(r.marca)}</span></div>
       <div class="prow"><span class="pl">Descripción</span><span class="pv">${val(r.descripcion)}</span></div>
     </div>
-    <div class="panel-section">
-      <div class="panel-section-t">Financiamiento</div>
-      <div class="prow"><span class="pl">Tipo CTA</span><span class="pv">${val(r.tipocta)}</span></div>
-      <div class="prow"><span class="pl">Tasa</span><span class="pv">${val(r.tasa)}</span></div>
-      <div class="prow"><span class="pl">Importe solicitado</span><span class="pv mono bold">${mon(r.importe)}</span></div>
-      <div class="prow"><span class="pl">Monto agencia</span><span class="pv mono">${mon(r.agencia)}</span></div>
-      <div class="prow"><span class="pl">Monto vehículo</span><span class="pv mono">${mon(r.vehiculo)}</span></div>
-      ${(()=>{
-        const imp = parseFloat(String(r.importe||0).replace(/[$,]/g,''))||0;
-        const veh = parseFloat(String(r.vehiculo||0).replace(/[$,]/g,''))||0;
-        if (!imp || !veh) return '';
-        const pct = ((imp/veh)*100).toFixed(1);
-        return '<div class="prow"><span class="pl">% prestado por banco</span><span class="pv mono bold" style="color:var(--blue)">'+pct+'%</span></div>';
-      })()}
-      ${(()=>{
-        const banco = (r.banco||'').toUpperCase();
-        const tipo = (r.tipocta||'').toUpperCase();
-        const anioStr = String(r.anio||'').toUpperCase();
-        const es0km = anioStr.includes('0KM');
-        let pct = null;
-        if (es0km) {
-          pct = PCT_CACHE.find(p => p.banco.toUpperCase()===banco && p.tipo_cta.toUpperCase()===tipo && p.condicion==='0KM');
-        } else {
-          const anioVeh = parseInt(anioStr);
-          if (anioVeh) {
-            const antiguedad = new Date().getFullYear() - anioVeh;
-            const todosUsado = PCT_CACHE.filter(p => p.banco.toUpperCase()===banco && p.tipo_cta.toUpperCase()===tipo && p.condicion==='USADO' && p.anios_antiguedad != null);
-            const candidatos = todosUsado.filter(p => p.anios_antiguedad <= antiguedad);
-            if (candidatos.length) pct = candidatos.reduce((a,b) => b.anios_antiguedad > a.anios_antiguedad ? b : a);
-            else if (todosUsado.length) pct = todosUsado.reduce((a,b) => a.anios_antiguedad < b.anios_antiguedad ? a : b);
-          }
-        }
-        if (!pct || !r.vehiculo) return '';
-        const monto = Math.round(parseFloat(String(r.vehiculo).replace(/[$.,]/g,'')) * pct.porcentaje / 100);
-        return `<div class="prow"><span class="pl">Préstamo banco (${pct.porcentaje}%)</span><span class="pv mono bold" style="color:var(--blue)">${mon(monto)}</span></div>`;
-      })()}
-      ${ME?.rol==='admin' ? `<div class="prow"><span class="pl">Comisión</span><span class="pv mono bold" style="color:var(--green)">${mon(r.comision)}</span></div>` : ''}
-    </div>
+    ${getBancos(r).map(b=>{
+      const est=(b.estado||'').toUpperCase();
+      const badge=est?`<span class="badge b-${est.toLowerCase()}"><span class="bd"></span>${est}</span>`:'—';
+      const imp=parseFloat(String(b.importe||0).replace(/[$,]/g,''))||0;
+      const veh=parseFloat(String(b.vehiculo||0).replace(/[$,]/g,''))||0;
+      const pctP=(imp&&veh)?((imp/veh)*100).toFixed(1)+'%':'—';
+      const prest=calcPrestamoBanco(b.banco,b.tipocta,r.anio,b.vehiculo);
+      return `<div class="panel-section" style="border-left:3px solid ${bancoColorHex(b.banco)};padding-left:12px">
+        <div class="panel-section-t" style="display:flex;justify-content:space-between;align-items:center;gap:8px">${colorBanco(b.banco)} ${badge}</div>
+        <div class="prow"><span class="pl">Tipo CTA</span><span class="pv">${val(b.tipocta)}</span></div>
+        <div class="prow"><span class="pl">Tasa</span><span class="pv">${val(b.tasa)}</span></div>
+        <div class="prow"><span class="pl">Importe solicitado</span><span class="pv mono bold">${mon(b.importe)}</span></div>
+        <div class="prow"><span class="pl">Monto agencia</span><span class="pv mono">${mon(b.agencia)}</span></div>
+        <div class="prow"><span class="pl">Monto vehículo</span><span class="pv mono">${mon(b.vehiculo)}</span></div>
+        <div class="prow"><span class="pl">% prestado</span><span class="pv mono bold" style="color:var(--blue)">${pctP}</span></div>
+        ${prest?`<div class="prow"><span class="pl">Préstamo banco (${prest.porcentaje}%)</span><span class="pv mono bold" style="color:var(--blue)">${mon(prest.monto)}</span></div>`:''}
+        ${ME?.rol==='admin'?`<div class="prow"><span class="pl">Comisión</span><span class="pv mono bold" style="color:var(--green)">${mon(b.comision)}</span></div>`:''}
+        ${b.obs?`<div class="prow"><span class="pl">Observación</span><span class="pv" style="text-align:right;max-width:62%">${b.obs}</span></div>`:''}
+      </div>`;
+    }).join('')}
     <div class="panel-section">
       <div class="panel-section-t">Documentación</div>
       <div class="prow"><span class="pl">Documento 01/08</span><span class="pv">${chk(r.doc01)}</span></div>
@@ -12567,7 +12644,6 @@ function openPanel(id) {
       <div class="prow"><span class="pl">Verif. policial (12)</span><span class="pv">${chk(r.verif)}</span></div>
       <div class="prow"><span class="pl">Informe dominio</span><span class="pv">${chk(r.infdom)}</span></div>
     </div>
-    ${r.obs ? `<div class="panel-section"><div class="panel-section-t">Observaciones</div><div style="font-size:13px;color:var(--ink2);line-height:1.6">${r.obs}</div></div>` : ''}
   `;
 
   // Add action buttons for admin
@@ -12639,7 +12715,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
     okm.value = '0 KM';
     okm.textContent = '0 KM';
     sel.appendChild(okm);
-    for (let i = 2016; i <= y + 1; i++) {
+    for (let i = 2013; i <= y + 1; i++) {
       const opt = document.createElement('option');
       opt.value = i;
       opt.textContent = i;
