@@ -3627,9 +3627,9 @@ async function enterApp() {
   document.getElementById('tb-role').textContent = ME.rol === 'admin' ? '⚡ Admin' : ME.rol === 'invitado' ? '👁️ Invitado' : ME.rol === 'presupuestos' ? '📄 Presupuestos' : ME.rol === 'usuario_presupuestos' ? '👤+ Presupuestos' : ME.rol === 'administracion' ? '🏢 Administración' : ME.rol === 'usuario_administracion' ? '👤+ Administración' : '👤 Usuario';
   if (ME.rol === 'admin') {
     document.getElementById('sb-usuarios').style.display = '';
-    document.getElementById('th-acc').style.display = '';
+    const _tha=document.getElementById('th-acc'); if(_tha) _tha.style.display = '';
   } else {
-    document.getElementById('th-acc').style.display = 'none';
+    const _tha=document.getElementById('th-acc'); if(_tha) _tha.style.display = 'none';
   }
   // Sidebar items por rol
   const isAdmin = ME.rol === 'admin';
