@@ -25,7 +25,27 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.0.1</title>
+<title>Grupo Olyar — Solicitudes v3.0.2</title>
+  <script>
+  /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
+     Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
+     Guard con sessionStorage para no entrar en loop de recargas. */
+  (function(){
+    var APP_VER='v3.0.2';
+    try{
+      if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
+      var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
+      sessionStorage.setItem('olyar_boot_ver',APP_VER);
+      if(last && last!==APP_VER && 'caches' in window){
+        try{ localStorage.setItem('olyar_last_ver',APP_VER); }catch(e){}
+        caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); })
+          .then(function(){ if(navigator.serviceWorker){ return navigator.serviceWorker.getRegistrations().then(function(rs){ rs.forEach(function(r){ r.update(); }); }); } })
+          .then(function(){ location.reload(); })
+          .catch(function(){});
+      } else { try{ localStorage.setItem('olyar_last_ver',APP_VER); }catch(e){} }
+    }catch(e){}
+  })();
+  </script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* CRITICAL: Forzar paint inicial en Chrome Android — va ANTES de todo */
@@ -3109,8 +3129,8 @@ function bancoColorHex(banco){
   return b.includes('COLUMBIA')?'#1d6fce':b.includes('GALICIA')?'#e8821a':b.includes('SANTANDER')?'#ec0000':b.includes('SUPERVIELLE')?'#682489':b.includes('BANCOR')?'#005f5b':b.includes('ICBC')?'#c8102e':'#334155';
 }
 function getBancos(r){
-  if(Array.isArray(r.bancos)&&r.bancos.length) return r.bancos;
-  if(r.banco) return [{banco:r.banco,tipocta:r.tipocta,importe:r.importe,agencia:r.agencia,vehiculo:r.vehiculo,comision:r.comision,estado:r.estado,tasa:r.tasa,obs:r.obs}];
+  if(r && Array.isArray(r.bancos)){ const v=r.bancos.filter(b=>b&&typeof b==='object'); if(v.length) return v; }
+  if(r && r.banco) return [{banco:r.banco,tipocta:r.tipocta,importe:r.importe,agencia:r.agencia,vehiculo:r.vehiculo,comision:r.comision,estado:r.estado,tasa:r.tasa,obs:r.obs}];
   return [];
 }
 function bancoRepresentativo(bancos){
@@ -3119,7 +3139,7 @@ function bancoRepresentativo(bancos){
   return bancos.find(b=>up(b)==='APROBADO')||bancos.find(b=>up(b)==='AVANZA')||bancos.find(b=>up(b)==='RECHAZADO')||bancos[0];
 }
 function bancosMatrizCols(){
-  return (LISTS.banco||[]).slice().sort((a,b)=>String(a).localeCompare(String(b),'es'));
+  return (LISTS.banco||[]).filter(Boolean).slice().sort((a,b)=>String(a).localeCompare(String(b),'es'));
 }
 function iconoEstadoBanco(b){
   const est=(b.estado||'').toUpperCase();
@@ -3134,9 +3154,11 @@ function iconoEstadoBanco(b){
   return `<span class="mstat" title="${tip}">•</span>`;
 }
 function celdaBancoMatriz(r, bancoName){
-  const b=getBancos(r).find(x=>(x.banco||'').toUpperCase()===String(bancoName).toUpperCase());
-  if(!b) return '<span class="mcell-empty">·</span>';
-  return iconoEstadoBanco(b);
+  try{
+    const b=getBancos(r).find(x=>x&&(x.banco||'').toUpperCase()===String(bancoName).toUpperCase());
+    if(!b) return '<span class="mcell-empty">·</span>';
+    return iconoEstadoBanco(b);
+  }catch(e){ return '<span class="mcell-empty">·</span>'; }
 }
 function calcPrestamoBanco(banco, tipocta, anioStr, vehiculo){
   const b=(banco||'').toUpperCase(); const tipo=(tipocta||'').toUpperCase();
@@ -10437,6 +10459,7 @@ function renderTablePage() {
   const cols=bancosMatrizCols();
 
   tbody.innerHTML=page.map((r,idx)=>{
+    try {
     const matriz=cols.map(bn=>`<td class="mcell">${celdaBancoMatriz(r,bn)}</td>`).join('');
     return `
       <tr style="cursor:pointer" onclick="openPanel('${r.id}')">
@@ -10459,6 +10482,7 @@ function renderTablePage() {
         <td style="font-size:11.5px;color:var(--muted)">${r.usuario||'—'}</td>
         <td style="position:sticky;right:0;background:#fff;box-shadow:-2px 0 6px rgba(0,0,0,.06)"><div class="abtns"><button class="ibtn" onclick="event.stopPropagation();editRec('${r.id}')" title="Editar">✏️</button>${isAdmin?`<button class="ibtn del" onclick="event.stopPropagation();delRec('${r.id}')" title="Eliminar">🗑️</button>`:''} ${isAdmin?`<button class="ibtn" onclick="event.stopPropagation();openHistorial('${r.id}')" title="Historial">🕐</button>`:''}</div></td>
       </tr>`;
+    } catch(e){ return `<tr><td colspan="40" style="padding:10px;color:#dc2626;font-size:12px">⚠ Error al mostrar registro ${r&&r.id?r.id:''}</td></tr>`; }
   }).join('');
   buildTheadSol();
 
@@ -10466,6 +10490,7 @@ function renderTablePage() {
   const cardsCont = document.getElementById('cards-mobile');
   if (cardsCont) {
     cardsCont.innerHTML = page.map((r, idx) => {
+      try {
       const chips=getBancos(r).map(b=>{
         const e=(b.estado||'').toLowerCase();
         const cls=e==='aprobado'?'b-aprobado':e==='rechazado'?'b-rechazado':e==='avanza'?'b-avanza':'';
@@ -10486,6 +10511,7 @@ function renderTablePage() {
           ${isAdmin?`<button class="ibtn" onclick="event.stopPropagation();openHistorial('${r.id}')">🕐</button>`:''}
         </div>
       </div>`;
+      } catch(e){ return `<div class="sol-card">⚠ Error: ${r&&r.id?r.id:''}</div>`; }
     }).join('');
   }
 }
