@@ -25,7 +25,7 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.0.0</title>
+<title>Grupo Olyar — Solicitudes v3.0.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* CRITICAL: Forzar paint inicial en Chrome Android — va ANTES de todo */
@@ -3103,6 +3103,7 @@ function colorBanco(banco) {
 // ══════════════════════════════════════════════════════════════
 // BANCOS MÚLTIPLES (v3) — helpers
 // ══════════════════════════════════════════════════════════════
+function hoyLocal(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function bancoColorHex(banco){
   const b=(banco||'').toUpperCase();
   return b.includes('COLUMBIA')?'#1d6fce':b.includes('GALICIA')?'#e8821a':b.includes('SANTANDER')?'#ec0000':b.includes('SUPERVIELLE')?'#682489':b.includes('BANCOR')?'#005f5b':b.includes('ICBC')?'#c8102e':'#334155';
@@ -3523,7 +3524,7 @@ function abrirModalGasto(id) {
   document.getElementById('gasto-btn-del').style.display = id ? '' : 'none';
   document.getElementById('gasto-desc').value = '';
   document.getElementById('gasto-monto').value = '';
-  document.getElementById('gasto-fecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('gasto-fecha').value = hoyLocal();
   document.getElementById('gasto-cat').value = '';
 
   if (id) {
@@ -4694,7 +4695,7 @@ function renderHistoricoPresup() {
 async function togglePagadoPresup(id, pagado) {
   let fecha_pago = null;
   if (pagado) {
-    fecha_pago = prompt('Fecha de pago (AAAA-MM-DD):', new Date().toISOString().slice(0,10));
+    fecha_pago = prompt('Fecha de pago (AAAA-MM-DD):', hoyLocal());
     if (fecha_pago === null) return;
     if (!fecha_pago.match(/^\d{4}-\d{2}-\d{2}$/)) return alert('Formato inválido. Usá AAAA-MM-DD');
   }
@@ -4710,7 +4711,7 @@ function nuevoPresupuesto() {
   window._baseImpManual = false;
   document.getElementById('presup-form-title').textContent = 'Nuevo presupuesto';
   document.getElementById('presup-id').value = '';
-  document.getElementById('pf-fecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('pf-fecha').value = hoyLocal();
   document.getElementById('pf-estado').value = 'Borrador';
   document.getElementById('pf-estado-civil').value = 'SOLTERO/A';
   ['agencia','cliente','dni','dominio','modelo-anio','chasis','registro','marca'].forEach(id => {
@@ -4930,7 +4931,7 @@ async function guardarPresupuesto() {
   const t = id => document.getElementById(id)?.value.trim() || null;
   const total = parseFloat(document.getElementById('pf-total-display').textContent.replace(/[$.,]/g,'').replace(',','.')) || 0;
   const row = {
-    fecha: t('pf-fecha') || new Date().toISOString().slice(0,10),
+    fecha: t('pf-fecha') || hoyLocal(),
     agencia: t('pf-agencia'), cliente: t('pf-cliente'), dni: t('pf-dni'),
     estado_civil: t('pf-estado-civil'), dominio: t('pf-dominio'),
     modelo_anio: t('pf-modelo-anio'), chasis: t('pf-chasis'),
@@ -5159,7 +5160,7 @@ function rechazarPrenda(id) {
   if (!r) return;
   document.getElementById('pr-rechazo-id').value = id;
   document.getElementById('pr-rechazo-nombre').textContent = r.nombrecliente || id;
-  document.getElementById('pr-fecha-rechazo').value = new Date().toISOString().slice(0,10);
+  document.getElementById('pr-fecha-rechazo').value = hoyLocal();
   document.getElementById('pr-motivo-rechazo').value = '';
   document.getElementById('pr-rechazo-overlay').classList.add('open');
 }
@@ -5205,7 +5206,7 @@ function reingresar(id) {
   if (!r) return;
   document.getElementById('pr-reingreso-id').value = id;
   document.getElementById('pr-reingreso-nombre').textContent = r.nombrecliente || id;
-  document.getElementById('pr-fecha-reingreso').value = new Date().toISOString().slice(0,10);
+  document.getElementById('pr-fecha-reingreso').value = hoyLocal();
   document.getElementById('pr-reingreso-overlay').classList.add('open');
 }
 
@@ -8454,7 +8455,7 @@ async function exportarHistoricoExcel() {
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Liquidaciones');
-  const fecha = new Date().toISOString().slice(0,10);
+  const fecha = hoyLocal();
   XLSX.writeFile(wb, `Liquidaciones_${fecha}.xlsx`);
 }
 
@@ -9015,7 +9016,7 @@ async function exportarPorcentajesExcel() {
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = [{wch:14},{wch:10},{wch:10},{wch:16},{wch:14}];
   XLSX.utils.book_append_sheet(wb, ws, 'Porcentajes');
-  XLSX.writeFile(wb, `Porcentajes_banco_${new Date().toISOString().slice(0,10)}.xlsx`);
+  XLSX.writeFile(wb, `Porcentajes_banco_${hoyLocal()}.xlsx`);
 }
 
 async function exportarPorcentajesPDF() {
@@ -9051,7 +9052,7 @@ async function exportarPorcentajesPDF() {
     headStyles: { fillColor: [29, 111, 206], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [245, 247, 250] }
   });
-  doc.save(`Porcentajes_banco_${new Date().toISOString().slice(0,10)}.pdf`);
+  doc.save(`Porcentajes_banco_${hoyLocal()}.pdf`);
 }
 
 async function loadPorcentajes() {
@@ -10097,7 +10098,7 @@ function calcMontoAgencia() {
 // ══════════════════════════════════════════════
 function resetForm() {
   editId = null;
-  document.getElementById('f-fecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('f-fecha').value = hoyLocal();
   document.getElementById('f-anio').value = new Date().getFullYear();
   ['concesionaria','provincia','localidad','marca','descripcion','dni','nombrecliente','dominio'].forEach(k=>{ const el=document.getElementById('f-'+k); if(el) el.value=''; });
   ['doc01','titulo','verif','infdom'].forEach(k=>document.getElementById('f-'+k).checked=false);
@@ -10178,7 +10179,7 @@ async function saveRecord() {
     tasa: r.tasa || null, obs: r.obs || null,
     comision: r.comision ? parseFloat(String(r.comision).replace(/[$,]/g,'')) : null,
     usuario: r.usuario || null, usuario_edit: r.usuarioEdit || null,
-    fecha_reg: r.fechaReg || new Date().toISOString().slice(0,10)
+    fecha_reg: r.fechaReg || hoyLocal()
   });
 
   let rec;
@@ -10195,7 +10196,7 @@ async function saveRecord() {
       const cambios = diffObjetos(viejo, rec, campos);
       registrarHistorial('solicitud', editId, cambios);
     } else {
-      rec = { id:'S'+Date.now(), ...d, usuario:ME.nom, fechaReg:new Date().toISOString().slice(0,10) };
+      rec = { id:'S'+Date.now(), ...d, usuario:ME.nom, fechaReg:hoyLocal() };
       RECORDS.push(rec);
       const { error } = await SB.from('solicitudes').insert(toDb(rec));
       if (error) throw error;
@@ -10515,7 +10516,7 @@ function duplicarRec(id) {
   window._isDuplicating = true;
   document.getElementById('form-title').textContent='Nueva solicitud (duplicada)';
   document.getElementById('save-btn').textContent='💾 Guardar solicitud';
-  const copia = {...r, id: null, fecha: new Date().toISOString().slice(0,10), estado: 'Pendiente'};
+  const copia = {...r, id: null, fecha: hoyLocal(), estado: 'Pendiente'};
   fillForm(copia);
   showV('nueva');
   window._isDuplicating = false;
@@ -11177,7 +11178,7 @@ function abrirModalCalendario(fecha, id = null) {
   document.getElementById('cal-id').value = id || '';
   document.getElementById('cal-titulo-input').value = '';
   document.getElementById('cal-tipo').value = 'evento';
-  document.getElementById('cal-fecha').value = fecha || new Date().toISOString().slice(0,10);
+  document.getElementById('cal-fecha').value = fecha || hoyLocal();
   document.getElementById('cal-hora').value = '';
   document.getElementById('cal-desc').value = '';
   document.getElementById('cal-btn-del').style.display = 'none';
@@ -11312,7 +11313,7 @@ function exportCSV() {
   const rows=exportData.map(r=>[r.id,r.fecha,r.banco,r.concesionaria,r.provincia,r.localidad,r.dni,r.nombrecliente,r.dominio,r.marca,r.descripcion,r.tipocta,r.importe,r.agencia,r.vehiculo,r.estado,r.doc01?'Sí':'No',r.titulo?'Sí':'No',r.verif?'Sí':'No',r.infdom?'Sí':'No',r.tasa,r.obs,r.usuario,r.fechaReg].map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(';'));
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['\uFEFF'+[H.join(';'),...rows].join('\n')],{type:'text/csv;charset=utf-8;'}));
-  a.download=`solicitudes_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download=`solicitudes_${hoyLocal()}.csv`;
   a.click();
   toast('CSV exportado ✓','ok');
 }
@@ -11617,7 +11618,7 @@ async function abrirModalEnvioGestor() {
     });
   }
   document.getElementById('envio-gestor-banco').value = '';
-  document.getElementById('envio-gestor-fecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('envio-gestor-fecha').value = hoyLocal();
   document.getElementById('envio-gestor-cantidad').value = '';
   document.getElementById('envio-gestor-nota').value = '';
   document.getElementById('envio-gestor-stock-info').style.display = 'none';
@@ -11988,7 +11989,7 @@ function initTramiteInputs() {
 function abrirModalTramite() {
   document.getElementById('adm-tramite-id').value = '';
   document.getElementById('adm-tramite-titulo').textContent = '📋 Nuevo trámite';
-  document.getElementById('adm-t-fecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('adm-t-fecha').value = hoyLocal();
   ['adm-t-cliente','adm-t-dominio','adm-t-efvo','adm-t-esc-real','adm-t-esc-cob',
    'adm-t-inf-real','adm-t-inf-cob','adm-t-mov-real','adm-t-mov-cob','adm-t-forms',
    'adm-t-forms-cob','adm-t-aranceles','adm-t-multas','adm-t-sellados','adm-t-envio',
@@ -12206,7 +12207,7 @@ async function hacerBackupManual() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'backup_olyar_' + new Date().toISOString().slice(0,10) + '.csv';
+    a.download = 'backup_olyar_' + hoyLocal() + '.csv';
     a.click();
     URL.revokeObjectURL(url);
     msg.style.display = 'block';
@@ -12952,7 +12953,7 @@ async function exportBrechaExcel() {
     {wch:16},{wch:18},{wch:16},{wch:12}
   ];
   XLSX.utils.book_append_sheet(wb, ws, 'Brecha');
-  const fecha = new Date().toISOString().slice(0,10);
+  const fecha = hoyLocal();
   XLSX.writeFile(wb, `Brecha_Financiamiento_${fecha}.xlsx`);
 }
 
@@ -13158,7 +13159,7 @@ async function exportarFinanciamientoPDF() {
     }
   });
 
-  const fecha = new Date().toISOString().slice(0,10);
+  const fecha = hoyLocal();
   doc.save(`Financiamiento_${fecha}.pdf`);
 }
 
@@ -13232,7 +13233,7 @@ async function exportarFinanciamientoExcel() {
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = [{wch:10},{wch:22},{wch:20},{wch:10},{wch:6},{wch:8},{wch:14},{wch:14},{wch:8},{wch:8},{wch:10}];
   XLSX.utils.book_append_sheet(wb, ws, '% Financiamiento');
-  const fecha = new Date().toISOString().slice(0,10);
+  const fecha = hoyLocal();
   XLSX.writeFile(wb, `Financiamiento_${fecha}.xlsx`);
 }
 
