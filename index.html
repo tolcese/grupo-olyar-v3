@@ -25,13 +25,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.0.5</title>
+<title>Grupo Olyar — Solicitudes v3.0.6</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.0.5';
+    var APP_VER='v3.0.6';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -798,6 +798,14 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       <div class="card" style="padding:26px">
         <div class="fg">
           <div class="fc"><label>FECHA DE SOLICITUD *</label><input type="date" id="f-fecha"></div>
+          <div class="fc"><label>NOMBRE Y APELLIDO</label>
+            <div class="combo"><input id="f-nombrecliente" placeholder="Apellido, Nombre">
+              <div class="combo-btns"><button class="cb" onclick="toggleDD('nombrecliente')" type="button">▾</button></div>
+              <div class="cdd" id="dd-nombrecliente"></div></div></div>
+          <div class="fc"><label>DNI</label>
+            <div class="combo"><input id="f-dni" inputmode="numeric" placeholder="Número de documento">
+              <div class="combo-btns"><button class="cb" onclick="toggleDD('dni')" type="button">▾</button></div>
+              <div class="cdd" id="dd-dni"></div></div></div>
           <div class="fc"><label>CONCESIONARIA</label>
             <div class="combo"><input id="f-concesionaria" placeholder="Seleccioná o escribí..." oninput="checkConcEstafadora()">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('concesionaria')" type="button">▾</button><button class="cb" onclick="addOpt('concesionaria')" type="button">＋</button></div>
@@ -812,28 +820,20 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <div class="combo"><input id="f-localidad" placeholder="Seleccioná o escribí...">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('localidad')" type="button">▾</button><button class="cb" onclick="addOpt('localidad')" type="button">＋</button></div>
               <div class="cdd" id="dd-localidad"></div></div></div>
-          <div class="fc"><label>DNI</label>
-            <div class="combo"><input id="f-dni" inputmode="numeric" placeholder="Número de documento">
-              <div class="combo-btns"><button class="cb" onclick="toggleDD('dni')" type="button">▾</button></div>
-              <div class="cdd" id="dd-dni"></div></div></div>
-          <div class="fc"><label>NOMBRE Y APELLIDO</label>
-            <div class="combo"><input id="f-nombrecliente" placeholder="Apellido, Nombre">
-              <div class="combo-btns"><button class="cb" onclick="toggleDD('nombrecliente')" type="button">▾</button></div>
-              <div class="cdd" id="dd-nombrecliente"></div></div></div>
-          <div class="fc admin-only"><label>DOMINIO VEHÍCULO</label>
-            <div class="combo"><input id="f-dominio" placeholder="Ej. ABC123" style="text-transform:uppercase">
-              <div class="combo-btns"><button class="cb" onclick="toggleDD('dominio')" type="button">▾</button></div>
-              <div class="cdd" id="dd-dominio"></div></div></div>
           <div class="fc"><label>MARCA VEHÍCULO</label>
             <div class="combo"><input id="f-marca" placeholder="Ford, Toyota...">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('marca')" type="button">▾</button><button class="cb" onclick="addOpt('marca')" type="button">＋</button></div>
               <div class="cdd" id="dd-marca"></div></div></div>
-          <div class="fc"><label>DESCRIPCIÓN VEHÍCULO</label>
+          <div class="fc"><label>MODELO</label>
             <div class="combo"><input id="f-descripcion" placeholder="Modelo, año, versión...">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('descripcion')" type="button">▾</button></div>
               <div class="cdd" id="dd-descripcion"></div></div></div>
           <div class="fc"><label>AÑO</label>
             <select id="f-anio"><option value="">— Seleccioná —</option></select></div>
+          <div class="fc admin-only"><label>DOMINIO VEHÍCULO</label>
+            <div class="combo"><input id="f-dominio" placeholder="Ej. ABC123" style="text-transform:uppercase">
+              <div class="combo-btns"><button class="cb" onclick="toggleDD('dominio')" type="button">▾</button></div>
+              <div class="cdd" id="dd-dominio"></div></div></div>
           <div class="fc span3 admin-only"><label>DOCUMENTACIÓN</label>
             <div class="chk-grid">
               <label class="chk-row"><input type="checkbox" id="f-doc01"><span>Documento 01/08</span></label>
