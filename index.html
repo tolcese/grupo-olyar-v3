@@ -25,13 +25,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.0.4</title>
+<title>Grupo Olyar — Solicitudes v3.0.5</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.0.4';
+    var APP_VER='v3.0.5';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -3150,7 +3150,7 @@ function iconoEstadoBanco(b){
   const tip=[`Importe: ${$(b.importe)}`,`Agencia: ${$(b.agencia)}`,`Vehículo: ${$(b.vehiculo)}`,`% prestado: ${pct}`,`Comisión: ${$(b.comision)}`,`Tasa: ${b.tasa||'—'}`,b.tipocta?`Tipo: ${b.tipocta}`:''].filter(Boolean).join(' · ').replace(/"/g,'&quot;');
   if(est==='APROBADO') return `<span class="mstat ap" title="${tip}">✓</span>`;
   if(est==='RECHAZADO')return `<span class="mstat re" title="${tip}">✗</span>`;
-  if(est==='AVANZA')   return `<span class="mstat av" title="${tip}">→</span>`;
+  if(est==='AVANZA')   return `<span class="mstat av" title="${tip}" style="font-size:12px;letter-spacing:.5px">OK</span>`;
   return `<span class="mstat" title="${tip}">•</span>`;
 }
 function celdaBancoMatriz(r, bancoName){
