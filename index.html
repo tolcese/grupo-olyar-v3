@@ -25,13 +25,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.0.3</title>
+<title>Grupo Olyar — Solicitudes v3.0.4</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.0.3';
+    var APP_VER='v3.0.4';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -3273,12 +3273,9 @@ function buildTheadSol(){
   const thead=document.getElementById('thead-sol'); if(!thead) return;
   const isAdmin=ME?.rol==='admin';
   const sc=(c,l)=>`<th class="th-sort${SORT_COL===c?(SORT_DIR===1?' asc':' desc'):''}" onclick="sortBy('${c}')" id="th-${c}">${l} <span class="sort-icon">↕</span></th>`;
-  let h='<tr><th>#</th>'+sc('fecha','Fecha')+sc('anio','Año')+sc('concesionaria','Concesionaria')+sc('provincia','Provincia')+sc('localidad','Localidad')+sc('dni','DNI')+sc('nombrecliente','Nombre y Apellido');
-  if(isAdmin) h+=sc('dominio','Dominio');
-  h+=sc('marca','Marca')+sc('descripcion','Descripción');
+  let h='<tr><th>#</th>'+sc('fecha','Fecha')+sc('nombrecliente','Nombre y Apellido')+sc('dni','DNI')+sc('concesionaria','Concesionaria')+sc('provincia','Provincia')+sc('marca','Marca')+sc('descripcion','Modelo');
   bancosMatrizCols().forEach(bn=>{ h+=`<th style="text-align:center;min-width:66px">${colorBanco(bn)}</th>`; });
   if(isAdmin) h+='<th class="admin-only" title="Documento 01/08">Doc 01/08</th><th class="admin-only" title="Título Unidad">Título</th><th class="admin-only" title="Verificación Policial (12)">Ver. Pol.</th><th class="admin-only" title="Informe Dominio">Inf. Dom.</th>';
-  h+=sc('usuario','Usuario');
   h+='<th id="th-acc" style="position:sticky;right:0;background:var(--surface);z-index:2;box-shadow:-2px 0 6px rgba(0,0,0,.06)">Acciones</th></tr>';
   thead.innerHTML=h;
 }
@@ -10465,13 +10462,10 @@ function renderTablePage() {
       <tr style="cursor:pointer" onclick="openPanel('${r.id}')">
         <td class="td-id">${start+idx+1}</td>
         <td style="white-space:nowrap">${fmtFecha(r.fecha)}</td>
-        <td>${r.anio||'—'}</td>
+        <td class="td-bold" style="white-space:nowrap">${r.nombrecliente||'—'}</td>
+        <td class="td-mono">${r.dni||'—'}</td>
         <td>${r.concesionaria||'—'}</td>
         <td>${r.provincia||'—'}</td>
-        <td>${r.localidad||'—'}</td>
-        <td class="td-mono">${r.dni||'—'}</td>
-        <td class="td-bold" style="white-space:nowrap">${r.nombrecliente||'—'}</td>
-        ${isAdmin ? `<td class="td-mono">${r.dominio||'—'}</td>` : ''}
         <td>${r.marca||'—'}</td>
         <td style="white-space:nowrap">${r.descripcion||'—'}</td>
         ${matriz}
@@ -10479,7 +10473,6 @@ function renderTablePage() {
         ${isAdmin ? `<td class="chk">${chk(r.titulo)}</td>` : ''}
         ${isAdmin ? `<td class="chk">${chk(r.verif)}</td>` : ''}
         ${isAdmin ? `<td class="chk">${chk(r.infdom)}</td>` : ''}
-        <td style="font-size:11.5px;color:var(--muted)">${r.usuario||'—'}</td>
         <td style="position:sticky;right:0;background:#fff;box-shadow:-2px 0 6px rgba(0,0,0,.06)"><div class="abtns"><button class="ibtn" onclick="event.stopPropagation();editRec('${r.id}')" title="Editar">✏️</button>${isAdmin?`<button class="ibtn del" onclick="event.stopPropagation();delRec('${r.id}')" title="Eliminar">🗑️</button>`:''} ${isAdmin?`<button class="ibtn" onclick="event.stopPropagation();openHistorial('${r.id}')" title="Historial">🕐</button>`:''}</div></td>
       </tr>`;
     } catch(e){ return `<tr><td colspan="40" style="padding:10px;color:#dc2626;font-size:12px">⚠ Error al mostrar registro ${r&&r.id?r.id:''}</td></tr>`; }
