@@ -25,13 +25,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.0.7</title>
+<title>Grupo Olyar — Solicitudes v3.0.8</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.0.7';
+    var APP_VER='v3.0.8';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -3117,7 +3117,13 @@ const SB = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 function colorBanco(banco) {
   const b = (banco || '').toUpperCase();
   const color = b.includes('COLUMBIA') ? '#1d6fce' : b.includes('GALICIA') ? '#e8821a' : b.includes('SANTANDER') ? '#ec0000' : b.includes('SUPERVIELLE') ? '#682489' : b.includes('BANCOR') ? '#005f5b' : b.includes('ICBC') ? '#c8102e' : 'var(--ink)';
-  return `<span style="color:${color};font-weight:700">${banco || '—'}</span>`;
+  const disp = bancoDisplay(banco);
+  return `<span style="color:${color};font-weight:700">${disp || '—'}</span>`;
+}
+// Nombre para mostrar (solo display; el valor guardado no cambia)
+function bancoDisplay(banco){
+  if (String(banco||'').toUpperCase().trim() === 'SAN CRISTOBAL') return 'S. CRISTOBAL';
+  return banco || '—';
 }
 
 // ══════════════════════════════════════════════════════════════
