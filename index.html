@@ -25,13 +25,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.2.0</title>
+<title>Grupo Olyar — Solicitudes v3.2.1</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.2.0';
+    var APP_VER='v3.2.1';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -3826,6 +3826,7 @@ async function enterApp() {
     showV('panel-principal');
   }
   // AutoCalc después de que la UI está estable para evitar titileo
+  { const _salir=document.querySelector('.sb-item[onclick*="doLogout"]'); if(_salir) _salir.style.display=''; }
   setTimeout(() => autoCalcContabilidad(), 1500);
 }
 
@@ -9671,6 +9672,7 @@ function aplicarModoSidebar(modo) {
   document.getElementById('btn-datero').style.display = 'none';
   document.querySelectorAll('.sb-item').forEach(btn => btn.style.display = 'none');
   document.getElementById('sb-panel-principal').style.display = '';
+  { const _salir=document.querySelector('.sb-item[onclick*="doLogout"]'); if(_salir) _salir.style.display=''; }
 
   if (modo === 'presupuestos') {
     document.getElementById('sb-presupuestos').style.display = '';
@@ -10031,14 +10033,16 @@ function fillProvincias(){
   sel.innerHTML='<option value="">— Seleccioná —</option>'+PROVINCIAS_AR.map(p=>`<option>${p}</option>`).join('');
   if(cur && PROVINCIAS_AR.includes(cur)) sel.value=cur;
 }
-async function cargarLocalidades(prov){
+async function cargarLocalidades(prov, abrir){
+  const dd=document.getElementById('dd-localidad');
   if(!prov){ LISTS.localidad=[]; renderLocalidadDD(); return; }
-  if(LOCALIDADES_CACHE[prov]){ LISTS.localidad=LOCALIDADES_CACHE[prov].slice(); renderLocalidadDD(); return; }
+  if(LOCALIDADES_CACHE[prov]){ LISTS.localidad=LOCALIDADES_CACHE[prov].slice(); renderLocalidadDD(); if(abrir&&dd) dd.classList.add('open'); return; }
+  if(dd){ dd.innerHTML='<div class="copt" style="color:var(--muted);font-style:italic;font-size:12px;cursor:default">Cargando localidades…</div>'; if(abrir) dd.classList.add('open'); }
   try{
     let all=[], from=0; const step=1000;
     while(true){
       const { data, error } = await SB.from('localidades').select('nombre').eq('provincia', prov).order('nombre').range(from, from+step-1);
-      if(error) break;
+      if(error){ console.warn('localidades error:', error.message||error); break; }
       all = all.concat((data||[]).map(x=>x.nombre));
       if(!data || data.length < step) break;
       from += step;
@@ -10047,11 +10051,12 @@ async function cargarLocalidades(prov){
     LISTS.localidad=all.slice();
   }catch(e){ LISTS.localidad=[]; }
   renderLocalidadDD();
+  if(abrir&&dd) dd.classList.add('open');
 }
 function onProvinciaChange(){
   const prov=document.getElementById('f-provincia').value;
   const loc=document.getElementById('f-localidad'); if(loc) loc.value='';
-  cargarLocalidades(prov);
+  cargarLocalidades(prov, true);
 }
 function renderLocalidadDD(){
   const dd=document.getElementById('dd-localidad'); if(!dd) return;
