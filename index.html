@@ -25,13 +25,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.0.6</title>
+<title>Grupo Olyar — Solicitudes v3.0.7</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.0.6';
+    var APP_VER='v3.0.7';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -3139,7 +3139,13 @@ function bancoRepresentativo(bancos){
   return bancos.find(b=>up(b)==='APROBADO')||bancos.find(b=>up(b)==='AVANZA')||bancos.find(b=>up(b)==='RECHAZADO')||bancos[0];
 }
 function bancosMatrizCols(){
-  return (LISTS.banco||[]).filter(Boolean).slice().sort((a,b)=>String(a).localeCompare(String(b),'es'));
+  // Orden fijo de columnas de bancos en la vista general; los no listados van al final
+  const ORDEN=['GALICIA','ICBC','COLUMBIA','SANTANDER','BANCOR','SAN CRISTOBAL'];
+  const idx=b=>{ const i=ORDEN.indexOf(String(b||'').toUpperCase().trim()); return i===-1?ORDEN.length:i; };
+  return (LISTS.banco||[]).filter(Boolean).slice().sort((a,b)=>{
+    const d=idx(a)-idx(b);
+    return d!==0 ? d : String(a).localeCompare(String(b),'es');
+  });
 }
 function iconoEstadoBanco(b){
   const est=(b.estado||'').toUpperCase();
