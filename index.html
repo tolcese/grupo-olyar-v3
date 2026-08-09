@@ -25,13 +25,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.0.9</title>
+<title>Grupo Olyar — Solicitudes v3.1.0</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.0.9';
+    var APP_VER='v3.1.0';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -3619,6 +3619,26 @@ function loading(show, msg) {
 // ══════════════════════════════════════════════
 // LOGIN
 // ══════════════════════════════════════════════
+// ── Persistencia de sesión (dura hasta apretar "Salir") ──
+function guardarSesion(me){ try{ localStorage.setItem('olyar_session', JSON.stringify({ usr: me.usr })); }catch(e){} }
+function limpiarSesion(){ try{ localStorage.removeItem('olyar_session'); sessionStorage.removeItem('olyar_session'); }catch(e){} }
+async function restaurarSesion(){
+  let raw=null;
+  try{ raw = localStorage.getItem('olyar_session') || sessionStorage.getItem('olyar_session'); }catch(e){}
+  if(!raw) return;
+  let s; try{ s=JSON.parse(raw); }catch(e){ limpiarSesion(); return; }
+  if(!s || !s.usr){ limpiarSesion(); return; }
+  try{
+    const { data, error } = await SB.from('usuarios').select('usr,nom,rol').eq('usr', s.usr).eq('activo', true).single();
+    if(error || !data){ limpiarSesion(); return; }   // usuario dado de baja o inexistente -> login
+    ME = { usr: data.usr, nom: data.nom, rol: data.rol };
+    enterApp();
+  }catch(e){ /* sin conexión: no forzamos logout, dejamos el login visible */ }
+}
+// Al cargar, intentar restaurar sesión guardada
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restaurarSesion);
+else restaurarSesion();
+
 async function doLogin() {
   const u = document.getElementById('l-u').value.trim();
   const p = document.getElementById('l-p').value;
@@ -3635,6 +3655,7 @@ async function doLogin() {
       localStorage.removeItem('last_auto_backup_date');
       localStorage.removeItem('datero_last_seen');
       ME = { usr: data.usr, nom: data.nom, rol: data.rol };
+      guardarSesion(ME);
       enterApp();
     }
   } catch(e) { showErr('Error de conexión: ' + e.message); }
@@ -3933,6 +3954,7 @@ function doLogout() {
   // Limpiar notas del usuario
   if (ME?.usr) localStorage.removeItem('notas_' + ME.usr);
 
+  limpiarSesion();
   ME = null; RECORDS = []; editId = null;
   document.getElementById('login-wrap').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
