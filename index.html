@@ -17,24 +17,21 @@ document.documentElement.scrollTop = 0;
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Grupo Olyar">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png?v=3.2.4">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=3.2.4">
-<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png?v=3.2.4">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=3.2.4">
-<link rel="icon" href="favicon.ico?v=3.2.4" sizes="any">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.2.4</title>
+<title>Grupo Olyar — Solicitudes v3.2.5</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.2.4';
+    var APP_VER='v3.2.5';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2633,7 +2630,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             </div>
           </div>
         </a>
-        <a href="https://appfinszo.verticall.ar/" target="_blank" style="text-decoration:none;color:inherit">
+        <a href="https://appfinszo.verticall.ar/login" target="_blank" style="text-decoration:none;color:inherit">
           <div class="card" style="display:flex;align-items:center;gap:12px;padding:16px 20px;cursor:pointer;transition:all .12s" onmouseenter="this.style.borderColor='#f47920';this.style.background='#fff8f0'" onmouseleave="this.style.borderColor='var(--line)';this.style.background='#fff'">
             <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#f47920,#e63329,#1e5fa8);flex-shrink:0"></div>
             <div>
@@ -3757,7 +3754,14 @@ async function enterApp() {
   setTimeout(() => { const badge = document.getElementById('prend-rech-badge'); if (badge) badge.style.display = RECORDS.filter(r => r.prendaRechazada && !r.fechaReingresoPrend).length ? '' : 'none'; }, 1500);
   if (ME.rol === 'admin') setTimeout(() => checkAutoBackup(), 2000);
   loading(false);
-  if (ME.rol === 'usuario_presupuestos') {
+  if (['rrodriguez','abarco','yohanavarro'].includes(ME.usr)) {
+    // Acceso restringido: solo Comercializadora, Presupuestos y Sociedades
+    document.getElementById('sb-panel-principal').style.display = '';
+    const _cc=document.getElementById('pp-card-contabilidad'); if(_cc) _cc.style.display='none';
+    const _ca=document.getElementById('pp-card-administracion'); if(_ca) _ca.style.display='none';
+    document.querySelectorAll('.pp-card').forEach(c => { if(c.id!=='pp-card-contabilidad' && c.id!=='pp-card-administracion') c.style.display=''; });
+    showV('panel-principal');
+  } else if (ME.rol === 'usuario_presupuestos') {
     // usuario_presupuestos: igual que user pero con acceso a presupuestos
     document.getElementById('sb-presupuestos').style.display = '';
     document.getElementById('sb-historico-presup').style.display = '';
@@ -4004,7 +4008,7 @@ function openSidebar() {
   document.getElementById('sb-config').style.display = ME?.rol === 'admin' ? '' : 'none';
   document.getElementById('sb-backup').style.display = ME?.rol === 'admin' ? '' : 'none';
   document.getElementById('sb-envios-gestor').style.display = ['admin','user','usuario_presupuestos'].includes(ME?.rol) ? '' : 'none';
-  document.getElementById('sb-administracion').style.display = (['admin','administracion','usuario_administracion'].includes(ME?.rol) && !['abarco','yohanavarro'].includes(ME?.usr)) ? '' : 'none';
+  document.getElementById('sb-administracion').style.display = (['admin','administracion','usuario_administracion'].includes(ME?.rol) && !['abarco','yohanavarro','rrodriguez'].includes(ME?.usr)) ? '' : 'none';
   // Para rol administracion puro: asegurarse que sb-nueva no aparezca
   if (window._rolAdminPuro) {
     document.getElementById('sb-nueva').style.display = 'none';
@@ -9734,7 +9738,7 @@ function aplicarModoSidebar(modo) {
     document.getElementById('sb-calc-galicia-mail').style.display = ME?.usr === 'claudionieva' ? '' : 'none';
     document.getElementById('sb-genpdf').style.display = ME?.rol === 'user' ? '' : 'none';
     document.getElementById('sb-contabilidad').style.display = ['claudionieva','golcese','tolcese','Invitado'].includes(ME?.usr) ? '' : 'none';
-    document.getElementById('sb-administracion').style.display = (['administracion','usuario_administracion'].includes(ME?.rol) && !['abarco','yohanavarro'].includes(ME?.usr)) ? '' : 'none';
+    document.getElementById('sb-administracion').style.display = (['administracion','usuario_administracion'].includes(ME?.rol) && !['abarco','yohanavarro','rrodriguez'].includes(ME?.usr)) ? '' : 'none';
   } else if (modo === 'contabilidad') {
     // Mostrar solo: Contabilidad, Mi cuenta, Cerrar sesión
     document.getElementById('sb-contabilidad').style.display = '';
