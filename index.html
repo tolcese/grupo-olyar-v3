@@ -25,13 +25,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.2.2</title>
+<title>Grupo Olyar — Solicitudes v3.2.3</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.2.2';
+    var APP_VER='v3.2.3';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2630,7 +2630,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             </div>
           </div>
         </a>
-        <a href="https://appfinszo.verticall.ar/login" target="_blank" style="text-decoration:none;color:inherit">
+        <a href="https://appfinszo.verticall.ar/" target="_blank" style="text-decoration:none;color:inherit">
           <div class="card" style="display:flex;align-items:center;gap:12px;padding:16px 20px;cursor:pointer;transition:all .12s" onmouseenter="this.style.borderColor='#f47920';this.style.background='#fff8f0'" onmouseleave="this.style.borderColor='var(--line)';this.style.background='#fff'">
             <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#f47920,#e63329,#1e5fa8);flex-shrink:0"></div>
             <div>
