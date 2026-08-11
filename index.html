@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.2.6</title>
+<title>Grupo Olyar — Solicitudes v3.2.7</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.2.6';
+    var APP_VER='v3.2.7';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -10099,7 +10099,7 @@ function renderDD(k) {
     dd.innerHTML = '<div class="copt" style="color:var(--muted);font-style:italic;cursor:default;font-size:12px">Sin opciones guardadas</div>';
     return;
   }
-  dd.innerHTML = opts.map((o,i) => `<div class="copt"><span data-key="${k}" data-val="${esc(o)}" data-idx="${i}" class="copt-sel">${o}</span><span data-key="${k}" data-idx="${i}" class="cdel">✕</span></div>`).join('');
+  dd.innerHTML = opts.map((o,i) => `<div class="copt"><span data-key="${k}" data-val="${esc(o)}" data-idx="${i}" class="copt-sel">${o}</span>${k==='concesionaria'?'':`<span data-key="${k}" data-idx="${i}" class="cdel">✕</span>`}</div>`).join('');
   dd.querySelectorAll('.copt-sel').forEach(el => {
     el.addEventListener('mousedown', function(e) {
       e.preventDefault();
@@ -10108,6 +10108,7 @@ function renderDD(k) {
       const i = parseInt(this.dataset.idx);
       const val = LISTS[key][i];
       document.getElementById('f-'+key).value = val;
+      if (key === 'concesionaria' && typeof checkConcEstafadora === 'function') checkConcEstafadora();
       closeAllDD();
     });
   });
@@ -10120,11 +10121,19 @@ function renderDD(k) {
   });
 }
 
+function concesionariasDeSeccion(){
+  if (Array.isArray(CONC_CACHE) && CONC_CACHE.length){
+    const names = CONC_CACHE.map(c => c.nombre).filter(Boolean);
+    return [...new Set(names)].sort((a,b)=>String(a).localeCompare(String(b),'es'));
+  }
+  return LISTS.concesionaria || [];
+}
 function toggleDD(k) {
   const dd = document.getElementById('dd-'+k);
   const isOpen = dd.classList.contains('open');
   closeAllDD();
   if (!isOpen) {
+    if (k === 'concesionaria') LISTS.concesionaria = concesionariasDeSeccion();
     if (k === 'localidad') renderLocalidadDD(); else renderDD(k);
     dd.classList.add('open');
     // focus input so blur detection works
