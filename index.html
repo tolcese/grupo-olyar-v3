@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.3.0</title>
+<title>Grupo Olyar — Solicitudes v3.3.1</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.3.0';
+    var APP_VER='v3.3.1';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -826,6 +826,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <div class="combo"><input id="f-marca" placeholder="Ford, Toyota...">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('marca')" type="button">▾</button><button class="cb" onclick="addOpt('marca')" type="button">＋</button></div>
               <div class="cdd" id="dd-marca"></div></div></div>
+          <div class="fc"><label>MONTO VEHÍCULO ($)</label><div class="cur"><span class="cur-s">$</span><input type="number" min="0" id="f-vehiculo" placeholder="0" oninput="onMontoVehiculoChange()"></div></div>
           <div class="fc"><label>MODELO</label>
             <div class="combo"><input id="f-descripcion" placeholder="Modelo, año, versión...">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('descripcion')" type="button">▾</button></div>
@@ -3209,7 +3210,6 @@ function bankBlockHTML(i, d){
       <div class="fc"><label>TIPO DE CTA</label><select class="bb-tipocta"><option value="">— Seleccioná —</option><option${stc('FIJA')}>FIJA</option><option${stc('UVA')}>UVA</option></select></div>
       <div class="fc"><label>IMPORTE SOLICITADO ($)</label><div class="cur"><span class="cur-s">$</span><input type="number" min="0" class="bb-importe" value="${d.importe||''}" placeholder="0" oninput="calcBloqueBanco(this)"></div></div>
       <div class="fc"><label>MONTO PARA AGENCIA ($)</label><div class="cur"><span class="cur-s">$</span><input type="number" min="0" class="bb-agencia" value="${d.agencia||''}" placeholder="0"></div></div>
-      <div class="fc"><label>MONTO VEHÍCULO ($)</label><div class="cur"><span class="cur-s">$</span><input type="number" min="0" class="bb-vehiculo" value="${d.vehiculo||''}" placeholder="0" oninput="calcBloqueBanco(this)"></div></div>
       <div class="fc"><label>% PRESTADO POR EL BANCO</label><div class="bb-pct" style="padding:9px 11px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;font-weight:700;color:var(--muted);background:#fff">—</div></div>
       <div class="fc"><label>COMISIÓN ($)</label><div class="cur"><span class="cur-s">$</span><input type="number" min="0" class="bb-comision" value="${d.comision||''}" placeholder="0" style="background:#f0fdf4"></div></div>
       <div class="fc"><label>ESTADO *</label><select class="bb-estado" onchange="pintarBloqueBanco(this)"><option value="">— Seleccioná —</option><option${se('APROBADO')}>APROBADO</option><option${se('RECHAZADO')}>RECHAZADO</option><option${se('AVANZA')}>AVANZA</option></select></div>
@@ -3241,7 +3241,7 @@ function pintarBloqueBanco(el){
 function calcBloqueBanco(elInside){
   const block=elInside.closest('.bank-block'); if(!block) return;
   const importe=parseFloat(block.querySelector('.bb-importe').value)||0;
-  const veh=parseFloat(block.querySelector('.bb-vehiculo').value)||0;
+  const veh=parseFloat((document.getElementById('f-vehiculo')||{}).value)||0;
   const tasa=parseFloat((block.querySelector('.bb-tasa').value||'').replace(',','.'))||0;
   const pctEl=block.querySelector('.bb-pct');
   if(importe>0&&veh>0){ pctEl.textContent=((importe/veh)*100).toFixed(1)+'%'; pctEl.style.color='var(--blue)'; }
@@ -3251,6 +3251,14 @@ function calcBloqueBanco(elInside){
     block.querySelector('.bb-comision').value=Math.round((importe*tasa/100)*100)/100;
   }
   pintarBloqueBanco(elInside);
+}
+function onMontoVehiculoChange(){
+  const veh=parseFloat((document.getElementById('f-vehiculo')||{}).value)||0;
+  document.querySelectorAll('#bancos-container .bank-block').forEach(block=>{
+    const importe=parseFloat(block.querySelector('.bb-importe').value)||0;
+    const pctEl=block.querySelector('.bb-pct');
+    if(pctEl){ if(importe>0&&veh>0){ pctEl.textContent=((importe/veh)*100).toFixed(1)+'%'; pctEl.style.color='var(--blue)'; } else { pctEl.textContent='—'; pctEl.style.color='var(--muted)'; } }
+  });
 }
 function onBancoChange(sel){
   if(sel.value==='__add__'){
@@ -3271,11 +3279,12 @@ function refreshBancoSelects(){
 }
 function collectBancos(){
   const out=[];
+  const vehShared=((document.getElementById('f-vehiculo')||{}).value||'').trim();
   document.querySelectorAll('#bancos-container .bank-block').forEach(b=>{
     const g=cls=>{ const el=b.querySelector(cls); return el?el.value.trim():''; };
     const banco=g('.bb-banco'); const estado=g('.bb-estado');
     if(!banco && !estado && !g('.bb-importe')) return;
-    out.push({banco, estado, tipocta:g('.bb-tipocta'), importe:g('.bb-importe'), agencia:g('.bb-agencia'), vehiculo:g('.bb-vehiculo'), comision:g('.bb-comision'), tasa:g('.bb-tasa'), obs:g('.bb-obs')});
+    out.push({banco, estado, tipocta:g('.bb-tipocta'), importe:g('.bb-importe'), agencia:g('.bb-agencia'), vehiculo:vehShared, comision:g('.bb-comision'), tasa:g('.bb-tasa'), obs:g('.bb-obs')});
   });
   return out;
 }
@@ -10254,7 +10263,7 @@ function resetForm() {
   editId = null;
   document.getElementById('f-fecha').value = hoyLocal();
   document.getElementById('f-anio').value = '';
-  ['concesionaria','provincia','localidad','marca','descripcion','dni','nombrecliente','dominio'].forEach(k=>{ const el=document.getElementById('f-'+k); if(el) el.value=''; });
+  ['concesionaria','provincia','localidad','marca','descripcion','dni','nombrecliente','dominio','vehiculo'].forEach(k=>{ const el=document.getElementById('f-'+k); if(el) el.value=''; });
   ['doc01','titulo','verif','infdom'].forEach(k=>document.getElementById('f-'+k).checked=false);
   fillProvincias();
   LISTS.localidad = [];
@@ -10297,6 +10306,7 @@ function fillForm(r) {
   document.getElementById('f-titulo').checked=!!r.titulo;
   document.getElementById('f-verif').checked=!!r.verif;
   document.getElementById('f-infdom').checked=!!r.infdom;
+  document.getElementById('f-vehiculo').value = (bancoRepresentativo(getBancos(r))||{}).vehiculo || r.vehiculo || '';
   renderBancosForm(getBancos(r));
   document.querySelectorAll('#bancos-container .bank-block .bb-importe').forEach(el=>calcBloqueBanco(el));
 }
