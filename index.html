@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.4.1</title>
+<title>Grupo Olyar — Solicitudes v3.4.2</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.4.1';
+    var APP_VER='v3.4.2';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -3147,7 +3147,7 @@ function getBancos(r){
 function bancoRepresentativo(bancos){
   if(!bancos||!bancos.length) return null;
   const up=e=>(e.estado||'').toUpperCase();
-  return bancos.find(b=>up(b)==='APROBADO')||bancos.find(b=>up(b)==='AVANZA')||bancos.find(b=>up(b)==='RECHAZADO')||bancos[0];
+  return bancos.find(b=>up(b)==='AVANZA')||bancos.find(b=>up(b)==='APROBADO')||bancos.find(b=>up(b)==='RECHAZADO')||bancos[0];
 }
 function bancosMatrizCols(){
   // Orden fijo de columnas de bancos en la vista general; los no listados van al final
@@ -9985,6 +9985,24 @@ async function loadRecords() {
       fechaReingresoPrend: r.fecha_reingreso_prenda,
       correccionesPrend: r.correcciones_prenda || ''
     }));
+    // Multi-banco: recalcular el estado/banco representativo desde la lista de bancos
+    // (prioriza AVANZA para que el circuito Gestoría → Prendas funcione). No afecta registros viejos (bancos vacío).
+    RECORDS.forEach(o => {
+      if (Array.isArray(o.bancos) && o.bancos.length) {
+        const _rep = bancoRepresentativo(o.bancos);
+        if (_rep) {
+          o.banco   = _rep.banco   || o.banco;
+          o.estado  = _rep.estado  || o.estado;
+          o.tipocta = _rep.tipocta ?? o.tipocta;
+          o.importe = _rep.importe ?? o.importe;
+          o.agencia = _rep.agencia ?? o.agencia;
+          o.vehiculo= _rep.vehiculo?? o.vehiculo;
+          o.comision= _rep.comision?? o.comision;
+          o.tasa    = _rep.tasa    ?? o.tasa;
+          o.obs     = _rep.obs     ?? o.obs;
+        }
+      }
+    });
     renderTable._keepPage = true;
     renderTable();
     renderStats();
