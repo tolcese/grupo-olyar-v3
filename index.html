@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.4.0</title>
+<title>Grupo Olyar — Solicitudes v3.4.1</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.4.0';
+    var APP_VER='v3.4.1';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -1441,9 +1441,9 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <div class="fc"><label>Chasis</label><input id="pf-chasis" type="text"></div>
             <div class="fc"><label>Registro</label><input id="pf-registro" type="text" placeholder="CORDOBA N° 16"></div>
             <div class="fc"><label>Marca</label><input id="pf-marca" type="text"></div>
-            <div class="fc"><label>Valuación DNRPA</label><input id="pf-valuacion" type="number" placeholder="0" oninput="calcPresup()"></div>
-            <div class="fc"><label>Base Imponible 70%</label><input id="pf-base-imp" type="number" placeholder="0" oninput="window._baseImpManual=true;calcPresup()"></div>
-            <div class="fc"><label>Monto a colocar en 08</label><input id="pf-monto-colocar" type="number" placeholder="0" oninput="calcPresup()"></div>
+            <div class="fc"><label>Valuación DNRPA</label><input id="pf-valuacion" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
+            <div class="fc"><label>Base Imponible 70%</label><input id="pf-base-imp" type="text" inputmode="decimal" placeholder="0" oninput="window._baseImpManual=true;calcPresup()"></div>
+            <div class="fc"><label>Monto a colocar en 08</label><input id="pf-monto-colocar" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
           </div>
         </div>
       </div>
@@ -1453,9 +1453,9 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         <div class="fg">
           <div class="fc span3" style="display:flex;flex-direction:row;gap:10px;align-items:flex-end">
             <div class="fc" style="flex:2"><label>Título Certificación</label><input id="pf-certificacion-titulo" type="text" value="Certificación (08 Compra, 02 Y Nota)"></div>
-            <div class="fc" style="flex:1"><label>Precio Unitario</label><input id="pf-cert-precio" type="number" placeholder="0" oninput="calcCertImporte()"></div>
+            <div class="fc" style="flex:1"><label>Precio Unitario</label><input id="pf-cert-precio" type="text" inputmode="decimal" placeholder="0" oninput="calcCertImporte()"></div>
             <div class="fc" style="flex:0 0 80px"><label>Cant.</label><input id="pf-cert-cant" type="number" placeholder="1" min="1" oninput="calcCertImporte()"></div>
-            <div class="fc" style="flex:1"><label>Importe</label><input id="pf-certificacion" type="number" placeholder="0" oninput="calcPresup()" style="background:var(--surface);font-weight:700;color:var(--blue)"></div>
+            <div class="fc" style="flex:1"><label>Importe</label><input id="pf-certificacion" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()" style="background:var(--surface);font-weight:700;color:var(--blue)"></div>
           </div>
           <div class="fc span3">
             <label style="font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em">Formularios</label>
@@ -1464,15 +1464,15 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           </div>
           <div class="fc span3" style="display:flex;flex-direction:row;gap:10px;align-items:flex-start">
             <div style="flex:2;display:flex;align-items:flex-start;padding-top:22px"><span style="font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em">Legalizaciones</span></div>
-            <div class="fc" style="flex:1"><label>Precio Unitario</label><input id="pf-legal-precio" type="number" placeholder="0" oninput="calcLegalizacionImporte()"></div>
+            <div class="fc" style="flex:1"><label>Precio Unitario</label><input id="pf-legal-precio" type="text" inputmode="decimal" placeholder="0" oninput="calcLegalizacionImporte()"></div>
             <div class="fc" style="flex:0 0 80px"><label>Cant.</label><input id="pf-legal-cant" type="number" placeholder="1" min="1" oninput="calcLegalizacionImporte()"></div>
-            <div class="fc" style="flex:1"><label>Importe</label><input id="pf-legalizaciones" type="number" placeholder="0" oninput="calcPresup()" style="background:var(--surface);font-weight:700;color:var(--blue)" readonly></div>
+            <div class="fc" style="flex:1"><label>Importe</label><input id="pf-legalizaciones" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()" style="background:var(--surface);font-weight:700;color:var(--blue)" readonly></div>
           </div>
-          <div class="fc"><label>Arancel de Registro</label><input id="pf-arancel" type="number" placeholder="0" oninput="calcPresup()"></div>
-          <div class="fc"><label>Sellado de Base Imponible</label><input id="pf-sellado-base" type="number" placeholder="0" oninput="calcPresup()"></div>
-          <div class="fc"><label>Sellado de Prenda (doble por localidad)</label><input id="pf-sellado-prenda" type="number" placeholder="0" oninput="calcPresup()"></div>
-          <div class="fc"><label>Anotaciones Personales</label><input id="pf-anotaciones" type="number" placeholder="0" oninput="calcPresup()"></div>
-          <div class="fc"><label>Informe de Dominio</label><input id="pf-informe-dominio" type="number" placeholder="0" oninput="calcPresup()"></div>
+          <div class="fc"><label>Arancel de Registro</label><input id="pf-arancel" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
+          <div class="fc"><label>Sellado de Base Imponible</label><input id="pf-sellado-base" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
+          <div class="fc"><label>Sellado de Prenda (doble por localidad)</label><input id="pf-sellado-prenda" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
+          <div class="fc"><label>Anotaciones Personales</label><input id="pf-anotaciones" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
+          <div class="fc"><label>Informe de Dominio</label><input id="pf-informe-dominio" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
         </div>
       </div>
 
@@ -1481,24 +1481,24 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         <div class="fg">
           <div class="fc span3" style="display:flex;flex-direction:row;gap:10px;align-items:flex-end">
             <div class="fc" style="flex:1"><label>Municipalidad — Período</label><input id="pf-mun1-periodo" type="text" value="PENDIENTE"></div>
-            <div class="fc" style="flex:1"><label>Municipalidad — Importe</label><input id="pf-mun1-valor" type="number" placeholder="0" oninput="calcPresup()"></div>
+            <div class="fc" style="flex:1"><label>Municipalidad — Importe</label><input id="pf-mun1-valor" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
           </div>
           <div class="fc span3" style="display:flex;flex-direction:row;gap:10px;align-items:flex-end">
             <div class="fc" style="flex:1"><label>Rentas De — Período</label><input id="pf-mun2-periodo" type="text" value="PENDIENTE"></div>
-            <div class="fc" style="flex:1"><label>Rentas De — Importe</label><input id="pf-mun2-valor" type="number" placeholder="0" oninput="calcPresup()"></div>
+            <div class="fc" style="flex:1"><label>Rentas De — Importe</label><input id="pf-mun2-valor" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
           </div>
           <div class="fc span3" style="display:flex;flex-direction:row;gap:10px;align-items:flex-end">
             <div class="fc" style="flex:1"><label>Multas Caminera — Año</label><input id="pf-multas-anio" type="text" placeholder="2025"></div>
             <div class="fc" style="flex:1"><label>Multas Caminera — Período</label><input id="pf-multas-periodo" type="text" value="PENDIENTE"></div>
-            <div class="fc" style="flex:1"><label>Multas Caminera — Importe</label><input id="pf-multas-valor" type="number" placeholder="0" oninput="calcPresup()"></div>
+            <div class="fc" style="flex:1"><label>Multas Caminera — Importe</label><input id="pf-multas-valor" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
           </div>
           <div class="fc span3" style="display:flex;flex-direction:row;gap:10px;align-items:flex-end">
             <div class="fc" style="flex:1"><label>Municipalidad Juicios — Período</label><input id="pf-munjuicios-periodo" type="text" value="PENDIENTE"></div>
-            <div class="fc" style="flex:1"><label>Municipalidad Juicios — Importe</label><input id="pf-munjuicios-valor" type="number" placeholder="0" oninput="calcPresup()"></div>
+            <div class="fc" style="flex:1"><label>Municipalidad Juicios — Importe</label><input id="pf-munjuicios-valor" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
           </div>
           <div class="fc span3" style="display:flex;flex-direction:row;gap:10px;align-items:flex-end">
             <div class="fc" style="flex:1"><label>Rentas Juicios — Período</label><input id="pf-rentasjuicios-periodo" type="text" value="PENDIENTE"></div>
-            <div class="fc" style="flex:1"><label>Rentas Juicios — Importe</label><input id="pf-rentasjuicios-valor" type="number" placeholder="0" oninput="calcPresup()"></div>
+            <div class="fc" style="flex:1"><label>Rentas Juicios — Importe</label><input id="pf-rentasjuicios-valor" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
           </div>
         </div>
       </div>
@@ -1506,9 +1506,9 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       <div class="card" style="margin-bottom:16px">
         <div class="card-t" style="margin-bottom:12px">Otros</div>
         <div class="fg">
-          <div class="fc"><label>Movilidad</label><input id="pf-movilidad" type="number" placeholder="0" oninput="calcPresup()"></div>
-          <div class="fc"><label>Altas y Bajas</label><input id="pf-altas-bajas" type="number" placeholder="0" oninput="calcPresup()"></div>
-          <div class="fc"><label>Honorarios</label><input id="pf-honorarios" type="number" placeholder="0" oninput="calcPresup()"></div>
+          <div class="fc"><label>Movilidad</label><input id="pf-movilidad" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
+          <div class="fc"><label>Altas y Bajas</label><input id="pf-altas-bajas" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
+          <div class="fc"><label>Honorarios</label><input id="pf-honorarios" type="text" inputmode="decimal" placeholder="0" oninput="calcPresup()"></div>
           <div class="fc"><label>Observaciones</label><textarea id="pf-obs" rows="2" placeholder="Nota al pie del presupuesto..."></textarea></div>
         </div>
       </div>
@@ -4966,7 +4966,7 @@ function getTotalFormularios() {
 }
 
 function calcLegalizacionImporte() {
-  const precio = parseFloat(document.getElementById('pf-legal-precio')?.value) || 0;
+  const precio = parseMoneda(document.getElementById('pf-legal-precio')?.value);
   const cant   = parseFloat(document.getElementById('pf-legal-cant')?.value) || 1;
   const el     = document.getElementById('pf-legalizaciones');
   if (!el) return;
@@ -4976,7 +4976,7 @@ function calcLegalizacionImporte() {
 }
 
 function calcCertImporte() {
-  const precio = parseFloat(document.getElementById('pf-cert-precio')?.value) || 0;
+  const precio = parseMoneda(document.getElementById('pf-cert-precio')?.value);
   const cant   = parseFloat(document.getElementById('pf-cert-cant')?.value) || 1;
   const el     = document.getElementById('pf-certificacion');
   if (!el) return;
