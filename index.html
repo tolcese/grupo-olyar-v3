@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.3.3</title>
+<title>Grupo Olyar — Solicitudes v3.4.0</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.3.3';
+    var APP_VER='v3.4.0';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -4988,10 +4988,43 @@ function calcCertImporte() {
   calcPresup();
 }
 
+function parseMoneda(str){
+  if(str==null) return 0;
+  let s=String(str).trim().replace(/[^\d.,-]/g,'');
+  if(!s) return 0;
+  const hasComma=s.includes(','), hasDot=s.includes('.');
+  if(hasComma && hasDot){
+    if(s.lastIndexOf(',')>s.lastIndexOf('.')) s=s.replace(/\./g,'').replace(',','.');
+    else s=s.replace(/,/g,'');
+  } else if(hasComma){
+    const p=s.split(',');
+    if(p.length===2 && p[1].length<=2) s=s.replace(',','.');
+    else s=s.replace(/,/g,'');
+  } else if(hasDot){
+    const p=s.split('.');
+    if(p.length>2) s=s.replace(/\./g,'');
+    else if(p[1] && p[1].length===3) s=s.replace(/\./g,'');
+  }
+  const v=parseFloat(s);
+  return isNaN(v)?0:v;
+}
+// Al pegar en campos de moneda del presupuesto, normaliza el formato (acepta 1.234.567,89)
+document.addEventListener('paste', function(e){
+  const el=e.target;
+  if(!(el instanceof HTMLInputElement) || el.type!=='number') return;
+  if(!(el.id||'').startsWith('pf-')) return;
+  const raw=((e.clipboardData||window.clipboardData)&&(e.clipboardData||window.clipboardData).getData('text'))||'';
+  if(!raw) return;
+  e.preventDefault();
+  const v=parseMoneda(raw);
+  el.value = (v===0 && !/\d/.test(raw)) ? '' : String(v);
+  el.dispatchEvent(new Event('input',{bubbles:true}));
+}, true);
+
 function calcPresup() {
-  const n = id => parseFloat(document.getElementById(id)?.value||0) || 0;
+  const n = id => parseMoneda(document.getElementById(id)?.value);
   const val = n('pf-valuacion');
-  const base70 = Math.round(val * 0.70);
+  const base70 = Math.round(val * 0.70 * 100) / 100;
   if (!window._baseImpManual) document.getElementById('pf-base-imp').value = base70 || '';
   const total = 
     n('pf-certificacion') + getTotalFormularios() + n('pf-arancel') +
@@ -5001,13 +5034,13 @@ function calcPresup() {
     n('pf-munjuicios-valor') + n('pf-rentasjuicios-valor') +
     n('pf-movilidad') + n('pf-altas-bajas') + n('pf-honorarios') +
     n('pf-base-imp');
-  document.getElementById('pf-total-display').textContent = '$' + Math.round(total).toLocaleString('es-AR');
+  document.getElementById('pf-total-display').textContent = '$' + total.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
 async function guardarPresupuesto() {
-  const n = id => { const v = parseFloat(document.getElementById(id)?.value||0); return isNaN(v) ? null : v; };
+  const n = id => { const el = document.getElementById(id); if(!el) return null; const raw = el.value; if(raw==null || String(raw).trim()==='') return null; return parseMoneda(raw); };
   const t = id => document.getElementById(id)?.value.trim() || null;
-  const total = parseFloat(document.getElementById('pf-total-display').textContent.replace(/[$.,]/g,'').replace(',','.')) || 0;
+  const total = parseMoneda(document.getElementById('pf-total-display').textContent);
   const row = {
     fecha: t('pf-fecha') || hoyLocal(),
     agencia: t('pf-agencia'), cliente: t('pf-cliente'), dni: t('pf-dni'),
@@ -5027,7 +5060,7 @@ async function guardarPresupuesto() {
     municipalidad_juicios_periodo: t('pf-munjuicios-periodo'), municipalidad_juicios_valor: n('pf-munjuicios-valor'),
     rentas_juicios_periodo: t('pf-rentasjuicios-periodo'), rentas_juicios_valor: n('pf-rentasjuicios-valor'),
     movilidad: n('pf-movilidad'), altas_bajas: n('pf-altas-bajas'),
-    honorarios: n('pf-honorarios'), total: Math.round(total),
+    honorarios: n('pf-honorarios'), total: Math.round(total*100)/100,
     observaciones: t('pf-obs'), estado: t('pf-estado'),
     creado_por: ME?.usr || null
   };
