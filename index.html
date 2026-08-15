@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.4.2</title>
+<title>Grupo Olyar — Solicitudes v3.4.3</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.4.2';
+    var APP_VER='v3.4.3';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -4525,7 +4525,7 @@ function renderPrendasFinalizadas() {
   const q = (document.getElementById('pf-srch')?.value || '').toLowerCase();
   const isAdmin = ME?.rol === 'admin';
 
-  let data = RECORDS.filter(r => r.gestorAsignado && r.finalizada && r.finalizada.trim() !== '' && !r.entregada && (!r.fechaEntregada || String(r.fechaEntregada).trim() === ''));
+  let data = RECORDS.filter(r => r.gestorAsignado && prendaPresentada(r) && !r.entregada && (!r.fechaEntregada || String(r.fechaEntregada).trim() === ''));
   if (q) data = data.filter(r =>
     [r.nombrecliente, r.banco, r.concesionaria, r.provincia, r.localidad, r.gestorAsignado].some(v => (v||'').toLowerCase().includes(q))
   );
@@ -9452,9 +9452,24 @@ function refreshAllPrendaViews() {
   for (const fn of fns) { try { fn(); } catch(e) { console.warn('refresh prenda view:', e); } }
 }
 
+function prendaPresentada(r){
+  return !!(r && (r.presentada || (r.finalizada && String(r.finalizada).trim() !== '')));
+}
+function onPrendaPresentadaChange(){
+  const ep=document.getElementById('prenda-en-proceso');
+  const pr=document.getElementById('prenda-presentada');
+  if(pr.checked && !ep.checked){ pr.checked=false; toast('Primero marcá "En proceso"','warn'); return; }
+  const f=document.getElementById('prenda-finalizada');
+  if(pr.checked && f && !f.value) f.value = hoyLocal();
+}
+function onPrendaEnProcesoChange(){
+  const ep=document.getElementById('prenda-en-proceso');
+  const pr=document.getElementById('prenda-presentada');
+  if(!ep.checked && pr.checked){ pr.checked=false; const f=document.getElementById('prenda-finalizada'); if(f) f.value=''; }
+}
 function renderPrendas() {
   const q = (document.getElementById('prendas-srch')?.value || '').toLowerCase();
-  let data = RECORDS.filter(r => r.gestorAsignado && r.gestorAsignado.trim() !== '' && (!r.finalizada || r.finalizada.trim() === ''));
+  let data = RECORDS.filter(r => r.gestorAsignado && r.gestorAsignado.trim() !== '' && !prendaPresentada(r));
   if (q) data = data.filter(r =>
     [r.nombrecliente, r.banco, r.concesionaria, r.provincia, r.localidad, r.marca, r.gestorAsignado].some(v => (v||'').toLowerCase().includes(q))
   );
@@ -9526,7 +9541,7 @@ function editPrenda(id) {
   if (!r) return;
   document.getElementById('prenda-id').value        = id;
   document.getElementById('prenda-en-proceso').checked = r.enProceso || false;
-  document.getElementById('prenda-presentada').checked = r.presentada || false;
+  document.getElementById('prenda-presentada').checked = r.presentada || !!(r.finalizada && String(r.finalizada).trim() !== '');
   document.getElementById('prenda-finalizada').value   = r.finalizada || '';
   document.getElementById('prenda-entregada').checked  = r.entregada || false;
   document.getElementById('prenda-cliente').textContent = r.nombrecliente || id;
@@ -9537,7 +9552,7 @@ async function savePrenda() {
   if (!requireEdit()) return;
   const id = document.getElementById('prenda-id').value;
   const enProceso  = document.getElementById('prenda-en-proceso').checked;
-  const presentada = document.getElementById('prenda-presentada').checked;
+  const presentada = enProceso && document.getElementById('prenda-presentada').checked;
   const finalizada = document.getElementById('prenda-finalizada').value;
   const entregada  = document.getElementById('prenda-entregada').checked;
   try {
@@ -13563,7 +13578,7 @@ function renderListadoPrendas() {
       estadoPrend = 'Rechazada'; estadoColor = 'var(--red)';
     } else if (r.entregada) {
       estadoPrend = 'Entregada'; estadoColor = 'var(--purple)';
-    } else if (r.finalizada) {
+    } else if (prendaPresentada(r)) {
       estadoPrend = 'No entregada'; estadoColor = 'var(--blue)';
     } else {
       estadoPrend = 'En curso'; estadoColor = 'var(--muted)';
@@ -13607,7 +13622,7 @@ function imprimirListadoPrendas() {
     let estadoPrend;
     if (r.prendaRechazada)  estadoPrend = 'Rechazada';
     else if (r.entregada)   estadoPrend = 'Entregada';
-    else if (r.finalizada)  estadoPrend = 'No entregada';
+    else if (prendaPresentada(r))  estadoPrend = 'No entregada';
     else                    estadoPrend = 'En curso';
     return { ...r, estadoPrend };
   });
@@ -15203,13 +15218,13 @@ function renderReportes() {
         <div class="fc span2">
           <label>En proceso</label>
           <div class="chk-grid" style="grid-template-columns:1fr">
-            <label class="chk-row"><input type="checkbox" id="prenda-en-proceso"> Sí, está en proceso</label>
+            <label class="chk-row"><input type="checkbox" id="prenda-en-proceso" onchange="onPrendaEnProcesoChange()"> Sí, está en proceso</label>
           </div>
         </div>
         <div class="fc span2">
           <label>Presentada</label>
           <div class="chk-grid" style="grid-template-columns:1fr">
-            <label class="chk-row"><input type="checkbox" id="prenda-presentada"> Sí, fue presentada</label>
+            <label class="chk-row"><input type="checkbox" id="prenda-presentada" onchange="onPrendaPresentadaChange()"> Sí, fue presentada</label>
           </div>
         </div>
         <div class="fc span2">
