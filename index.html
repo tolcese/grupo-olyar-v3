@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.4.6</title>
+<title>Grupo Olyar — Solicitudes v3.4.7</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.4.6';
+    var APP_VER='v3.4.7';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -210,6 +210,7 @@ body::-webkit-scrollbar-thumb:hover{background:#cbd5e1;}
 .tscroll{overflow-x:auto;}
 #table-desktop{overflow:auto;max-height:calc(100dvh - 220px);}
 #table-desktop table{border-collapse:separate;border-spacing:0;}
+#table-desktop thead tr th:first-child, #table-desktop tbody tr td:first-child{-webkit-transform:none;transform:none;will-change:auto;}
 #table-desktop thead th{z-index:5;border-bottom:1.5px solid var(--line);}
 #table-desktop thead tr th:first-child{z-index:6;}
 table{width:100%;border-collapse:collapse;min-width:1400px;}
