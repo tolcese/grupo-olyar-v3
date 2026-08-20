@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.5.2</title>
+<title>Grupo Olyar — Solicitudes v3.5.3</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.5.2';
+    var APP_VER='v3.5.3';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2072,7 +2072,10 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <div class="panel-name" id="datero-panel-nombre">—</div>
           <div class="panel-sub" id="datero-panel-sub">Datero</div>
         </div>
-        <button class="xbtn" onclick="closeDateroPanel()">×</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn btn-s" onclick="exportarDateroPDF()" style="font-size:12px;padding:6px 10px;white-space:nowrap">📄 PDF</button>
+          <button class="xbtn" onclick="closeDateroPanel()">×</button>
+        </div>
       </div>
     </div>
     <div class="panel-body" id="datero-panel-body"></div>
@@ -7316,7 +7319,58 @@ function renderDatero() {
   setTimeout(initDateroMirror, 50);
 }
 
+function exportarDateroPDF(){
+  const data = window._dateroFiltered || DATERO_CACHE;
+  const r = data[window._dateroPanelIdx];
+  if(!r){ toast('No hay registro para exportar','warn'); return; }
+  const val = x => (x && x!=='undefined' && String(x).trim()!=='') ? x : '\u2014';
+  const money = x => { const n=parseFloat(x); return isNaN(n)?'\u2014':('$'+n.toLocaleString('es-AR')); };
+  const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const kv = pares => '<table class="kv">'+pares.map(p=>`<tr><td class="l">${esc(p[0])}</td><td>${esc(val(p[1]))}</td></tr>`).join('')+'</table>';
+  const imgs = (str,label) => {
+    if(!str) return '';
+    const list = String(str).split(',').map(s=>s.trim()).filter(Boolean);
+    if(!list.length) return '';
+    return `<h2>${label}</h2><div class="imgs">`+list.map((u,i)=>`<div><img src="${u}" onerror="this.style.display='none';this.nextElementSibling.textContent='(no se pudo cargar)'"><div class="imgcap">${label} ${list.length>1?i+1:''}</div></div>`).join('')+'</div>';
+  };
+  let s='';
+  s+=`<h2>Solicitante</h2>`+kv([['Nombre',r.solicitante],['DNI',r.dni],['Tel\u00e9fono',`${val(r.telefono)} (${val(r.compania)})`],['Tel. alt. 1', r.telefono_alt1?`${r.telefono_alt1}${r.telefono_alt1_nombre?' \u2014 '+r.telefono_alt1_nombre:''}${r.telefono_alt1_relacion?' ('+r.telefono_alt1_relacion+')':''}`:''],['Tel. alt. 2', r.telefono_alt2?`${r.telefono_alt2}${r.telefono_alt2_nombre?' \u2014 '+r.telefono_alt2_nombre:''}${r.telefono_alt2_relacion?' ('+r.telefono_alt2_relacion+')':''}`:''],['Email',r.email],['Provincia',r.provincia],['C\u00f3digo postal',r.codigoPostal],['Estado civil',r.estadoCivil]]);
+  s+=`<h2>Veh\u00edculo</h2>`+kv([['Marca',r.marca],['Modelo/Versi\u00f3n',r.modelo],['A\u00f1o',r.anio],['Dominio',r.dominio],['Equipo GNC',r.gnc],['Monto de venta',money(r.montoVenta)]]);
+  s+=`<h2>Financiaci\u00f3n</h2>`+kv([['Entidad',r.banco],['Tipo de tasa',r.tipoTasa],['Monto a financiar',money(r.montoFinanciar)],['Cantidad de cuotas',r.cuotas],['Cuota estimada',money(r.cuotaEstimada)]]);
+  s+=`<h2>Laboral</h2>`+kv([['Empresa',r.nombreEmpresa],['Tel. laboral',r.telefonoLaboral],['Domicilio laboral',r.domicilioLaboral],['Fecha de ingreso',r.fechaIngreso]]);
+  s+=`<h2>Concesionaria</h2>`+kv([['Concesionaria',r.concesionaria],['Encargado',r.encargado],['Provincia',r.provincia]]);
+  if((r.estadoCivil||'').toLowerCase().indexOf('casad')===0 || r.conyugeNombre){
+    s+=`<h2>C\u00f3nyuge</h2>`+kv([['Nombre',r.conyugeNombre],['CUIT/CUIL',r.conyugeCuit],['G\u00e9nero',r.conyugeGenero],['Nacionalidad',r.conyugeNacionalidad],['Fecha nac.',r.conyugeFechaNac?String(r.conyugeFechaNac).split('-').reverse().join('/'):''],['Actividad',r.conyugeActividad],['Tel\u00e9fono',r.conyugeTelefono]]);
+  }
+  s+=imgs(r.fotoDni,'Foto DNI');
+  s+=imgs(r.tituloAutomotor,'T\u00edtulo automotor');
+  s+=imgs(r.fotoDniConyuge,'DNI c\u00f3nyuge');
+  const hoy=new Date().toLocaleDateString('es-AR');
+  const doc=`<!doctype html><html><head><meta charset="utf-8"><title>Datero - ${esc(val(r.solicitante))}</title>
+  <style>@page{size:A4;margin:14mm} body{font-family:Arial,Helvetica,sans-serif;color:#111827;font-size:12px;margin:0}
+  .brand{font-size:16px;font-weight:800;color:#0d1e3c}.sub{font-size:9px;color:#6b7280;text-align:right}
+  .rule{border-bottom:2px solid #F46A2D;margin:6px 0 12px}.top{display:flex;justify-content:space-between;align-items:flex-start}
+  h1{font-size:15px;color:#0d1e3c;margin:2px 0}.meta{font-size:9px;color:#6b7280;margin-bottom:6px}
+  h2{background:#0d1e3c;color:#fff;font-size:10.5px;padding:5px 8px;margin:14px 0 0;border-radius:3px 3px 0 0}
+  table.kv{width:100%;border-collapse:collapse}table.kv td{padding:4px 6px;border-bottom:.5px solid #e5e7eb;vertical-align:top;font-size:10.5px}
+  td.l{color:#6b7280;font-weight:700;width:26%;font-size:9.5px}
+  .imgs{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}.imgs img{max-width:250px;max-height:330px;border:1px solid #ddd;border-radius:6px;display:block}
+  .imgcap{font-size:9px;color:#6b7280;margin-top:2px}.noprint{margin:10px 0}
+  @media print{.noprint{display:none}}</style></head><body>
+  <div class="noprint"><button onclick="window.print()" style="padding:8px 14px;font-size:13px;background:#0d1e3c;color:#fff;border:0;border-radius:6px;cursor:pointer">Imprimir / Guardar como PDF</button></div>
+  <div class="top"><div class="brand">GRUPO OLYAR</div><div class="sub">Ficha de Datero<br>Generado: ${hoy}</div></div>
+  <div class="rule"></div>
+  <h1>${esc(val(r.solicitante))} - DNI ${esc(val(r.dni))}</h1>
+  <div class="meta">Estado: ${esc((val(r.estado)+'').toUpperCase())} \u00b7 Fecha: ${esc(val(r.fecha))} \u00b7 Ingreso: ${esc(val(r.fechaIngreso))} \u00b7 ID #${esc(val(r.id))}</div>
+  ${s}
+  <scr`+`ipt>(function(){var im=[].slice.call(document.images);var left=im.length;var go=function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},350);};if(!left){go();return;}im.forEach(function(x){if(x.complete){if(--left===0)go();}else{x.addEventListener('load',function(){if(--left===0)go();});x.addEventListener('error',function(){if(--left===0)go();});}});})();</scr`+`ipt>
+  </body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ toast('Permit\u00ed las ventanas emergentes para exportar el PDF','warn'); return; }
+  w.document.open(); w.document.write(doc); w.document.close();
+}
 function openDateroPanel(idx) {
+  window._dateroPanelIdx = idx;
   const data = window._dateroFiltered || DATERO_CACHE;
   const r = data[idx];
   if (!r) return;
