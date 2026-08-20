@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.5.3</title>
+<title>Grupo Olyar — Solicitudes v3.5.5</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.5.3';
+    var APP_VER='v3.5.5';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -10082,11 +10082,15 @@ async function loadRecords() {
         }
       }
     });
-    renderTable._keepPage = true;
-    renderTable();
-    renderStats();
-    const tab = document.getElementById('rep-prendas-pend');
-    if (tab && tab.style.display !== 'none') renderPrendasPendientes();
+    const _sig = JSON.stringify(RECORDS.map(r => [r.id,r.fecha,r.nombrecliente,r.dni,r.concesionaria,r.provincia,r.marca,r.descripcion,r.anio,r.localidad,r.dominio,r.usuario,r.estado,r.gestorAsignado,r.presentada,r.entregada,r.finalizada,r.doc01,r.titulo,r.verif,r.infdom,r.bancos]));
+    if (loadRecords._lastSig !== _sig) {
+      loadRecords._lastSig = _sig;
+      renderTable._keepPage = true;
+      renderTable();
+      renderStats();
+      const tab = document.getElementById('rep-prendas-pend');
+      if (tab && tab.style.display !== 'none') renderPrendasPendientes();
+    }
 
     setTimeout(() => autoCalcContabilidad(), 800);
     syncUI('ok');
