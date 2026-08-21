@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.5.5</title>
+<title>Grupo Olyar — Solicitudes v3.5.6</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.5.5';
+    var APP_VER='v3.5.6';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -3305,11 +3305,21 @@ function renderBancosForm(bancos){
   if(bancos&&bancos.length) bancos.forEach(d=>addBankBlock(d)); else addBankBlock();
   actualizarBotonesQuitar();
 }
+async function toggleRelevamiento(id, checked){
+  if(!requireEdit()){ renderTable._keepPage=true; renderTable(); return; }
+  const rec = RECORDS.find(r => String(r.id)===String(id));
+  if(rec) rec.relevamiento = checked;
+  try{
+    const { error } = await SB.from('solicitudes').update({ relevamiento: checked }).eq('id', id);
+    if(error){ if(rec) rec.relevamiento=!checked; renderTable._keepPage=true; renderTable(); toast('Error al guardar relevamiento','er'); return; }
+    toast('Relevamiento '+(checked?'marcado \u2713':'desmarcado'),'ok');
+  }catch(e){ if(rec) rec.relevamiento=!checked; renderTable._keepPage=true; renderTable(); toast('Error: '+e.message,'er'); }
+}
 function buildTheadSol(){
   const thead=document.getElementById('thead-sol'); if(!thead) return;
   const isAdmin=ME?.rol==='admin';
   const sc=(c,l)=>`<th class="th-sort${SORT_COL===c?(SORT_DIR===1?' asc':' desc'):''}" onclick="sortBy('${c}')" id="th-${c}">${l} <span class="sort-icon">↕</span></th>`;
-  let h='<tr><th>#</th>'+sc('fecha','Fecha')+sc('nombrecliente','Nombre y Apellido')+sc('dni','DNI')+sc('concesionaria','Concesionaria')+sc('provincia','Provincia')+sc('marca','Marca')+sc('descripcion','Modelo');
+  let h='<tr><th>#</th>'+sc('fecha','Fecha')+sc('nombrecliente','Nombre y Apellido')+sc('dni','DNI')+'<th style="text-align:center">Relevamiento</th>'+sc('concesionaria','Concesionaria')+sc('provincia','Provincia')+sc('marca','Marca')+sc('descripcion','Modelo');
   bancosMatrizCols().forEach(bn=>{ h+=`<th style="text-align:center;min-width:66px">${colorBanco(bn)}</th>`; });
   if(isAdmin) h+='<th class="admin-only" title="Documento 01/08">Doc 01/08</th><th class="admin-only" title="Título Unidad">Título</th><th class="admin-only" title="Verificación Policial (12)">Ver. Pol.</th><th class="admin-only" title="Informe Dominio">Inf. Dom.</th>';
   h+='<th id="th-acc" style="position:sticky;right:0;background:var(--surface);z-index:2;box-shadow:-2px 0 6px rgba(0,0,0,.06)">Acciones</th></tr>';
@@ -10052,6 +10062,7 @@ async function loadRecords() {
       descripcion: r.descripcion, tipocta: r.tipocta, importe: r.importe,
       agencia: r.agencia, vehiculo: r.vehiculo, estado: r.estado,
       doc01: r.doc01, titulo: r.titulo, verif: r.verif, infdom: r.infdom,
+      relevamiento: !!r.relevamiento,
       bancos: Array.isArray(r.bancos) ? r.bancos : [],
       tasa: r.tasa, obs: r.obs, comision: r.comision, usuario: r.usuario,
       fechaReg: r.fecha_reg, gestorAsignado: r.gestor_asignado, gestorId: r.gestor_id,
@@ -10082,7 +10093,7 @@ async function loadRecords() {
         }
       }
     });
-    const _sig = JSON.stringify(RECORDS.map(r => [r.id,r.fecha,r.nombrecliente,r.dni,r.concesionaria,r.provincia,r.marca,r.descripcion,r.anio,r.localidad,r.dominio,r.usuario,r.estado,r.gestorAsignado,r.presentada,r.entregada,r.finalizada,r.doc01,r.titulo,r.verif,r.infdom,r.bancos]));
+    const _sig = JSON.stringify(RECORDS.map(r => [r.id,r.fecha,r.nombrecliente,r.dni,r.concesionaria,r.provincia,r.marca,r.descripcion,r.anio,r.localidad,r.dominio,r.usuario,r.estado,r.gestorAsignado,r.presentada,r.entregada,r.finalizada,r.doc01,r.titulo,r.verif,r.infdom,r.relevamiento,r.bancos]));
     if (loadRecords._lastSig !== _sig) {
       loadRecords._lastSig = _sig;
       renderTable._keepPage = true;
@@ -10747,6 +10758,7 @@ function renderTablePage() {
         <td style="white-space:nowrap">${fmtFecha(r.fecha)}</td>
         <td class="td-bold" style="white-space:nowrap">${r.nombrecliente||'—'}</td>
         <td class="td-mono">${r.dni||'—'}</td>
+        <td class="chk" onclick="event.stopPropagation()" style="text-align:center"><input type="checkbox" ${r.relevamiento?'checked':''} ${canEdit()?'':'disabled'} onchange="toggleRelevamiento('${r.id}',this.checked)" style="cursor:pointer;width:16px;height:16px;accent-color:var(--green)" title="Relevamiento realizado"></td>
         <td>${r.concesionaria||'—'}</td>
         <td>${r.provincia||'—'}</td>
         <td>${r.marca||'—'}</td>
