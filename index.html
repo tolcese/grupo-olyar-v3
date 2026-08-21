@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.5.6</title>
+<title>Grupo Olyar — Solicitudes v3.5.7</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.5.6';
+    var APP_VER='v3.5.7';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -10421,10 +10421,10 @@ function getForm() {
   const repr=bancoRepresentativo(bancos)||{};
   return {
     fecha:g('f-fecha'), anio:g('f-anio'),
-    concesionaria:g('f-concesionaria'), provincia:g('f-provincia'),
-    localidad:g('f-localidad'), dni:g('f-dni'),
-    nombrecliente:g('f-nombrecliente'), dominio:g('f-dominio').toUpperCase(),
-    marca:g('f-marca'), descripcion:g('f-descripcion'),
+    concesionaria:g('f-concesionaria').toUpperCase(), provincia:g('f-provincia').toUpperCase(),
+    localidad:g('f-localidad').toUpperCase(), dni:g('f-dni'),
+    nombrecliente:g('f-nombrecliente').toUpperCase(), dominio:g('f-dominio').toUpperCase(),
+    marca:g('f-marca').toUpperCase(), descripcion:g('f-descripcion').toUpperCase(),
     doc01:document.getElementById('f-doc01').checked, titulo:document.getElementById('f-titulo').checked,
     verif:document.getElementById('f-verif').checked, infdom:document.getElementById('f-infdom').checked,
     bancos,
