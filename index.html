@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.5.7</title>
+<title>Grupo Olyar — Solicitudes v3.5.8</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.5.7';
+    var APP_VER='v3.5.8';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2006,6 +2006,46 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
     </div>
 
     <!-- DATERO -->
+    <div id="v-gestores" style="display:none">
+      <div class="ph">
+        <div><div class="ph-t">👤 Gestores</div><div class="ph-s">Listado de gestores</div></div>
+        <button class="btn btn-p" id="btn-nuevo-gestor" onclick="openFormGestor(null)">＋ Nuevo gestor</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <div class="searchbox" style="flex:1;min-width:240px">
+          <span style="color:var(--muted)">🔍</span>
+          <input id="gestor-srch" placeholder="Buscar por nombre..." oninput="filtrarGestores()">
+        </div>
+        <select id="gestor-prov-filter" onchange="filtrarGestores()" style="font-size:12px;padding:7px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);min-width:140px">
+          <option value="">Todas las provincias</option>
+        </select>
+      </div>
+      <div id="gestores-list-wrap">
+        <div id="gestores-list" class="gestores-list">
+          <div style="text-align:center;color:var(--muted);padding:30px"><span class="spinner"></span> Cargando...</div>
+        </div>
+      </div>
+      <div id="gestor-form-wrap" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+          <button class="btn btn-s" style="font-size:12px;padding:6px 11px" onclick="closeFormGestor()">← Volver</button>
+          <div class="mt" id="gestor-form-title">Nuevo gestor</div>
+        </div>
+        <div class="fg" style="grid-template-columns:repeat(2,1fr)">
+          <div class="fc span2"><label>Nombre y Apellido *</label><input id="g-nombre" placeholder="Ej: Juan Pérez"></div>
+          <div class="fc"><label>Teléfono</label><input id="g-telefono" placeholder="Ej: 351-1234567"></div>
+          <div class="fc"><label>Email</label><input id="g-email" type="email" placeholder="gestor@email.com"></div>
+          <div class="fc span2"><label>Dirección</label><input id="g-direccion" placeholder="Ej: Av. Colón 1234"></div>
+          <div class="fc"><label>Localidad</label><input id="g-localidad" placeholder="Ej: Córdoba"></div>
+          <div class="fc"><label>Provincia</label><input id="g-provincia" placeholder="Ej: Córdoba"></div>
+          <div class="fc"><label>C.P.</label><input id="g-cp" placeholder="Ej: 5000"></div>
+        </div>
+        <input type="hidden" id="g-id">
+        <div class="mfoot">
+          <button class="btn btn-s" onclick="closeFormGestor()">Cancelar</button>
+          <button class="btn btn-p" onclick="saveGestor()">💾 Guardar gestor</button>
+        </div>
+      </div>
+    </div>
     <div id="v-datero" style="display:none">
       <div class="ph">
         <div><div class="ph-t">📨 Datero</div><div class="ph-s">Solicitudes recibidas desde el formulario</div></div>
@@ -4128,14 +4168,11 @@ function closePVModal() {
 // GESTORES
 // ══════════════════════════════════════════════
 async function openGestores() {
-  document.getElementById('gestores-overlay').classList.add('open');
-  closeFormGestor();
-  if (GESTORES_CACHE.length) { renderGestoresList(GESTORES_CACHE); loadGestores(); }
-  else await loadGestores();
+  showV('gestores');
 }
 
 function closeGestores() {
-  document.getElementById('gestores-overlay').classList.remove('open');
+  showV('sol');
 }
 
 async function loadGestores() {
@@ -4255,8 +4292,6 @@ function openGestorPanel(id, nombre, localidad, provincia, telefono, email, dire
     ${isAdmin ? `<button class="btn btn-d" style="font-size:12px;padding:6px 12px" onclick="closeGestorPanelSinReabrir();delGestor('${id}')">🗑️ Eliminar</button>` : ''}
   `;
   panelHead.appendChild(btns);
-  // Cerrar modal Gestores y abrir panel
-  document.getElementById('gestores-overlay').classList.remove('open');
   document.getElementById('gestor-panel-overlay').classList.add('open');
   document.getElementById('gestor-side-panel').classList.add('open');
 }
@@ -4264,7 +4299,6 @@ function openGestorPanel(id, nombre, localidad, provincia, telefono, email, dire
 function closeGestorPanel() {
   document.getElementById('gestor-panel-overlay').classList.remove('open');
   document.getElementById('gestor-side-panel').classList.remove('open');
-  document.getElementById('gestores-overlay').classList.add('open');
 }
 
 function closeGestorPanelSinReabrir() {
@@ -9981,7 +10015,7 @@ function showV(v) {
       setTimeout(renderReportes, 50);
     }
   }
-  ['sol','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','central-deudores'].forEach(id => {
+  ['sol','gestores','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','central-deudores'].forEach(id => {
     const el = document.getElementById('v-'+id);
     if (el) el.style.display = id===v ? '' : 'none';
 
@@ -9997,6 +10031,7 @@ function showV(v) {
   }
   closeAllDD();
   if (v==='sol')      renderTable();
+  if (v==='gestores') { const _lw=document.getElementById('gestores-list-wrap'), _fw=document.getElementById('gestor-form-wrap'); if(_lw)_lw.style.display=''; if(_fw)_fw.style.display='none'; loadGestores(); }
   if (v==='nueva') {
     if (!window._isDuplicating && !window._isEditing) {
       editId = null;
@@ -14664,56 +14699,6 @@ function renderReportes() {
 </div>
 
 <!-- MODAL GESTORES -->
-<div class="overlay" id="gestores-overlay" onclick="if(event.target===this)closeGestores()">
-  <div class="modal" style="max-width:700px" onclick="event.stopPropagation()">
-    <div class="mh">
-      <div class="mt">👤 Gestores</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn btn-p" id="btn-nuevo-gestor" onclick="openFormGestor(null)">＋ Nuevo gestor</button>
-        <button class="xbtn" onclick="closeGestores()">×</button>
-      </div>
-    </div>
-    <div style="padding:12px 20px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center">
-      <div class="searchbox" style="flex:1">
-        <span style="color:var(--muted)">🔍</span>
-        <input id="gestor-srch" placeholder="Buscar por nombre..." oninput="filtrarGestores()">
-      </div>
-      <select id="gestor-prov-filter" onchange="filtrarGestores()" style="font-size:12px;padding:7px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);min-width:140px">
-        <option value="">Todas las provincias</option>
-      </select>
-    </div>
-
-    <!-- Lista de gestores -->
-    <div id="gestores-list-wrap">
-      <div id="gestores-list" class="gestores-list">
-        <div style="text-align:center;color:var(--muted);padding:30px"><span class="spinner"></span> Cargando...</div>
-      </div>
-    </div>
-
-    <!-- Formulario gestor (oculto por defecto) -->
-    <div id="gestor-form-wrap" style="display:none">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
-        <button class="btn btn-s" style="font-size:12px;padding:6px 11px" onclick="closeFormGestor()">← Volver</button>
-        <div class="mt" id="gestor-form-title">Nuevo gestor</div>
-      </div>
-      <div class="fg" style="grid-template-columns:repeat(2,1fr)">
-        <div class="fc span2"><label>Nombre y Apellido *</label><input id="g-nombre" placeholder="Ej: Juan Pérez"></div>
-        <div class="fc"><label>Teléfono</label><input id="g-telefono" placeholder="Ej: 351-1234567"></div>
-        <div class="fc"><label>Email</label><input id="g-email" type="email" placeholder="gestor@email.com"></div>
-        <div class="fc span2"><label>Dirección</label><input id="g-direccion" placeholder="Ej: Av. Colón 1234"></div>
-        <div class="fc"><label>Localidad</label><input id="g-localidad" placeholder="Ej: Córdoba"></div>
-        <div class="fc"><label>Provincia</label><input id="g-provincia" placeholder="Ej: Córdoba"></div>
-        <div class="fc"><label>C.P.</label><input id="g-cp" placeholder="Ej: 5000"></div>
-      </div>
-      <input type="hidden" id="g-id">
-      <div class="mfoot">
-        <button class="btn btn-s" onclick="closeFormGestor()">Cancelar</button>
-        <button class="btn btn-p" onclick="saveGestor()">💾 Guardar gestor</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL GESTORÍA -->
 <div class="gestoria-overlay" id="gestoria-overlay" onclick="if(event.target===this)closeGestoria()">
   <div class="gestoria-modal" onclick="event.stopPropagation()">
