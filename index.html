@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.5.8</title>
+<title>Grupo Olyar — Solicitudes v3.5.9</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.5.8';
+    var APP_VER='v3.5.9';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2044,6 +2044,35 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <button class="btn btn-s" onclick="closeFormGestor()">Cancelar</button>
           <button class="btn btn-p" onclick="saveGestor()">💾 Guardar gestor</button>
         </div>
+      </div>
+    </div>
+    <div id="v-prendas" style="display:none">
+      <div class="ph">
+        <div><div class="ph-t">📌 Prendas en curso</div><div class="ph-s" id="prendas-count">—</div></div>
+        <div class="searchbox" style="min-width:220px">
+          <span style="color:var(--muted)">🔍</span>
+          <input id="prendas-srch" placeholder="Buscar cliente, banco, gestor..." oninput="renderPrendas()">
+        </div>
+      </div>
+      <div class="prendas-body">
+        <div class="prendas-scroll-x" id="prendas-scroll">
+          <table class="prendas-table">
+            <thead>
+              <tr>
+                <th>Acciones</th><th>#</th><th>Fecha actual</th><th>Fecha solicitud</th><th>Año</th><th>Gestor asignado</th><th>Cliente</th><th>Banco</th><th>Concesionaria</th><th>Localidad</th><th>Provincia</th><th>Marca</th><th>Descripción vehículo</th><th>Tipo CTA</th><th>Doc 01/08</th><th>Título</th><th>Ver. Pol.</th><th>Dominio</th><th>Tasa</th><th>Imp. Solicitado</th><th>Observaciones</th><th>En proceso</th><th>Presentada</th><th>Finalizada</th>
+              </tr>
+            </thead>
+            <tbody id="prendas-tbody"></tbody>
+          </table>
+        </div>
+        <div id="prendas-empty" class="empty-state" style="display:none">
+          <div class="ei">📌</div>
+          <h3>Sin registros en Prendas en curso</h3>
+          <p>Los registros aparecen acá cuando se les asigna un gestor en Gestoría</p>
+        </div>
+      </div>
+      <div class="prendas-scroll-mirror" id="prendas-mirror">
+        <div class="prendas-scroll-mirror-inner" id="prendas-mirror-inner"></div>
       </div>
     </div>
     <div id="v-datero" style="display:none">
@@ -9539,17 +9568,11 @@ function initContMirror() {
 // PRENDAS
 // ══════════════════════════════════════════════
 function openPrendas() {
-  document.getElementById('prendas-overlay').classList.add('open');
-  document.querySelectorAll('.tn').forEach(b => b.classList.remove('active'));
-  document.getElementById('tn-prendas').classList.add('active');
-  renderPrendas();
-  setTimeout(initPrendasMirror, 150);
+  showV('prendas');
 }
 
 function closePrendas() {
-  document.getElementById('prendas-overlay').classList.remove('open');
-  document.querySelectorAll('.tn').forEach(b => b.classList.remove('active'));
-  document.getElementById('tn-sol').classList.add('active');
+  showV('sol');
 }
 
 // Refresca TODAS las vistas de prendas de una (secciones + reporte).
@@ -9710,9 +9733,6 @@ function openPrendasPanel(id) {
   const r = RECORDS.find(x => x.id === id);
   if (!r) return;
 
-  // Cerrar el modal de Prendas primero
-  document.getElementById('prendas-overlay').classList.remove('open');
-
   const isAdmin = ME?.rol === 'admin';
   const val  = v => v || '—';
   const mon  = v => v ? '$'+Number(String(v).replace(/[$,]/g,'')).toLocaleString('es-AR') : '—';
@@ -9825,8 +9845,6 @@ function openPrendasPanel(id) {
 function closePrendasPanel() {
   document.getElementById('prendas-panel-overlay').classList.remove('open');
   document.getElementById('prendas-side-panel').classList.remove('open');
-  // Reabrir el modal de Prendas
-  document.getElementById('prendas-overlay').classList.add('open');
 }
 
 function closePrendasPanelSinReabrir() {
@@ -10015,7 +10033,7 @@ function showV(v) {
       setTimeout(renderReportes, 50);
     }
   }
-  ['sol','gestores','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','central-deudores'].forEach(id => {
+  ['sol','gestores','prendas','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','central-deudores'].forEach(id => {
     const el = document.getElementById('v-'+id);
     if (el) el.style.display = id===v ? '' : 'none';
 
@@ -10032,6 +10050,7 @@ function showV(v) {
   closeAllDD();
   if (v==='sol')      renderTable();
   if (v==='gestores') { const _lw=document.getElementById('gestores-list-wrap'), _fw=document.getElementById('gestor-form-wrap'); if(_lw)_lw.style.display=''; if(_fw)_fw.style.display='none'; loadGestores(); }
+  if (v==='prendas')  { renderPrendas(); setTimeout(initPrendasMirror, 150); }
   if (v==='nueva') {
     if (!window._isDuplicating && !window._isEditing) {
       editId = null;
@@ -13120,8 +13139,9 @@ setInterval(() => {
   if (document.getElementById('cont-overlay')?.classList.contains('open')) {
     if (typeof recargarLiquidaciones === 'function') recargarLiquidaciones();
   }
-  if (document.getElementById('prendas-overlay')?.classList.contains('open')) {
-    if (typeof loadPrendas === 'function') loadPrendas();
+  const _vp = document.getElementById('v-prendas');
+  if (_vp && _vp.style.display !== 'none') {
+    if (typeof renderPrendas === 'function') renderPrendas();
   }
 }, _refreshInterval);
 
@@ -15260,67 +15280,6 @@ function renderReportes() {
 </div>
 
 <!-- MODAL PRENDAS -->
-<div class="prendas-overlay" id="prendas-overlay" onclick="if(event.target===this)closePrendas()">
-  <div class="prendas-modal" onclick="event.stopPropagation()">
-    <div class="prendas-head">
-      <div>
-        <div style="font-size:17px;font-weight:800;color:var(--ink)">📌 Prendas en curso</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="prendas-count">—</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <div class="searchbox" style="min-width:220px">
-          <span style="color:var(--muted)">🔍</span>
-          <input id="prendas-srch" placeholder="Buscar cliente, banco, gestor..." oninput="renderPrendas()">
-        </div>
-        <button class="xbtn" onclick="closePrendas()" style="width:34px;height:34px;font-size:18px">×</button>
-      </div>
-    </div>
-    <div class="prendas-body">
-      <div class="prendas-scroll-x" id="prendas-scroll">
-        <table class="prendas-table">
-          <thead>
-            <tr>
-              <th>Acciones</th>
-              <th>#</th>
-              <th>Fecha actual</th>
-              <th>Fecha solicitud</th>
-              <th>Año</th>
-              <th>Gestor asignado</th>
-              <th>Cliente</th>
-              <th>Banco</th>
-              <th>Concesionaria</th>
-              <th>Localidad</th>
-              <th>Provincia</th>
-              <th>Marca</th>
-              <th>Descripción vehículo</th>
-              <th>Tipo CTA</th>
-              <th>Doc 01/08</th>
-              <th>Título</th>
-              <th>Ver. Pol.</th>
-              <th>Dominio</th>
-              <th>Tasa</th>
-              <th>Imp. Solicitado</th>
-              <th>Observaciones</th>
-              <th>En proceso</th>
-              <th>Presentada</th>
-              <th>Finalizada</th>
-            </tr>
-          </thead>
-          <tbody id="prendas-tbody"></tbody>
-        </table>
-      </div>
-      <div id="prendas-empty" class="empty-state" style="display:none">
-        <div class="ei">📌</div>
-        <h3>Sin registros en Prendas en curso</h3>
-        <p>Los registros aparecen acá cuando se les asigna un gestor en Gestoría</p>
-      </div>
-    </div>
-    <div class="prendas-scroll-mirror" id="prendas-mirror">
-      <div class="prendas-scroll-mirror-inner" id="prendas-mirror-inner"></div>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL EDITAR PRENDA -->
 <div class="prendas-edit-overlay" id="prendas-edit-overlay" onclick="if(event.target===this)closePrendaEdit()">
   <div class="prendas-edit-modal" onclick="event.stopPropagation()">
