@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.5.9</title>
+<title>Grupo Olyar — Solicitudes v3.6.0</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.5.9';
+    var APP_VER='v3.6.0';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2073,6 +2073,23 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       </div>
       <div class="prendas-scroll-mirror" id="prendas-mirror">
         <div class="prendas-scroll-mirror-inner" id="prendas-mirror-inner"></div>
+      </div>
+    </div>
+    <div id="v-prenda-edit" style="display:none">
+      <div class="ph">
+        <div><div class="ph-t">✏️ Editar prenda</div><div class="ph-s" id="prenda-cliente">—</div></div>
+        <button class="btn btn-s" style="font-size:12px;padding:6px 12px" onclick="closePrendaEdit()">← Volver</button>
+      </div>
+      <input type="hidden" id="prenda-id">
+      <div class="fg" style="grid-template-columns:1fr 1fr;gap:14px;max-width:720px">
+        <div class="fc span2"><label>En proceso</label><div class="chk-grid" style="grid-template-columns:1fr"><label class="chk-row"><input type="checkbox" id="prenda-en-proceso" onchange="onPrendaEnProcesoChange()"> Sí, está en proceso</label></div></div>
+        <div class="fc span2"><label>Presentada</label><div class="chk-grid" style="grid-template-columns:1fr"><label class="chk-row"><input type="checkbox" id="prenda-presentada" onchange="onPrendaPresentadaChange()"> Sí, fue presentada</label></div></div>
+        <div class="fc span2"><label>Finalizada (fecha)</label><input type="date" id="prenda-finalizada"></div>
+        <div class="fc span2"><label>Entregada</label><div class="chk-grid" style="grid-template-columns:1fr"><label class="chk-row"><input type="checkbox" id="prenda-entregada"> Sí, fue entregada al cliente</label></div></div>
+      </div>
+      <div class="mfoot" style="max-width:720px">
+        <button class="btn btn-s" onclick="closePrendaEdit()">Cancelar</button>
+        <button class="btn btn-p" onclick="savePrenda()">💾 Guardar</button>
       </div>
     </div>
     <div id="v-datero" style="display:none">
@@ -9676,7 +9693,10 @@ function editPrenda(id) {
   document.getElementById('prenda-finalizada').value   = r.finalizada || '';
   document.getElementById('prenda-entregada').checked  = r.entregada || false;
   document.getElementById('prenda-cliente').textContent = r.nombrecliente || id;
-  document.getElementById('prendas-edit-overlay').classList.add('open');
+  document.getElementById('prendas-panel-overlay')?.classList.remove('open');
+  document.getElementById('prendas-side-panel')?.classList.remove('open');
+  window._prendaReturn = (document.getElementById('v-prendas') && document.getElementById('v-prendas').style.display !== 'none') ? 'prendas' : 'sol';
+  showV('prenda-edit');
 }
 
 async function savePrenda() {
@@ -9701,7 +9721,7 @@ async function savePrenda() {
 }
 
 function closePrendaEdit() {
-  document.getElementById('prendas-edit-overlay').classList.remove('open');
+  showV(window._prendaReturn || 'prendas');
 }
 
 async function delPrenda(id) {
@@ -10033,7 +10053,7 @@ function showV(v) {
       setTimeout(renderReportes, 50);
     }
   }
-  ['sol','gestores','prendas','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','central-deudores'].forEach(id => {
+  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','central-deudores'].forEach(id => {
     const el = document.getElementById('v-'+id);
     if (el) el.style.display = id===v ? '' : 'none';
 
@@ -15281,50 +15301,6 @@ function renderReportes() {
 
 <!-- MODAL PRENDAS -->
 <!-- MODAL EDITAR PRENDA -->
-<div class="prendas-edit-overlay" id="prendas-edit-overlay" onclick="if(event.target===this)closePrendaEdit()">
-  <div class="prendas-edit-modal" onclick="event.stopPropagation()">
-    <div class="mh" style="padding:20px 24px;border-bottom:1.5px solid var(--line)">
-      <div>
-        <div class="mt">✏️ Editar prenda</div>
-        <div style="font-size:11.5px;color:var(--muted);margin-top:3px" id="prenda-cliente">—</div>
-      </div>
-      <button class="xbtn" onclick="closePrendaEdit()" style="width:32px;height:32px;font-size:18px">×</button>
-    </div>
-    <div style="padding:22px 24px">
-      <input type="hidden" id="prenda-id">
-      <div class="fg" style="grid-template-columns:1fr 1fr;gap:14px">
-        <div class="fc span2">
-          <label>En proceso</label>
-          <div class="chk-grid" style="grid-template-columns:1fr">
-            <label class="chk-row"><input type="checkbox" id="prenda-en-proceso" onchange="onPrendaEnProcesoChange()"> Sí, está en proceso</label>
-          </div>
-        </div>
-        <div class="fc span2">
-          <label>Presentada</label>
-          <div class="chk-grid" style="grid-template-columns:1fr">
-            <label class="chk-row"><input type="checkbox" id="prenda-presentada" onchange="onPrendaPresentadaChange()"> Sí, fue presentada</label>
-          </div>
-        </div>
-        <div class="fc span2">
-          <label>Finalizada (fecha)</label>
-          <input type="date" id="prenda-finalizada">
-        </div>
-        <div class="fc span2">
-          <label>Entregada</label>
-          <div class="chk-grid" style="grid-template-columns:1fr">
-            <label class="chk-row"><input type="checkbox" id="prenda-entregada"> Sí, fue entregada al cliente</label>
-          </div>
-        </div>
-      </div>
-      <div class="mfoot">
-        <button class="btn btn-s" onclick="closePrendaEdit()">Cancelar</button>
-        <button class="btn btn-p" onclick="savePrenda()">💾 Guardar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
 <!-- MODAL NUEVO CRÉDITO -->
 <div class="overlay" id="cred-nuevo-overlay" onclick="if(event.target===this)closeCreditoNuevo()" style="z-index:600">
   <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto" onclick="event.stopPropagation()">
