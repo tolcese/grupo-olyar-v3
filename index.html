@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.6.3</title>
+<title>Grupo Olyar — Solicitudes v3.6.4</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.6.3';
+    var APP_VER='v3.6.4';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2089,6 +2089,8 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         .pe-f.pe-f-full{grid-column:1 / -1}
         .pe-f label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
         .pe-ro{font-size:14px;font-weight:600;color:var(--ink);padding:9px 12px;background:rgba(15,23,42,.03);border:1.5px solid var(--line);border-radius:9px;min-height:20px}
+        .pe-in{font-size:14px;font-weight:500;color:var(--ink);padding:9px 12px;background:var(--surface);border:1.5px solid var(--line);border-radius:9px;width:100%;font-family:inherit;box-sizing:border-box}
+        .pe-in:focus{outline:none;border-color:var(--blue)}
       </style>
       <div class="ph">
         <div class="ph-t" id="prenda-cliente" style="font-size:23px;font-weight:800">—</div>
@@ -2103,6 +2105,21 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <div class="pe-fields">
               <div class="pe-f"><label>Fecha</label><div class="pe-ro" id="pe-cli-fecha">—</div></div>
               <div class="pe-f"><label>Nombre y Apellido</label><div class="pe-ro" id="pe-cli-nombre">—</div></div>
+              <div class="pe-f"><label>DNI</label><div class="pe-ro" id="pe-cli-dni">—</div></div>
+              <div class="pe-f"><label>Ejemplar DNI</label><input class="pe-in" type="text" id="pe-cli-ejemplardni"></div>
+              <div class="pe-f"><label>Fecha de Nacimiento</label><input class="pe-in" type="date" id="pe-cli-fnac"></div>
+              <div class="pe-f"><label>Lugar de Nacimiento</label><input class="pe-in" type="text" id="pe-cli-lnac"></div>
+              <div class="pe-f"><label>Nacionalidad</label><input class="pe-in" type="text" id="pe-cli-nacionalidad"></div>
+              <div class="pe-f"><label>Estado Civil</label><select class="pe-in" id="pe-cli-estadocivil"><option value="">—</option><option>Soltero/a</option><option>Casado/a</option></select></div>
+              <div class="pe-f"><label>Núpcias</label><input class="pe-in" type="text" id="pe-cli-nupcias"></div>
+              <div class="pe-f"><label>Sexo</label><select class="pe-in" id="pe-cli-sexo"><option value="">—</option><option>Masculino</option><option>Femenino</option><option>No Binario</option></select></div>
+              <div class="pe-f pe-f-full"><label>Dirección</label><input class="pe-in" type="text" id="pe-cli-direccion"></div>
+              <div class="pe-f"><label>Código Postal</label><input class="pe-in" type="text" inputmode="numeric" id="pe-cli-cp"></div>
+              <div class="pe-f"><label>Teléfono</label><input class="pe-in" type="text" inputmode="numeric" id="pe-cli-telefono"></div>
+              <div class="pe-f pe-f-full"><label>Mail</label><input class="pe-in" type="text" inputmode="email" id="pe-cli-mail"></div>
+              <div class="pe-f"><label>Concesionario</label><div class="pe-ro" id="pe-cli-conces">—</div></div>
+              <div class="pe-f"><label>Provincia</label><div class="pe-ro" id="pe-cli-prov">—</div></div>
+              <div class="pe-f"><label>Localidad</label><div class="pe-ro" id="pe-cli-loc">—</div></div>
             </div>
           </div>
         </div>
@@ -9755,6 +9772,21 @@ function editPrenda(id) {
   resetPrendaAcc();
   document.getElementById('pe-cli-fecha').textContent  = r.fecha ? r.fecha.split('-').reverse().join('/') : '—';
   document.getElementById('pe-cli-nombre').textContent = r.nombrecliente || '—';
+  document.getElementById('pe-cli-dni').textContent    = r.dni || '—';
+  document.getElementById('pe-cli-conces').textContent = r.concesionaria || '—';
+  document.getElementById('pe-cli-prov').textContent   = r.provincia || '—';
+  document.getElementById('pe-cli-loc').textContent    = r.localidad || '—';
+  document.getElementById('pe-cli-ejemplardni').value  = r.ejemplarDni || '';
+  document.getElementById('pe-cli-fnac').value         = r.fechaNacimiento || '';
+  document.getElementById('pe-cli-lnac').value         = r.lugarNacimiento || '';
+  document.getElementById('pe-cli-nacionalidad').value = r.nacionalidad || '';
+  document.getElementById('pe-cli-estadocivil').value  = r.estadoCivil || '';
+  document.getElementById('pe-cli-nupcias').value      = r.nupcias || '';
+  document.getElementById('pe-cli-sexo').value         = r.sexo || '';
+  document.getElementById('pe-cli-direccion').value    = r.direccion || '';
+  document.getElementById('pe-cli-cp').value           = r.codigoPostal || '';
+  document.getElementById('pe-cli-telefono').value     = r.telefono || '';
+  document.getElementById('pe-cli-mail').value         = r.email || '';
   document.getElementById('prendas-panel-overlay')?.classList.remove('open');
   document.getElementById('prendas-side-panel')?.classList.remove('open');
   window._prendaReturn = (document.getElementById('v-prendas') && document.getElementById('v-prendas').style.display !== 'none') ? 'prendas' : 'sol';
@@ -9768,12 +9800,30 @@ async function savePrenda() {
   const presentada = enProceso && document.getElementById('prenda-presentada').checked;
   const finalizada = document.getElementById('prenda-finalizada').value;
   const entregada  = document.getElementById('prenda-entregada').checked;
+  const cliEjemplarDni = document.getElementById('pe-cli-ejemplardni').value.trim();
+  const cliFnac        = document.getElementById('pe-cli-fnac').value;
+  const cliLnac        = document.getElementById('pe-cli-lnac').value.trim();
+  const cliNacion      = document.getElementById('pe-cli-nacionalidad').value.trim();
+  const cliEstadoCivil = document.getElementById('pe-cli-estadocivil').value;
+  const cliNupcias     = document.getElementById('pe-cli-nupcias').value.trim();
+  const cliSexo        = document.getElementById('pe-cli-sexo').value;
+  const cliDireccion   = document.getElementById('pe-cli-direccion').value.trim();
+  const cliCp          = document.getElementById('pe-cli-cp').value.trim();
+  const cliTelefono    = document.getElementById('pe-cli-telefono').value.trim();
+  const cliMail        = document.getElementById('pe-cli-mail').value.trim();
   try {
     const r = RECORDS.find(x => x.id === id);
     const viejaPrenda = r ? { enProceso: r.enProceso, presentada: r.presentada, finalizada: r.finalizada, entregada: r.entregada } : {};
-    const { error } = await SB.from('solicitudes').update({ en_proceso: enProceso, presentada, finalizada: finalizada || null, entregada }).eq('id', id);
+    const { error } = await SB.from('solicitudes').update({ en_proceso: enProceso, presentada, finalizada: finalizada || null, entregada,
+      ejemplar_dni: cliEjemplarDni || null, fecha_nacimiento: cliFnac || null, lugar_nacimiento: cliLnac || null,
+      nacionalidad: cliNacion || null, estado_civil: cliEstadoCivil || null, nupcias: cliNupcias || null,
+      sexo: cliSexo || null, direccion: cliDireccion || null, codigo_postal: cliCp || null,
+      telefono: cliTelefono || null, email: cliMail || null }).eq('id', id);
     if (error) throw error;
-    if (r) { r.enProceso = enProceso; r.presentada = presentada; r.finalizada = finalizada; r.entregada = entregada; }
+    if (r) { r.enProceso = enProceso; r.presentada = presentada; r.finalizada = finalizada; r.entregada = entregada;
+      r.ejemplarDni = cliEjemplarDni; r.fechaNacimiento = cliFnac; r.lugarNacimiento = cliLnac;
+      r.nacionalidad = cliNacion; r.estadoCivil = cliEstadoCivil; r.nupcias = cliNupcias; r.sexo = cliSexo;
+      r.direccion = cliDireccion; r.codigoPostal = cliCp; r.telefono = cliTelefono; r.email = cliMail; }
     const cambiosPrenda = diffObjetos(viejaPrenda, { enProceso, presentada, finalizada, entregada }, ['enProceso','presentada','finalizada','entregada']);
     registrarHistorial('prenda', id, cambiosPrenda);
     toast('Prenda actualizada ✓', 'ok');
@@ -10199,6 +10249,9 @@ async function loadRecords() {
       agencia: r.agencia, vehiculo: r.vehiculo, estado: r.estado,
       doc01: r.doc01, titulo: r.titulo, verif: r.verif, infdom: r.infdom,
       relevamiento: !!r.relevamiento,
+      ejemplarDni: r.ejemplar_dni, fechaNacimiento: r.fecha_nacimiento, lugarNacimiento: r.lugar_nacimiento,
+      nacionalidad: r.nacionalidad, estadoCivil: r.estado_civil, nupcias: r.nupcias, sexo: r.sexo,
+      direccion: r.direccion, codigoPostal: r.codigo_postal, email: r.email, telefono: r.telefono,
       bancos: Array.isArray(r.bancos) ? r.bancos : [],
       tasa: r.tasa, obs: r.obs, comision: r.comision, usuario: r.usuario,
       fechaReg: r.fecha_reg, gestorAsignado: r.gestor_asignado, gestorId: r.gestor_id,
