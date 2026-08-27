@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.6.0</title>
+<title>Grupo Olyar — Solicitudes v3.6.1</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.6.0';
+    var APP_VER='v3.6.1';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2076,12 +2076,47 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       </div>
     </div>
     <div id="v-prenda-edit" style="display:none">
+      <style>
+        .pe-acc{border:1.5px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+        .pe-acc-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;background:transparent;border:none;cursor:pointer;font-size:13px;font-weight:800;letter-spacing:.04em;color:var(--ink);text-transform:uppercase;font-family:inherit}
+        .pe-acc-btn:hover{background:rgba(15,23,42,.03)}
+        .pe-acc-btn.pe-acc-open{border-bottom:1.5px solid var(--line)}
+        .pe-acc-chevron{transition:transform .2s ease;color:var(--muted);font-size:13px}
+        .pe-acc-body{padding:16px}
+        .pe-acc-empty{font-size:13px;color:var(--muted);font-style:italic}
+      </style>
       <div class="ph">
         <div><div class="ph-t">✏️ Editar prenda</div><div class="ph-s" id="prenda-cliente">—</div></div>
         <button class="btn btn-s" style="font-size:12px;padding:6px 12px" onclick="closePrendaEdit()">← Volver</button>
       </div>
       <input type="hidden" id="prenda-id">
-      <div class="fg" style="grid-template-columns:1fr 1fr;gap:14px;max-width:720px">
+
+      <div id="prenda-cliente-title" style="font-size:23px;font-weight:800;color:var(--ink);margin:2px 0 20px">—</div>
+
+      <div style="max-width:720px;display:flex;flex-direction:column;gap:10px">
+        <div class="pe-acc">
+          <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('cliente')"><span>Cliente</span><span class="pe-acc-chevron" id="pe-chev-cliente">▾</span></button>
+          <div class="pe-acc-body" id="pe-body-cliente" style="display:none"><div class="pe-acc-empty">— Campos a definir —</div></div>
+        </div>
+        <div class="pe-acc">
+          <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('vehiculo')"><span>Vehículo</span><span class="pe-acc-chevron" id="pe-chev-vehiculo">▾</span></button>
+          <div class="pe-acc-body" id="pe-body-vehiculo" style="display:none"><div class="pe-acc-empty">— Campos a definir —</div></div>
+        </div>
+        <div class="pe-acc">
+          <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('credito')"><span>Crédito</span><span class="pe-acc-chevron" id="pe-chev-credito">▾</span></button>
+          <div class="pe-acc-body" id="pe-body-credito" style="display:none"><div class="pe-acc-empty">— Campos a definir —</div></div>
+        </div>
+        <div class="pe-acc">
+          <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('documentacion')"><span>Documentación</span><span class="pe-acc-chevron" id="pe-chev-documentacion">▾</span></button>
+          <div class="pe-acc-body" id="pe-body-documentacion" style="display:none"><div class="pe-acc-empty">— Campos a definir —</div></div>
+        </div>
+        <div class="pe-acc">
+          <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('estado')"><span>Estado</span><span class="pe-acc-chevron" id="pe-chev-estado">▾</span></button>
+          <div class="pe-acc-body" id="pe-body-estado" style="display:none"><div class="pe-acc-empty">— A definir qué despliega —</div></div>
+        </div>
+      </div>
+
+      <div class="fg" style="grid-template-columns:1fr 1fr;gap:14px;max-width:720px;margin-top:24px">
         <div class="fc span2"><label>En proceso</label><div class="chk-grid" style="grid-template-columns:1fr"><label class="chk-row"><input type="checkbox" id="prenda-en-proceso" onchange="onPrendaEnProcesoChange()"> Sí, está en proceso</label></div></div>
         <div class="fc span2"><label>Presentada</label><div class="chk-grid" style="grid-template-columns:1fr"><label class="chk-row"><input type="checkbox" id="prenda-presentada" onchange="onPrendaPresentadaChange()"> Sí, fue presentada</label></div></div>
         <div class="fc span2"><label>Finalizada (fecha)</label><input type="date" id="prenda-finalizada"></div>
@@ -9683,6 +9718,22 @@ function renderPrendas() {
   setTimeout(initPrendasMirror, 50);
 }
 
+function togglePrendaAcc(sec){
+  var body=document.getElementById('pe-body-'+sec);
+  var chev=document.getElementById('pe-chev-'+sec);
+  if(!body) return;
+  var open=body.style.display!=='none';
+  body.style.display=open?'none':'block';
+  if(chev){ chev.style.transform=open?'':'rotate(180deg)'; var b=chev.closest('.pe-acc-btn'); if(b)b.classList.toggle('pe-acc-open',!open); }
+}
+function resetPrendaAcc(){
+  ['cliente','vehiculo','credito','documentacion','estado'].forEach(function(sec){
+    var body=document.getElementById('pe-body-'+sec);
+    var chev=document.getElementById('pe-chev-'+sec);
+    if(body) body.style.display='none';
+    if(chev){ chev.style.transform=''; var b=chev.closest('.pe-acc-btn'); if(b)b.classList.remove('pe-acc-open'); }
+  });
+}
 function editPrenda(id) {
   if (!requireEdit()) return;
   const r = RECORDS.find(x => x.id === id);
@@ -9693,6 +9744,8 @@ function editPrenda(id) {
   document.getElementById('prenda-finalizada').value   = r.finalizada || '';
   document.getElementById('prenda-entregada').checked  = r.entregada || false;
   document.getElementById('prenda-cliente').textContent = r.nombrecliente || id;
+  document.getElementById('prenda-cliente-title').textContent = r.nombrecliente || id;
+  resetPrendaAcc();
   document.getElementById('prendas-panel-overlay')?.classList.remove('open');
   document.getElementById('prendas-side-panel')?.classList.remove('open');
   window._prendaReturn = (document.getElementById('v-prendas') && document.getElementById('v-prendas').style.display !== 'none') ? 'prendas' : 'sol';
