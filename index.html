@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.6.6</title>
+<title>Grupo Olyar — Solicitudes v3.6.7</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.6.6';
+    var APP_VER='v3.6.7';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2100,7 +2100,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       </div>
       <input type="hidden" id="prenda-id">
 
-      <div style="max-width:720px;display:flex;flex-direction:column;gap:10px">
+      <div style="max-width:1200px;display:flex;flex-direction:column;gap:10px">
         <div class="pe-acc">
           <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('cliente')"><span>Cliente</span><span class="pe-acc-chevron" id="pe-chev-cliente">▾</span></button>
           <div class="pe-acc-body" id="pe-body-cliente" style="display:none">
