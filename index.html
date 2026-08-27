@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.6.4</title>
+<title>Grupo Olyar — Solicitudes v3.6.5</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.6.4';
+    var APP_VER='v3.6.5';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2084,7 +2084,8 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         .pe-acc-chevron{transition:transform .2s ease;color:var(--muted);font-size:13px}
         .pe-acc-body{padding:16px}
         .pe-acc-empty{font-size:13px;color:var(--muted);font-style:italic}
-        .pe-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+        .pe-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+        @media (max-width:640px){.pe-fields{grid-template-columns:1fr}}
         .pe-f{display:flex;flex-direction:column;gap:5px}
         .pe-f.pe-f-full{grid-column:1 / -1}
         .pe-f label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
@@ -2113,10 +2114,10 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
               <div class="pe-f"><label>Estado Civil</label><select class="pe-in" id="pe-cli-estadocivil"><option value="">—</option><option>Soltero/a</option><option>Casado/a</option></select></div>
               <div class="pe-f"><label>Núpcias</label><input class="pe-in" type="text" id="pe-cli-nupcias"></div>
               <div class="pe-f"><label>Sexo</label><select class="pe-in" id="pe-cli-sexo"><option value="">—</option><option>Masculino</option><option>Femenino</option><option>No Binario</option></select></div>
-              <div class="pe-f pe-f-full"><label>Dirección</label><input class="pe-in" type="text" id="pe-cli-direccion"></div>
+              <div class="pe-f"><label>Dirección</label><input class="pe-in" type="text" id="pe-cli-direccion"></div>
               <div class="pe-f"><label>Código Postal</label><input class="pe-in" type="text" inputmode="numeric" id="pe-cli-cp"></div>
               <div class="pe-f"><label>Teléfono</label><input class="pe-in" type="text" inputmode="numeric" id="pe-cli-telefono"></div>
-              <div class="pe-f pe-f-full"><label>Mail</label><input class="pe-in" type="text" inputmode="email" id="pe-cli-mail"></div>
+              <div class="pe-f"><label>Mail</label><input class="pe-in" type="text" inputmode="email" id="pe-cli-mail"></div>
               <div class="pe-f"><label>Concesionario</label><div class="pe-ro" id="pe-cli-conces">—</div></div>
               <div class="pe-f"><label>Provincia</label><div class="pe-ro" id="pe-cli-prov">—</div></div>
               <div class="pe-f"><label>Localidad</label><div class="pe-ro" id="pe-cli-loc">—</div></div>
