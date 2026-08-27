@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.6.1</title>
+<title>Grupo Olyar — Solicitudes v3.6.2</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.6.1';
+    var APP_VER='v3.6.2';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2086,12 +2086,10 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         .pe-acc-empty{font-size:13px;color:var(--muted);font-style:italic}
       </style>
       <div class="ph">
-        <div><div class="ph-t">✏️ Editar prenda</div><div class="ph-s" id="prenda-cliente">—</div></div>
+        <div class="ph-t" id="prenda-cliente" style="font-size:23px;font-weight:800">—</div>
         <button class="btn btn-s" style="font-size:12px;padding:6px 12px" onclick="closePrendaEdit()">← Volver</button>
       </div>
       <input type="hidden" id="prenda-id">
-
-      <div id="prenda-cliente-title" style="font-size:23px;font-weight:800;color:var(--ink);margin:2px 0 20px">—</div>
 
       <div style="max-width:720px;display:flex;flex-direction:column;gap:10px">
         <div class="pe-acc">
@@ -9744,7 +9742,6 @@ function editPrenda(id) {
   document.getElementById('prenda-finalizada').value   = r.finalizada || '';
   document.getElementById('prenda-entregada').checked  = r.entregada || false;
   document.getElementById('prenda-cliente').textContent = r.nombrecliente || id;
-  document.getElementById('prenda-cliente-title').textContent = r.nombrecliente || id;
   resetPrendaAcc();
   document.getElementById('prendas-panel-overlay')?.classList.remove('open');
   document.getElementById('prendas-side-panel')?.classList.remove('open');
