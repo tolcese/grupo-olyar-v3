@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.7.8</title>
+<title>Grupo Olyar — Solicitudes v3.7.9</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.7.8';
+    var APP_VER='v3.7.9';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2084,6 +2084,10 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         .pe-acc-chevron{transition:transform .2s ease;color:var(--muted);font-size:13px}
         .pe-acc-body{padding:16px}
         .pe-acc-empty{font-size:13px;color:var(--muted);font-style:italic}
+        .pe-hdr-chks{display:flex;align-items:center;gap:16px;border:1.5px solid var(--line);border-radius:10px;padding:8px 14px;background:var(--surface)}
+        .pe-hdr-chk{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;white-space:nowrap}
+        .pe-hdr-chk input{width:17px;height:17px;cursor:pointer}
+        .pe-hdr-chk input:disabled{cursor:not-allowed}
         .pe-fields{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
         @media (max-width:900px){.pe-fields{grid-template-columns:repeat(3,1fr)}}
         @media (max-width:640px){.pe-fields{grid-template-columns:repeat(2,1fr)}}
@@ -2110,7 +2114,13 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       </style>
       <div class="ph">
         <div class="ph-t" id="prenda-cliente" style="font-size:23px;font-weight:800">—</div>
-        <button class="btn btn-s" style="font-size:12px;padding:6px 12px" onclick="closePrendaEdit()">← Volver</button>
+        <div style="display:flex;align-items:center;gap:18px">
+          <div class="pe-hdr-chks">
+            <label class="pe-hdr-chk"><input type="checkbox" id="prenda-preprenda"> Pre Prenda</label>
+            <label class="pe-hdr-chk"><input type="checkbox" id="prenda-inscripta"> Prenda Inscripta</label>
+          </div>
+          <button class="btn btn-s" style="font-size:12px;padding:6px 12px" onclick="closePrendaEdit()">← Volver</button>
+        </div>
       </div>
       <input type="hidden" id="prenda-id">
 
@@ -9881,6 +9891,10 @@ function editPrenda(id) {
   document.getElementById('prenda-finalizada').value   = r.finalizada || '';
   document.getElementById('prenda-entregada').checked  = r.entregada || false;
   document.getElementById('prenda-cliente').textContent = r.nombrecliente || id;
+  var _admEdit = (typeof ME!=='undefined' && ME && ME.rol==='admin');
+  var _pp=document.getElementById('prenda-preprenda'), _pi=document.getElementById('prenda-inscripta');
+  if(_pp){ _pp.checked=!!r.prePrenda; _pp.disabled=!_admEdit; }
+  if(_pi){ _pi.checked=!!r.prendaInscripta; _pi.disabled=!_admEdit; }
   resetPrendaAcc();
   document.getElementById('pe-cli-fecha').textContent  = r.fecha ? r.fecha.split('-').reverse().join('/') : '—';
   document.getElementById('pe-cli-nombre').textContent = r.nombrecliente || '—';
@@ -9957,6 +9971,9 @@ async function savePrenda() {
   const presentada = enProceso && document.getElementById('prenda-presentada').checked;
   const finalizada = document.getElementById('prenda-finalizada').value;
   const entregada  = document.getElementById('prenda-entregada').checked;
+  const preprenda = document.getElementById('prenda-preprenda').checked;
+  const inscripta = document.getElementById('prenda-inscripta').checked;
+  const _admSave = (typeof ME!=='undefined' && ME && ME.rol==='admin');
   const cliEjemplarDni = document.getElementById('pe-cli-ejemplardni').value.trim();
   const cliFnac        = document.getElementById('pe-cli-fnac').value;
   const cliLnac        = document.getElementById('pe-cli-lnac').value.trim();
@@ -10020,7 +10037,8 @@ async function savePrenda() {
       doc_titulo: docTitulo, doc_cedula: docCedula, doc_08: doc08, doc_verif: docVerif,
       doc_verif_fecha: docVerifFecha || null, doc_informe: docInforme, doc_informe_fecha: docInformeFecha || null,
       doc_dni: docDni,
-      et_registro: etRegistro || null, et_observaciones: etObs || null, et_pasos: etPasosJSON }).eq('id', id);
+      et_registro: etRegistro || null, et_observaciones: etObs || null, et_pasos: etPasosJSON,
+      ...(_admSave ? { pre_prenda: preprenda, prenda_inscripta: inscripta } : {}) }).eq('id', id);
     if (error) throw error;
     if (r) { r.enProceso = enProceso; r.presentada = presentada; r.finalizada = finalizada; r.entregada = entregada;
       r.ejemplarDni = cliEjemplarDni; r.fechaNacimiento = cliFnac; r.lugarNacimiento = cliLnac;
@@ -10032,7 +10050,8 @@ async function savePrenda() {
       r.creditoEstado = creEstado; r.creditoEstadoFechas = creTieneFechas ? creEstadoFechasJSON : '';
       r.docTitulo = docTitulo; r.docCedula = docCedula; r.doc08 = doc08; r.docVerif = docVerif; r.docVerifFecha = docVerifFecha;
       r.docInforme = docInforme; r.docInformeFecha = docInformeFecha; r.docDni = docDni;
-      r.etRegistro = etRegistro; r.etObservaciones = etObs; r.etPasos = etPasosJSON; }
+      r.etRegistro = etRegistro; r.etObservaciones = etObs; r.etPasos = etPasosJSON;
+      if(_admSave){ r.prePrenda = preprenda; r.prendaInscripta = inscripta; } }
     const cambiosPrenda = diffObjetos(viejaPrenda, { enProceso, presentada, finalizada, entregada }, ['enProceso','presentada','finalizada','entregada']);
     registrarHistorial('prenda', id, cambiosPrenda);
     toast('Prenda actualizada ✓', 'ok');
@@ -10457,6 +10476,7 @@ async function loadRecords() {
       agencia: r.agencia, vehiculo: r.vehiculo, estado: r.estado,
       doc01: r.doc01, titulo: r.titulo, verif: r.verif, infdom: r.infdom,
       relevamiento: !!r.relevamiento,
+      prePrenda: !!r.pre_prenda, prendaInscripta: !!r.prenda_inscripta,
       ejemplarDni: r.ejemplar_dni, fechaNacimiento: r.fecha_nacimiento, lugarNacimiento: r.lugar_nacimiento,
       nacionalidad: r.nacionalidad, estadoCivil: r.estado_civil, nupcias: r.nupcias, sexo: r.sexo,
       direccion: r.direccion, codigoPostal: r.codigo_postal, email: r.email, telefono: r.telefono,
