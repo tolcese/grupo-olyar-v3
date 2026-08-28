@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.1</title>
+<title>Grupo Olyar — Solicitudes v3.8.2</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.1';
+    var APP_VER='v3.8.2';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -4767,7 +4767,7 @@ function renderPrendasFinalizadas() {
   const q = (document.getElementById('pf-srch')?.value || '').toLowerCase();
   const isAdmin = ME?.rol === 'admin';
 
-  let data = RECORDS.filter(r => r.gestorAsignado && prendaPresentada(r) && !r.entregada && (!r.fechaEntregada || String(r.fechaEntregada).trim() === ''));
+  let data = RECORDS.filter(r => r.gestorAsignado && prendaEstadoNuevo(r) === 'no_entregada');
   if (q) data = data.filter(r =>
     [r.nombrecliente, r.banco, r.concesionaria, r.provincia, r.localidad, r.gestorAsignado].some(v => (v||'').toLowerCase().includes(q))
   );
@@ -5669,7 +5669,7 @@ function renderPrendasEntregadas() {
   const isAdmin = ME?.rol === 'admin';
 
   // Solo registros marcados como entregados (excluir rechazadas pendientes de reingreso)
-  let data = RECORDS.filter(r => r.gestorAsignado && r.entregada && !r.prendaRechazada);
+  let data = RECORDS.filter(r => r.gestorAsignado && prendaEstadoNuevo(r) === 'entregada' && !r.prendaRechazada);
   if (q) data = data.filter(r =>
     [r.nombrecliente, r.banco, r.concesionaria, r.provincia, r.localidad, r.gestorAsignado].some(v => (v||'').toLowerCase().includes(q))
   );
@@ -9774,7 +9774,7 @@ function onPrendaEnProcesoChange(){
 }
 function renderPrendas() {
   const q = (document.getElementById('prendas-srch')?.value || '').toLowerCase();
-  let data = RECORDS.filter(r => r.gestorAsignado && r.gestorAsignado.trim() !== '' && !prendaPresentada(r) && (r.estado||'').toUpperCase() === 'AVANZA');
+  let data = RECORDS.filter(r => r.gestorAsignado && r.gestorAsignado.trim() !== '' && (r.estado||'').toUpperCase() === 'AVANZA' && prendaEstadoNuevo(r) === 'en_curso');
   if (q) data = data.filter(r =>
     [r.nombrecliente, r.banco, r.concesionaria, r.provincia, r.localidad, r.marca, r.gestorAsignado].some(v => (v||'').toLowerCase().includes(q))
   );
