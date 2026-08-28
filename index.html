@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.7.7</title>
+<title>Grupo Olyar — Solicitudes v3.7.8</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.7.7';
+    var APP_VER='v3.7.8';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2100,8 +2100,8 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         .pe-doc-rowfecha label{display:flex;align-items:center;gap:10px;cursor:pointer}
         .pe-doc-date{max-width:190px}
         .pe-et-wrap{display:flex;flex-direction:column;gap:16px;max-width:900px}
-        .pe-et-steps{display:flex;flex-direction:column;gap:8px;max-width:560px}
-        .pe-et-row{display:flex;align-items:center;gap:12px;padding:8px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface)}
+        .pe-et-steps{display:flex;flex-direction:column;gap:8px}
+        .pe-et-row{display:flex;align-items:center;gap:12px;padding:8px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);max-width:560px}
         .pe-et-row.pe-et-locked{opacity:.45}
         .pe-et-label{flex:1;font-size:13px;font-weight:700;color:var(--ink)}
         .pe-et-date{max-width:170px}
@@ -2197,7 +2197,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
               <div class="pe-et-row"><span class="pe-et-label">Firmado</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-firmado" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-firmado" onchange="etRecompute()"></div>
               <div class="pe-et-row"><span class="pe-et-label">Escribanía</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-escribania" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-escribania" onchange="etRecompute()"></div>
               <div class="pe-et-row"><span class="pe-et-label">Presentado</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-presentado" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-presentado" onchange="etRecompute()"></div>
-              <div class="pe-f" style="margin:-2px 0 2px;padding-left:2px"><label>Observaciones — Presentado</label><textarea class="pe-in" id="pe-et-obs-presentado" rows="2" style="resize:vertical"></textarea></div>
+              <div class="pe-f" style="margin:-2px 0 2px;padding-left:2px"><label>Observaciones — Presentado</label><textarea class="pe-in" id="pe-et-obs-presentado" rows="4" style="resize:vertical"></textarea></div>
               <div class="pe-et-row"><span class="pe-et-label">Retirado</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-retirado" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-retirado" onchange="etRecompute()"></div>
               <div class="pe-et-row"><span class="pe-et-label">Subida</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-subida" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-subida" onchange="etRecompute()"></div>
               <div class="pe-et-row"><span class="pe-et-label">Pendiente física</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-pendiente_fisica" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-pendiente_fisica" onchange="etRecompute()"></div>
