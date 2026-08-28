@@ -1,4 +1,4 @@
-const CACHE_NAME = 'grupo-olyar-v3.7.9';
+const CACHE_NAME = 'grupo-olyar-v3.8.0';
 
 // Solo cacheamos iconos y manifest — el index.html siempre va a la red
 const STATIC_ASSETS = [
