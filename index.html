@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.6.9</title>
+<title>Grupo Olyar — Solicitudes v3.7.0</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.6.9';
+    var APP_VER='v3.7.0';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2144,7 +2144,20 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         </div>
         <div class="pe-acc">
           <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('credito')"><span>Crédito</span><span class="pe-acc-chevron" id="pe-chev-credito">▾</span></button>
-          <div class="pe-acc-body" id="pe-body-credito" style="display:none"><div class="pe-acc-empty">— Campos a definir —</div></div>
+          <div class="pe-acc-body" id="pe-body-credito" style="display:none">
+            <div class="pe-fields">
+              <div class="pe-f"><label>Banco</label><div class="pe-ro" id="pe-cre-banco">—</div></div>
+              <div class="pe-f"><label>Tipo de Tasa</label><div class="pe-ro" id="pe-cre-tipotasa">—</div></div>
+              <div class="pe-f"><label>Importe Solicitud</label><div class="pe-ro" id="pe-cre-importe">—</div></div>
+              <div class="pe-f" id="pe-f-agencia"><label>Monto para Agencia</label><div class="pe-ro" id="pe-cre-agencia">—</div></div>
+              <div class="pe-f" id="pe-f-comision"><label>Comisión</label><div class="pe-ro" id="pe-cre-comision">—</div></div>
+              <div class="pe-f"><label>Vencimiento de Cuota</label><input class="pe-in" type="date" id="pe-cre-venc"></div>
+              <div class="pe-f"><label>Valor de Cuota (aprox.)</label><input class="pe-in" type="text" inputmode="decimal" id="pe-cre-valorcuota" placeholder="$"></div>
+              <div class="pe-f"><label>Cantidad de Cuotas</label><input class="pe-in" type="text" inputmode="numeric" id="pe-cre-cantcuotas"></div>
+              <div class="pe-f"><label>Estado</label><select class="pe-in" id="pe-cre-estado"><option>No solicitado</option><option>Solicitado</option><option>Carga documentación</option><option>Pendiente seguro</option><option>En proceso de liquidación</option></select></div>
+              <div class="pe-f"><label>Fecha de Estado</label><input class="pe-in" type="date" id="pe-cre-estadofecha"></div>
+            </div>
+          </div>
         </div>
         <div class="pe-acc">
           <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('documentacion')"><span>Documentación</span><span class="pe-acc-chevron" id="pe-chev-documentacion">▾</span></button>
@@ -9812,6 +9825,21 @@ function editPrenda(id) {
   document.getElementById('pe-veh-marcamotor').value   = r.marcaMotor || '';
   document.getElementById('pe-veh-nummotor').value     = r.numeroMotor || '';
   document.getElementById('pe-veh-uso').value          = r.uso || '';
+  var _repr = bancoRepresentativo(getBancos(r)) || {};
+  var _monRO = function(v){ return v ? '$'+Number(String(v).replace(/[$,]/g,'')).toLocaleString('es-AR') : '—'; };
+  document.getElementById('pe-cre-banco').textContent    = _repr.banco || r.banco || '—';
+  document.getElementById('pe-cre-tipotasa').textContent = _repr.tipocta || '—';
+  document.getElementById('pe-cre-importe').textContent  = _monRO(_repr.importe);
+  document.getElementById('pe-cre-agencia').textContent  = _monRO(_repr.agencia);
+  document.getElementById('pe-cre-comision').textContent = _monRO(_repr.comision);
+  var _adm = (typeof ME !== 'undefined' && ME && ME.rol === 'admin');
+  document.getElementById('pe-f-agencia').style.display  = _adm ? '' : 'none';
+  document.getElementById('pe-f-comision').style.display = _adm ? '' : 'none';
+  document.getElementById('pe-cre-venc').value        = r.vencCuota || '';
+  document.getElementById('pe-cre-valorcuota').value  = r.valorCuota ? parseMoneda(r.valorCuota).toLocaleString('es-AR') : '';
+  document.getElementById('pe-cre-cantcuotas').value  = r.cantidadCuotas || '';
+  document.getElementById('pe-cre-estado').value      = r.creditoEstado || 'No solicitado';
+  document.getElementById('pe-cre-estadofecha').value = r.creditoEstadoFecha || '';
   document.getElementById('prendas-panel-overlay')?.classList.remove('open');
   document.getElementById('prendas-side-panel')?.classList.remove('open');
   window._prendaReturn = (document.getElementById('v-prendas') && document.getElementById('v-prendas').style.display !== 'none') ? 'prendas' : 'sol';
@@ -9843,6 +9871,11 @@ async function savePrenda() {
   const vehMarcaMotor  = document.getElementById('pe-veh-marcamotor').value.trim();
   const vehNumMotor    = document.getElementById('pe-veh-nummotor').value.trim();
   const vehUso         = document.getElementById('pe-veh-uso').value;
+  const creVenc        = document.getElementById('pe-cre-venc').value;
+  const creValorCuota  = parseMoneda(document.getElementById('pe-cre-valorcuota').value);
+  const creCantCuotas  = document.getElementById('pe-cre-cantcuotas').value.trim();
+  const creEstado      = document.getElementById('pe-cre-estado').value;
+  const creEstadoFecha = document.getElementById('pe-cre-estadofecha').value;
   try {
     const r = RECORDS.find(x => x.id === id);
     const viejaPrenda = r ? { enProceso: r.enProceso, presentada: r.presentada, finalizada: r.finalizada, entregada: r.entregada } : {};
@@ -9853,14 +9886,19 @@ async function savePrenda() {
       telefono: cliTelefono || null, email: cliMail || null,
       dominio: vehDominio || null, tipo_vehiculo: vehTipo || null, marca_chasis: vehMarcaChasis || null,
       numero_chasis: vehNumChasis || null, marca_motor: vehMarcaMotor || null, numero_motor: vehNumMotor || null,
-      uso: vehUso || null }).eq('id', id);
+      uso: vehUso || null,
+      venc_cuota: creVenc || null, valor_cuota: creValorCuota ? String(creValorCuota) : null,
+      cantidad_cuotas: creCantCuotas || null, credito_estado: creEstado || null,
+      credito_estado_fecha: creEstadoFecha || null }).eq('id', id);
     if (error) throw error;
     if (r) { r.enProceso = enProceso; r.presentada = presentada; r.finalizada = finalizada; r.entregada = entregada;
       r.ejemplarDni = cliEjemplarDni; r.fechaNacimiento = cliFnac; r.lugarNacimiento = cliLnac;
       r.nacionalidad = cliNacion; r.estadoCivil = cliEstadoCivil; r.nupcias = cliNupcias; r.sexo = cliSexo;
       r.direccion = cliDireccion; r.codigoPostal = cliCp; r.telefono = cliTelefono; r.email = cliMail;
       r.dominio = vehDominio; r.tipoVehiculo = vehTipo; r.marcaChasis = vehMarcaChasis;
-      r.numeroChasis = vehNumChasis; r.marcaMotor = vehMarcaMotor; r.numeroMotor = vehNumMotor; r.uso = vehUso; }
+      r.numeroChasis = vehNumChasis; r.marcaMotor = vehMarcaMotor; r.numeroMotor = vehNumMotor; r.uso = vehUso;
+      r.vencCuota = creVenc; r.valorCuota = creValorCuota ? String(creValorCuota) : ''; r.cantidadCuotas = creCantCuotas;
+      r.creditoEstado = creEstado; r.creditoEstadoFecha = creEstadoFecha; }
     const cambiosPrenda = diffObjetos(viejaPrenda, { enProceso, presentada, finalizada, entregada }, ['enProceso','presentada','finalizada','entregada']);
     registrarHistorial('prenda', id, cambiosPrenda);
     toast('Prenda actualizada ✓', 'ok');
@@ -10291,6 +10329,8 @@ async function loadRecords() {
       direccion: r.direccion, codigoPostal: r.codigo_postal, email: r.email, telefono: r.telefono,
       tipoVehiculo: r.tipo_vehiculo, marcaChasis: r.marca_chasis, numeroChasis: r.numero_chasis,
       marcaMotor: r.marca_motor, numeroMotor: r.numero_motor, uso: r.uso,
+      vencCuota: r.venc_cuota, valorCuota: r.valor_cuota, cantidadCuotas: r.cantidad_cuotas,
+      creditoEstado: r.credito_estado, creditoEstadoFecha: r.credito_estado_fecha,
       bancos: Array.isArray(r.bancos) ? r.bancos : [],
       tasa: r.tasa, obs: r.obs, comision: r.comision, usuario: r.usuario,
       fechaReg: r.fecha_reg, gestorAsignado: r.gestor_asignado, gestorId: r.gestor_id,
