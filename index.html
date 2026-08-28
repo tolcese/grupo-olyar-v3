@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.6.7</title>
+<title>Grupo Olyar — Solicitudes v3.6.8</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.6.7';
+    var APP_VER='v3.6.8';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -802,7 +802,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       <div class="card" style="padding:26px">
         <div class="fg">
           <div class="fc"><label>FECHA DE SOLICITUD *</label><input type="date" id="f-fecha"></div>
-          <div class="fc"><label>NOMBRE Y APELLIDO</label>
+          <div class="fc"><label>APELLIDO Y NOMBRE</label>
             <div class="combo"><input id="f-nombrecliente" placeholder="Apellido, Nombre">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('nombrecliente')" type="button">▾</button></div>
               <div class="cdd" id="dd-nombrecliente"></div></div></div>
@@ -2031,7 +2031,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <div class="mt" id="gestor-form-title">Nuevo gestor</div>
         </div>
         <div class="fg" style="grid-template-columns:repeat(2,1fr)">
-          <div class="fc span2"><label>Nombre y Apellido *</label><input id="g-nombre" placeholder="Ej: Juan Pérez"></div>
+          <div class="fc span2"><label>Apellido y Nombre *</label><input id="g-nombre" placeholder="Ej: Pérez Juan"></div>
           <div class="fc"><label>Teléfono</label><input id="g-telefono" placeholder="Ej: 351-1234567"></div>
           <div class="fc"><label>Email</label><input id="g-email" type="email" placeholder="gestor@email.com"></div>
           <div class="fc span2"><label>Dirección</label><input id="g-direccion" placeholder="Ej: Av. Colón 1234"></div>
@@ -2106,7 +2106,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <div class="pe-acc-body" id="pe-body-cliente" style="display:none">
             <div class="pe-fields">
               <div class="pe-f"><label>Fecha</label><div class="pe-ro" id="pe-cli-fecha">—</div></div>
-              <div class="pe-f"><label>Nombre y Apellido</label><div class="pe-ro" id="pe-cli-nombre">—</div></div>
+              <div class="pe-f"><label>Apellido y Nombre</label><div class="pe-ro" id="pe-cli-nombre">—</div></div>
               <div class="pe-f"><label>DNI</label><div class="pe-ro" id="pe-cli-dni">—</div></div>
               <div class="pe-f"><label>Ejemplar DNI</label><input class="pe-in" type="text" id="pe-cli-ejemplardni"></div>
               <div class="pe-f"><label>Fecha de Nacimiento</label><input class="pe-in" type="date" id="pe-cli-fnac"></div>
@@ -3467,7 +3467,7 @@ function buildTheadSol(){
   const thead=document.getElementById('thead-sol'); if(!thead) return;
   const isAdmin=ME?.rol==='admin';
   const sc=(c,l)=>`<th class="th-sort${SORT_COL===c?(SORT_DIR===1?' asc':' desc'):''}" onclick="sortBy('${c}')" id="th-${c}">${l} <span class="sort-icon">↕</span></th>`;
-  let h='<tr><th>#</th>'+sc('fecha','Fecha')+sc('nombrecliente','Nombre y Apellido')+sc('dni','DNI')+'<th style="text-align:center">Relevamiento</th>'+sc('concesionaria','Concesionaria')+sc('provincia','Provincia')+sc('marca','Marca')+sc('descripcion','Modelo');
+  let h='<tr><th>#</th>'+sc('fecha','Fecha')+sc('nombrecliente','Apellido y Nombre')+sc('dni','DNI')+'<th style="text-align:center">Relevamiento</th>'+sc('concesionaria','Concesionaria')+sc('provincia','Provincia')+sc('marca','Marca')+sc('descripcion','Modelo');
   bancosMatrizCols().forEach(bn=>{ h+=`<th style="text-align:center;min-width:66px">${colorBanco(bn)}</th>`; });
   if(isAdmin) h+='<th class="admin-only" title="Documento 01/08">Doc 01/08</th><th class="admin-only" title="Título Unidad">Título</th><th class="admin-only" title="Verificación Policial (12)">Ver. Pol.</th><th class="admin-only" title="Informe Dominio">Inf. Dom.</th>';
   h+='<th id="th-acc" style="position:sticky;right:0;background:var(--surface);z-index:2;box-shadow:-2px 0 6px rgba(0,0,0,.06)">Acciones</th></tr>';
@@ -6758,7 +6758,7 @@ function imprimirAcuse() {
       <div class="acuse-titulo-doc">ACUSE DE RECIBO</div>
       <div class="fecha">Fecha: ${fecha}</div>
       <div class="titulo">Prendas para contabilizar de<br>Gestoria Gustavo Olcese SRL</div>
-      <div class="datos"><b>Nombre y Apellido:</b> ${nombre}</div>
+      <div class="datos"><b>Apellido y Nombre:</b> ${nombre}</div>
       <div class="datos"><b>DNI:</b> ${dni}</div>
       <div class="subtitulo">DOCUMENTACIÓN ENTREGADA</div>
       <div class="item">☐ &nbsp;TITULO</div>
@@ -15248,7 +15248,7 @@ function renderReportes() {
             <tr>
               <th>Acciones</th>
               <th>#</th>
-              <th>Nombre y Apellido</th>
+              <th>Apellido y Nombre</th>
               <th>DNI</th>
               <th>Dirección</th>
               <th>Localidad</th>
@@ -15826,7 +15826,7 @@ function renderReportes() {
       <div id="acuse-preview">
         <div style="border:1.5px solid var(--line);border-radius:10px;padding:32px;font-family:Arial,sans-serif">
           <div style="text-align:center;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:24px;line-height:1.4">Prendas para contabilizar de<br>Gestoria Gustavo Olcese SRL</div>
-          <div style="margin-bottom:6px;font-size:13px"><b>Nombre y Apellido:</b> <span id="acuse-nombre-view"></span></div>
+          <div style="margin-bottom:6px;font-size:13px"><b>Apellido y Nombre:</b> <span id="acuse-nombre-view"></span></div>
           <div style="margin-bottom:24px;font-size:13px"><b>DNI:</b> <span id="acuse-dni-view"></span></div>
           <div style="font-size:13px;font-weight:700;text-decoration:underline;margin-bottom:12px">DOCUMENTACIÓN ENTREGADA</div>
           <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;margin-bottom:48px">
@@ -15847,7 +15847,7 @@ function renderReportes() {
       <!-- MODO EDICIÓN -->
       <div id="acuse-edit" style="display:none">
         <div class="fg" style="gap:12px">
-          <div class="fc span2"><label>Nombre y Apellido</label><input type="text" id="acuse-nombre-input" style="font-size:14px"></div>
+          <div class="fc span2"><label>Apellido y Nombre</label><input type="text" id="acuse-nombre-input" style="font-size:14px"></div>
           <div class="fc span2"><label>DNI</label><input type="text" id="acuse-dni-input" style="font-size:14px"></div>
           <div class="fc span2"><label>Documentación extra 1 (opcional)</label><input type="text" id="acuse-extra-1" placeholder="Ej: CERTIFICADO DE DOMINIO" style="font-size:13px"></div>
           <div class="fc span2"><label>Documentación extra 2 (opcional)</label><input type="text" id="acuse-extra-2" placeholder="Ej: INFORME DE DOMINIO" style="font-size:13px"></div>
