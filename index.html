@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.7.2</title>
+<title>Grupo Olyar — Solicitudes v3.7.3</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.7.2';
+    var APP_VER='v3.7.3';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2093,6 +2093,12 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         .pe-ro{font-size:14px;font-weight:600;color:var(--ink);padding:9px 12px;background:rgba(15,23,42,.03);border:1.5px solid var(--line);border-radius:9px;min-height:20px}
         .pe-in{font-size:14px;font-weight:500;color:var(--ink);padding:9px 12px;background:var(--surface);border:1.5px solid var(--line);border-radius:9px;width:100%;font-family:inherit;box-sizing:border-box}
         .pe-in:focus{outline:none;border-color:var(--blue)}
+        .pe-doc-box{display:flex;flex-direction:column;gap:12px;max-width:520px;border:1.5px solid var(--line);border-radius:12px;padding:16px;background:var(--surface)}
+        .pe-doc-row{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--ink)}
+        .pe-doc-row input[type=checkbox]{width:17px;height:17px;cursor:pointer;flex:none}
+        .pe-doc-rowfecha{justify-content:space-between}
+        .pe-doc-rowfecha label{display:flex;align-items:center;gap:10px;cursor:pointer}
+        .pe-doc-date{max-width:190px}
       </style>
       <div class="ph">
         <div class="ph-t" id="prenda-cliente" style="font-size:23px;font-weight:800">—</div>
@@ -2162,7 +2168,16 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         </div>
         <div class="pe-acc">
           <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('documentacion')"><span>Documentación</span><span class="pe-acc-chevron" id="pe-chev-documentacion">▾</span></button>
-          <div class="pe-acc-body" id="pe-body-documentacion" style="display:none"><div class="pe-acc-empty">— Campos a definir —</div></div>
+          <div class="pe-acc-body" id="pe-body-documentacion" style="display:none">
+            <div class="pe-doc-box">
+              <label class="pe-doc-row"><input type="checkbox" id="pe-doc-titulo"> Título</label>
+              <label class="pe-doc-row"><input type="checkbox" id="pe-doc-cedula"> Cédula</label>
+              <label class="pe-doc-row"><input type="checkbox" id="pe-doc-08"> 08</label>
+              <div class="pe-doc-row pe-doc-rowfecha"><label><input type="checkbox" id="pe-doc-verif"> Verificación</label><input class="pe-in pe-doc-date" type="date" id="pe-doc-verif-fecha"></div>
+              <div class="pe-doc-row pe-doc-rowfecha"><label><input type="checkbox" id="pe-doc-informe"> Informe</label><input class="pe-in pe-doc-date" type="date" id="pe-doc-informe-fecha"></div>
+              <label class="pe-doc-row"><input type="checkbox" id="pe-doc-dni"> DNI</label>
+            </div>
+          </div>
         </div>
         <div class="pe-acc">
           <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('estado')"><span>Estado</span><span class="pe-acc-chevron" id="pe-chev-estado">▾</span></button>
@@ -9868,6 +9883,14 @@ function editPrenda(id) {
   try { window._creEstadoFechas = r.creditoEstadoFechas ? JSON.parse(r.creditoEstadoFechas) : {}; } catch(e){ window._creEstadoFechas = {}; }
   document.getElementById('pe-cre-estado').value = r.creditoEstado || 'No solicitado';
   creEstadoOnEstadoChange();
+  document.getElementById('pe-doc-titulo').checked        = !!r.docTitulo;
+  document.getElementById('pe-doc-cedula').checked        = !!r.docCedula;
+  document.getElementById('pe-doc-08').checked            = !!r.doc08;
+  document.getElementById('pe-doc-verif').checked         = !!r.docVerif;
+  document.getElementById('pe-doc-verif-fecha').value     = r.docVerifFecha || '';
+  document.getElementById('pe-doc-informe').checked       = !!r.docInforme;
+  document.getElementById('pe-doc-informe-fecha').value   = r.docInformeFecha || '';
+  document.getElementById('pe-doc-dni').checked           = !!r.docDni;
   document.getElementById('prendas-panel-overlay')?.classList.remove('open');
   document.getElementById('prendas-side-panel')?.classList.remove('open');
   window._prendaReturn = (document.getElementById('v-prendas') && document.getElementById('v-prendas').style.display !== 'none') ? 'prendas' : 'sol';
@@ -9908,6 +9931,14 @@ async function savePrenda() {
   if(_cf) window._creEstadoFechas[creEstado] = _cf; else delete window._creEstadoFechas[creEstado];
   const creEstadoFechasJSON = JSON.stringify(window._creEstadoFechas);
   const creTieneFechas = Object.keys(window._creEstadoFechas).length > 0;
+  const docTitulo      = document.getElementById('pe-doc-titulo').checked;
+  const docCedula      = document.getElementById('pe-doc-cedula').checked;
+  const doc08          = document.getElementById('pe-doc-08').checked;
+  const docVerif       = document.getElementById('pe-doc-verif').checked;
+  const docVerifFecha  = document.getElementById('pe-doc-verif-fecha').value;
+  const docInforme     = document.getElementById('pe-doc-informe').checked;
+  const docInformeFecha= document.getElementById('pe-doc-informe-fecha').value;
+  const docDni         = document.getElementById('pe-doc-dni').checked;
   try {
     const r = RECORDS.find(x => x.id === id);
     const viejaPrenda = r ? { enProceso: r.enProceso, presentada: r.presentada, finalizada: r.finalizada, entregada: r.entregada } : {};
@@ -9921,7 +9952,10 @@ async function savePrenda() {
       uso: vehUso || null,
       venc_cuota: creVenc || null, valor_cuota: creValorCuota ? String(creValorCuota) : null,
       cantidad_cuotas: creCantCuotas || null, credito_estado: creEstado || null,
-      credito_estado_fechas: creTieneFechas ? creEstadoFechasJSON : null }).eq('id', id);
+      credito_estado_fechas: creTieneFechas ? creEstadoFechasJSON : null,
+      doc_titulo: docTitulo, doc_cedula: docCedula, doc_08: doc08, doc_verif: docVerif,
+      doc_verif_fecha: docVerifFecha || null, doc_informe: docInforme, doc_informe_fecha: docInformeFecha || null,
+      doc_dni: docDni }).eq('id', id);
     if (error) throw error;
     if (r) { r.enProceso = enProceso; r.presentada = presentada; r.finalizada = finalizada; r.entregada = entregada;
       r.ejemplarDni = cliEjemplarDni; r.fechaNacimiento = cliFnac; r.lugarNacimiento = cliLnac;
@@ -9930,7 +9964,9 @@ async function savePrenda() {
       r.dominio = vehDominio; r.tipoVehiculo = vehTipo; r.marcaChasis = vehMarcaChasis;
       r.numeroChasis = vehNumChasis; r.marcaMotor = vehMarcaMotor; r.numeroMotor = vehNumMotor; r.uso = vehUso;
       r.vencCuota = creVenc; r.valorCuota = creValorCuota ? String(creValorCuota) : ''; r.cantidadCuotas = creCantCuotas;
-      r.creditoEstado = creEstado; r.creditoEstadoFechas = creTieneFechas ? creEstadoFechasJSON : ''; }
+      r.creditoEstado = creEstado; r.creditoEstadoFechas = creTieneFechas ? creEstadoFechasJSON : '';
+      r.docTitulo = docTitulo; r.docCedula = docCedula; r.doc08 = doc08; r.docVerif = docVerif; r.docVerifFecha = docVerifFecha;
+      r.docInforme = docInforme; r.docInformeFecha = docInformeFecha; r.docDni = docDni; }
     const cambiosPrenda = diffObjetos(viejaPrenda, { enProceso, presentada, finalizada, entregada }, ['enProceso','presentada','finalizada','entregada']);
     registrarHistorial('prenda', id, cambiosPrenda);
     toast('Prenda actualizada ✓', 'ok');
@@ -10362,6 +10398,8 @@ async function loadRecords() {
       marcaMotor: r.marca_motor, numeroMotor: r.numero_motor, uso: r.uso,
       vencCuota: r.venc_cuota, valorCuota: r.valor_cuota, cantidadCuotas: r.cantidad_cuotas,
       creditoEstado: r.credito_estado, creditoEstadoFecha: r.credito_estado_fecha, creditoEstadoFechas: r.credito_estado_fechas,
+      docTitulo: r.doc_titulo, docCedula: r.doc_cedula, doc08: r.doc_08, docVerif: r.doc_verif, docVerifFecha: r.doc_verif_fecha,
+      docInforme: r.doc_informe, docInformeFecha: r.doc_informe_fecha, docDni: r.doc_dni,
       bancos: Array.isArray(r.bancos) ? r.bancos : [],
       tasa: r.tasa, obs: r.obs, comision: r.comision, usuario: r.usuario,
       fechaReg: r.fecha_reg, gestorAsignado: r.gestor_asignado, gestorId: r.gestor_id,
