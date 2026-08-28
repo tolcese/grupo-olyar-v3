@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.7.1</title>
+<title>Grupo Olyar — Solicitudes v3.7.2</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.7.1';
+    var APP_VER='v3.7.2';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -9934,7 +9934,6 @@ async function savePrenda() {
     const cambiosPrenda = diffObjetos(viejaPrenda, { enProceso, presentada, finalizada, entregada }, ['enProceso','presentada','finalizada','entregada']);
     registrarHistorial('prenda', id, cambiosPrenda);
     toast('Prenda actualizada ✓', 'ok');
-    closePrendaEdit();
     refreshAllPrendaViews();
   } catch(e) { toast('Error: ' + e.message, 'er'); }
 }
