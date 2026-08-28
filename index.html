@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.7.5</title>
+<title>Grupo Olyar — Solicitudes v3.7.6</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.7.5';
+    var APP_VER='v3.7.6';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2099,6 +2099,14 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         .pe-doc-rowfecha{gap:8px}
         .pe-doc-rowfecha label{display:flex;align-items:center;gap:10px;cursor:pointer}
         .pe-doc-date{max-width:190px}
+        .pe-et-wrap{display:flex;flex-direction:column;gap:16px;max-width:560px}
+        .pe-et-steps{display:flex;flex-direction:column;gap:8px}
+        .pe-et-row{display:flex;align-items:center;gap:12px;padding:8px 12px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface)}
+        .pe-et-row.pe-et-locked{opacity:.45}
+        .pe-et-label{flex:1;font-size:13px;font-weight:700;color:var(--ink)}
+        .pe-et-date{max-width:170px}
+        .pe-et-row input[type=checkbox]{width:18px;height:18px;cursor:pointer;flex:none}
+        .pe-et-row input[type=checkbox]:disabled,.pe-et-row .pe-et-date:disabled{cursor:not-allowed}
       </style>
       <div class="ph">
         <div class="ph-t" id="prenda-cliente" style="font-size:23px;font-weight:800">—</div>
@@ -2181,7 +2189,23 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         </div>
         <div class="pe-acc">
           <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('estado')"><span>Estado de trámite</span><span class="pe-acc-chevron" id="pe-chev-estado">▾</span></button>
-          <div class="pe-acc-body" id="pe-body-estado" style="display:none"><div class="pe-acc-empty">— A definir qué despliega —</div></div>
+          <div class="pe-acc-body" id="pe-body-estado" style="display:none">
+            <div class="pe-et-wrap">
+              <div class="pe-f" style="max-width:300px"><label>Registro</label><input class="pe-in" type="text" id="pe-et-registro"></div>
+              <div class="pe-et-steps">
+              <div class="pe-et-row"><span class="pe-et-label">Pendiente firma</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-pendiente_firma" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-pendiente_firma" onchange="etRecompute()"></div>
+              <div class="pe-et-row"><span class="pe-et-label">Firmado</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-firmado" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-firmado" onchange="etRecompute()"></div>
+              <div class="pe-et-row"><span class="pe-et-label">Escribanía</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-escribania" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-escribania" onchange="etRecompute()"></div>
+              <div class="pe-et-row"><span class="pe-et-label">Presentado</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-presentado" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-presentado" onchange="etRecompute()"></div>
+              <div class="pe-et-row"><span class="pe-et-label">Retirado</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-retirado" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-retirado" onchange="etRecompute()"></div>
+              <div class="pe-et-row"><span class="pe-et-label">Subida</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-subida" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-subida" onchange="etRecompute()"></div>
+              <div class="pe-et-row"><span class="pe-et-label">Pendiente física</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-pendiente_fisica" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-pendiente_fisica" onchange="etRecompute()"></div>
+              <div class="pe-et-row"><span class="pe-et-label">Prenda enviada a casa central</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-enviada_casa_central" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-enviada_casa_central" onchange="etRecompute()"></div>
+              <div class="pe-et-row"><span class="pe-et-label">Prenda entregada</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-prenda_entregada" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-prenda_entregada" onchange="etRecompute()"></div>
+              </div>
+              <div class="pe-f"><label>Observaciones</label><textarea class="pe-in" id="pe-et-observaciones" rows="4" style="resize:vertical"></textarea></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -9787,6 +9811,22 @@ function renderPrendas() {
   setTimeout(initPrendasMirror, 50);
 }
 
+var ET_PASOS=[['pendiente_firma','Pendiente firma'],['firmado','Firmado'],['escribania','Escribanía'],['presentado','Presentado'],['retirado','Retirado'],['subida','Subida'],['pendiente_fisica','Pendiente física'],['enviada_casa_central','Prenda enviada a casa central'],['prenda_entregada','Prenda entregada']];
+function etRecompute(){
+  var prevComplete=true;
+  ET_PASOS.forEach(function(p){
+    var key=p[0];
+    var d=document.getElementById('pe-et-f-'+key);
+    var c=document.getElementById('pe-et-t-'+key);
+    if(!d||!c) return;
+    var enabled=prevComplete;
+    d.disabled=!enabled; c.disabled=!enabled;
+    var row=c.closest('.pe-et-row'); if(row) row.classList.toggle('pe-et-locked',!enabled);
+    if(!enabled && c.checked) c.checked=false;
+    var complete=c.checked && !!d.value;
+    prevComplete=complete;
+  });
+}
 function creEstadoRenderResumen(){
   var cont=document.getElementById('pe-cre-fechas-resumen'); if(!cont) return;
   var map=window._creEstadoFechas||{};
@@ -9891,6 +9931,16 @@ function editPrenda(id) {
   document.getElementById('pe-doc-informe').checked       = !!r.docInforme;
   document.getElementById('pe-doc-informe-fecha').value   = r.docInformeFecha || '';
   document.getElementById('pe-doc-dni').checked           = !!r.docDni;
+  var _etData = {};
+  try { _etData = r.etPasos ? JSON.parse(r.etPasos) : {}; } catch(e){ _etData = {}; }
+  ET_PASOS.forEach(function(p){
+    var key=p[0], v=_etData[key]||{};
+    var d=document.getElementById('pe-et-f-'+key), c=document.getElementById('pe-et-t-'+key);
+    if(d) d.value=v.fecha||''; if(c) c.checked=!!v.tilde;
+  });
+  document.getElementById('pe-et-registro').value      = r.etRegistro || '';
+  document.getElementById('pe-et-observaciones').value = r.etObservaciones || '';
+  etRecompute();
   document.getElementById('prendas-panel-overlay')?.classList.remove('open');
   document.getElementById('prendas-side-panel')?.classList.remove('open');
   window._prendaReturn = (document.getElementById('v-prendas') && document.getElementById('v-prendas').style.display !== 'none') ? 'prendas' : 'sol';
@@ -9939,6 +9989,15 @@ async function savePrenda() {
   const docInforme     = document.getElementById('pe-doc-informe').checked;
   const docInformeFecha= document.getElementById('pe-doc-informe-fecha').value;
   const docDni         = document.getElementById('pe-doc-dni').checked;
+  var _etPasos={};
+  ET_PASOS.forEach(function(p){
+    var key=p[0];
+    var d=document.getElementById('pe-et-f-'+key), c=document.getElementById('pe-et-t-'+key);
+    _etPasos[key]={ fecha: d?d.value:'', tilde: c?c.checked:false };
+  });
+  const etRegistro = document.getElementById('pe-et-registro').value.trim();
+  const etObs      = document.getElementById('pe-et-observaciones').value.trim();
+  const etPasosJSON= JSON.stringify(_etPasos);
   try {
     const r = RECORDS.find(x => x.id === id);
     const viejaPrenda = r ? { enProceso: r.enProceso, presentada: r.presentada, finalizada: r.finalizada, entregada: r.entregada } : {};
@@ -9955,7 +10014,8 @@ async function savePrenda() {
       credito_estado_fechas: creTieneFechas ? creEstadoFechasJSON : null,
       doc_titulo: docTitulo, doc_cedula: docCedula, doc_08: doc08, doc_verif: docVerif,
       doc_verif_fecha: docVerifFecha || null, doc_informe: docInforme, doc_informe_fecha: docInformeFecha || null,
-      doc_dni: docDni }).eq('id', id);
+      doc_dni: docDni,
+      et_registro: etRegistro || null, et_observaciones: etObs || null, et_pasos: etPasosJSON }).eq('id', id);
     if (error) throw error;
     if (r) { r.enProceso = enProceso; r.presentada = presentada; r.finalizada = finalizada; r.entregada = entregada;
       r.ejemplarDni = cliEjemplarDni; r.fechaNacimiento = cliFnac; r.lugarNacimiento = cliLnac;
@@ -9966,7 +10026,8 @@ async function savePrenda() {
       r.vencCuota = creVenc; r.valorCuota = creValorCuota ? String(creValorCuota) : ''; r.cantidadCuotas = creCantCuotas;
       r.creditoEstado = creEstado; r.creditoEstadoFechas = creTieneFechas ? creEstadoFechasJSON : '';
       r.docTitulo = docTitulo; r.docCedula = docCedula; r.doc08 = doc08; r.docVerif = docVerif; r.docVerifFecha = docVerifFecha;
-      r.docInforme = docInforme; r.docInformeFecha = docInformeFecha; r.docDni = docDni; }
+      r.docInforme = docInforme; r.docInformeFecha = docInformeFecha; r.docDni = docDni;
+      r.etRegistro = etRegistro; r.etObservaciones = etObs; r.etPasos = etPasosJSON; }
     const cambiosPrenda = diffObjetos(viejaPrenda, { enProceso, presentada, finalizada, entregada }, ['enProceso','presentada','finalizada','entregada']);
     registrarHistorial('prenda', id, cambiosPrenda);
     toast('Prenda actualizada ✓', 'ok');
@@ -10400,6 +10461,7 @@ async function loadRecords() {
       creditoEstado: r.credito_estado, creditoEstadoFecha: r.credito_estado_fecha, creditoEstadoFechas: r.credito_estado_fechas,
       docTitulo: r.doc_titulo, docCedula: r.doc_cedula, doc08: r.doc_08, docVerif: r.doc_verif, docVerifFecha: r.doc_verif_fecha,
       docInforme: r.doc_informe, docInformeFecha: r.doc_informe_fecha, docDni: r.doc_dni,
+      etRegistro: r.et_registro, etObservaciones: r.et_observaciones, etPasos: r.et_pasos,
       bancos: Array.isArray(r.bancos) ? r.bancos : [],
       tasa: r.tasa, obs: r.obs, comision: r.comision, usuario: r.usuario,
       fechaReg: r.fecha_reg, gestorAsignado: r.gestor_asignado, gestorId: r.gestor_id,
