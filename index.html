@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.6.8</title>
+<title>Grupo Olyar — Solicitudes v3.6.9</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.6.8';
+    var APP_VER='v3.6.9';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2127,7 +2127,20 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         </div>
         <div class="pe-acc">
           <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('vehiculo')"><span>Vehículo</span><span class="pe-acc-chevron" id="pe-chev-vehiculo">▾</span></button>
-          <div class="pe-acc-body" id="pe-body-vehiculo" style="display:none"><div class="pe-acc-empty">— Campos a definir —</div></div>
+          <div class="pe-acc-body" id="pe-body-vehiculo" style="display:none">
+            <div class="pe-fields">
+              <div class="pe-f"><label>Marca</label><div class="pe-ro" id="pe-veh-marca">—</div></div>
+              <div class="pe-f"><label>Modelo</label><div class="pe-ro" id="pe-veh-modelo">—</div></div>
+              <div class="pe-f"><label>Año</label><div class="pe-ro" id="pe-veh-anio">—</div></div>
+              <div class="pe-f"><label>Dominio</label><input class="pe-in" type="text" id="pe-veh-dominio" style="text-transform:uppercase"></div>
+              <div class="pe-f"><label>Tipo</label><input class="pe-in" type="text" id="pe-veh-tipo"></div>
+              <div class="pe-f"><label>Marca Chasis</label><input class="pe-in" type="text" id="pe-veh-marcachasis"></div>
+              <div class="pe-f"><label>Número Chasis</label><input class="pe-in" type="text" inputmode="numeric" id="pe-veh-numchasis"></div>
+              <div class="pe-f"><label>Marca Motor</label><input class="pe-in" type="text" id="pe-veh-marcamotor"></div>
+              <div class="pe-f"><label>Número de Motor</label><input class="pe-in" type="text" inputmode="numeric" id="pe-veh-nummotor"></div>
+              <div class="pe-f"><label>Uso</label><select class="pe-in" id="pe-veh-uso"><option value="">—</option><option>Particular</option><option>Utilitario</option></select></div>
+            </div>
+          </div>
         </div>
         <div class="pe-acc">
           <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('credito')"><span>Crédito</span><span class="pe-acc-chevron" id="pe-chev-credito">▾</span></button>
@@ -9789,6 +9802,16 @@ function editPrenda(id) {
   document.getElementById('pe-cli-cp').value           = r.codigoPostal || '';
   document.getElementById('pe-cli-telefono').value     = r.telefono || '';
   document.getElementById('pe-cli-mail').value         = r.email || '';
+  document.getElementById('pe-veh-marca').textContent  = r.marca || '—';
+  document.getElementById('pe-veh-modelo').textContent = r.descripcion || '—';
+  document.getElementById('pe-veh-anio').textContent   = r.anio || '—';
+  document.getElementById('pe-veh-dominio').value      = r.dominio || '';
+  document.getElementById('pe-veh-tipo').value         = r.tipoVehiculo || '';
+  document.getElementById('pe-veh-marcachasis').value  = r.marcaChasis || '';
+  document.getElementById('pe-veh-numchasis').value    = r.numeroChasis || '';
+  document.getElementById('pe-veh-marcamotor').value   = r.marcaMotor || '';
+  document.getElementById('pe-veh-nummotor').value     = r.numeroMotor || '';
+  document.getElementById('pe-veh-uso').value          = r.uso || '';
   document.getElementById('prendas-panel-overlay')?.classList.remove('open');
   document.getElementById('prendas-side-panel')?.classList.remove('open');
   window._prendaReturn = (document.getElementById('v-prendas') && document.getElementById('v-prendas').style.display !== 'none') ? 'prendas' : 'sol';
@@ -9813,6 +9836,13 @@ async function savePrenda() {
   const cliCp          = document.getElementById('pe-cli-cp').value.trim();
   const cliTelefono    = document.getElementById('pe-cli-telefono').value.trim();
   const cliMail        = document.getElementById('pe-cli-mail').value.trim();
+  const vehDominio     = document.getElementById('pe-veh-dominio').value.trim().toUpperCase();
+  const vehTipo        = document.getElementById('pe-veh-tipo').value.trim();
+  const vehMarcaChasis = document.getElementById('pe-veh-marcachasis').value.trim();
+  const vehNumChasis   = document.getElementById('pe-veh-numchasis').value.trim();
+  const vehMarcaMotor  = document.getElementById('pe-veh-marcamotor').value.trim();
+  const vehNumMotor    = document.getElementById('pe-veh-nummotor').value.trim();
+  const vehUso         = document.getElementById('pe-veh-uso').value;
   try {
     const r = RECORDS.find(x => x.id === id);
     const viejaPrenda = r ? { enProceso: r.enProceso, presentada: r.presentada, finalizada: r.finalizada, entregada: r.entregada } : {};
@@ -9820,12 +9850,17 @@ async function savePrenda() {
       ejemplar_dni: cliEjemplarDni || null, fecha_nacimiento: cliFnac || null, lugar_nacimiento: cliLnac || null,
       nacionalidad: cliNacion || null, estado_civil: cliEstadoCivil || null, nupcias: cliNupcias || null,
       sexo: cliSexo || null, direccion: cliDireccion || null, codigo_postal: cliCp || null,
-      telefono: cliTelefono || null, email: cliMail || null }).eq('id', id);
+      telefono: cliTelefono || null, email: cliMail || null,
+      dominio: vehDominio || null, tipo_vehiculo: vehTipo || null, marca_chasis: vehMarcaChasis || null,
+      numero_chasis: vehNumChasis || null, marca_motor: vehMarcaMotor || null, numero_motor: vehNumMotor || null,
+      uso: vehUso || null }).eq('id', id);
     if (error) throw error;
     if (r) { r.enProceso = enProceso; r.presentada = presentada; r.finalizada = finalizada; r.entregada = entregada;
       r.ejemplarDni = cliEjemplarDni; r.fechaNacimiento = cliFnac; r.lugarNacimiento = cliLnac;
       r.nacionalidad = cliNacion; r.estadoCivil = cliEstadoCivil; r.nupcias = cliNupcias; r.sexo = cliSexo;
-      r.direccion = cliDireccion; r.codigoPostal = cliCp; r.telefono = cliTelefono; r.email = cliMail; }
+      r.direccion = cliDireccion; r.codigoPostal = cliCp; r.telefono = cliTelefono; r.email = cliMail;
+      r.dominio = vehDominio; r.tipoVehiculo = vehTipo; r.marcaChasis = vehMarcaChasis;
+      r.numeroChasis = vehNumChasis; r.marcaMotor = vehMarcaMotor; r.numeroMotor = vehNumMotor; r.uso = vehUso; }
     const cambiosPrenda = diffObjetos(viejaPrenda, { enProceso, presentada, finalizada, entregada }, ['enProceso','presentada','finalizada','entregada']);
     registrarHistorial('prenda', id, cambiosPrenda);
     toast('Prenda actualizada ✓', 'ok');
@@ -10254,6 +10289,8 @@ async function loadRecords() {
       ejemplarDni: r.ejemplar_dni, fechaNacimiento: r.fecha_nacimiento, lugarNacimiento: r.lugar_nacimiento,
       nacionalidad: r.nacionalidad, estadoCivil: r.estado_civil, nupcias: r.nupcias, sexo: r.sexo,
       direccion: r.direccion, codigoPostal: r.codigo_postal, email: r.email, telefono: r.telefono,
+      tipoVehiculo: r.tipo_vehiculo, marcaChasis: r.marca_chasis, numeroChasis: r.numero_chasis,
+      marcaMotor: r.marca_motor, numeroMotor: r.numero_motor, uso: r.uso,
       bancos: Array.isArray(r.bancos) ? r.bancos : [],
       tasa: r.tasa, obs: r.obs, comision: r.comision, usuario: r.usuario,
       fechaReg: r.fecha_reg, gestorAsignado: r.gestor_asignado, gestorId: r.gestor_id,
