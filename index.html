@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.7.4</title>
+<title>Grupo Olyar — Solicitudes v3.7.5</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.7.4';
+    var APP_VER='v3.7.5';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2180,7 +2180,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           </div>
         </div>
         <div class="pe-acc">
-          <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('estado')"><span>Estado</span><span class="pe-acc-chevron" id="pe-chev-estado">▾</span></button>
+          <button type="button" class="pe-acc-btn" onclick="togglePrendaAcc('estado')"><span>Estado de trámite</span><span class="pe-acc-chevron" id="pe-chev-estado">▾</span></button>
           <div class="pe-acc-body" id="pe-body-estado" style="display:none"><div class="pe-acc-empty">— A definir qué despliega —</div></div>
         </div>
       </div>
