@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.7.3</title>
+<title>Grupo Olyar — Solicitudes v3.7.4</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.7.3';
+    var APP_VER='v3.7.4';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2093,10 +2093,10 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         .pe-ro{font-size:14px;font-weight:600;color:var(--ink);padding:9px 12px;background:rgba(15,23,42,.03);border:1.5px solid var(--line);border-radius:9px;min-height:20px}
         .pe-in{font-size:14px;font-weight:500;color:var(--ink);padding:9px 12px;background:var(--surface);border:1.5px solid var(--line);border-radius:9px;width:100%;font-family:inherit;box-sizing:border-box}
         .pe-in:focus{outline:none;border-color:var(--blue)}
-        .pe-doc-box{display:flex;flex-direction:column;gap:12px;max-width:520px;border:1.5px solid var(--line);border-radius:12px;padding:16px;background:var(--surface)}
+        .pe-doc-box{display:flex;flex-direction:row;flex-wrap:wrap;gap:16px 26px;align-items:center;border:1.5px solid var(--line);border-radius:12px;padding:16px;background:var(--surface)}
         .pe-doc-row{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--ink)}
         .pe-doc-row input[type=checkbox]{width:17px;height:17px;cursor:pointer;flex:none}
-        .pe-doc-rowfecha{justify-content:space-between}
+        .pe-doc-rowfecha{gap:8px}
         .pe-doc-rowfecha label{display:flex;align-items:center;gap:10px;cursor:pointer}
         .pe-doc-date{max-width:190px}
       </style>
