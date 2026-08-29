@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.8</title>
+<title>Grupo Olyar — Solicitudes v3.8.9</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.8';
+    var APP_VER='v3.8.9';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2227,7 +2227,6 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         <div class="fc span2"><label>Entregada</label><div class="chk-grid" style="grid-template-columns:1fr"><label class="chk-row"><input type="checkbox" id="prenda-entregada"> Sí, fue entregada al cliente</label></div></div>
       </div>
       <div class="mfoot" style="max-width:720px">
-        <button class="btn btn-s" id="btn-revertir-entrega" onclick="volverInicioPrenda()" style="display:none;border-color:#F46A2D;color:#F46A2D" title="Resetear estado de tramite y volver a En curso (temporal, testing)">↩ Volver a inicio</button>
         <button class="btn btn-s" onclick="closePrendaEdit()">Cancelar</button>
         <button class="btn btn-p" onclick="savePrenda()">💾 Guardar</button>
       </div>
@@ -9860,13 +9859,6 @@ function etRecompute(){
 }
 // Boton "Revertir entrega": visible si la prenda GUARDADA esta en estado entregada
 // (mismo criterio que la vista Entregadas, no depende de la cascada del DOM)
-function actualizarBotonRevertir(){
-  var b=document.getElementById('btn-revertir-entrega'); if(!b) return;
-  var idEl=document.getElementById('prenda-id');
-  var id=idEl?idEl.value:'';
-  var r=id ? RECORDS.find(function(x){return x.id===id;}) : null;
-  b.style.display = (r && prendaEstadoNuevo(r)!=='en_curso') ? '' : 'none';
-}
 function creEstadoRenderResumen(){
   var cont=document.getElementById('pe-cre-fechas-resumen'); if(!cont) return;
   var map=window._creEstadoFechas||{};
@@ -9986,25 +9978,12 @@ function editPrenda(id) {
   document.getElementById('pe-et-registro').value      = r.etRegistro || '';
   document.getElementById('pe-et-observaciones').value = r.etObservaciones || '';
   etRecompute();
-  actualizarBotonRevertir();
   document.getElementById('prendas-panel-overlay')?.classList.remove('open');
   document.getElementById('prendas-side-panel')?.classList.remove('open');
   window._prendaReturn = (document.getElementById('v-prendas') && document.getElementById('v-prendas').style.display !== 'none') ? 'prendas' : 'sol';
   showV('prenda-edit');
 }
 
-function volverInicioPrenda(){
-  ET_PASOS.forEach(function(p){
-    var d=document.getElementById('pe-et-f-'+p[0]);
-    var c=document.getElementById('pe-et-t-'+p[0]);
-    if(d) d.value='';
-    if(c) c.checked=false;
-  });
-  etRecompute();
-  var b=document.getElementById('btn-revertir-entrega'); if(b) b.style.display='none';
-  savePrenda();
-  toast('Trámite reseteado — vuelve a En curso','ok');
-}
 async function savePrenda() {
   if (!requireEdit()) return;
   const id = document.getElementById('prenda-id').value;
@@ -10097,7 +10076,6 @@ async function savePrenda() {
     registrarHistorial('prenda', id, cambiosPrenda);
     toast('Prenda actualizada ✓', 'ok');
     refreshAllPrendaViews();
-    actualizarBotonRevertir();
   } catch(e) { toast('Error: ' + e.message, 'er'); }
 }
 
