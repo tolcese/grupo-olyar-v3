@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.3</title>
+<title>Grupo Olyar — Solicitudes v3.8.4</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.3';
+    var APP_VER='v3.8.4';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -9857,6 +9857,11 @@ function etRecompute(){
     var complete=c.checked && !!d.value;
     prevComplete=complete;
   });
+  // Boton "Revertir entrega": visible si el paso "Prenda entregada" esta completo (tilde+fecha)
+  var _cE=document.getElementById('pe-et-t-prenda_entregada');
+  var _fE=document.getElementById('pe-et-f-prenda_entregada');
+  var _bR=document.getElementById('btn-revertir-entrega');
+  if(_bR) _bR.style.display = (_cE && _cE.checked && _fE && _fE.value) ? '' : 'none';
 }
 function creEstadoRenderResumen(){
   var cont=document.getElementById('pe-cre-fechas-resumen'); if(!cont) return;
@@ -9977,8 +9982,6 @@ function editPrenda(id) {
   document.getElementById('pe-et-registro').value      = r.etRegistro || '';
   document.getElementById('pe-et-observaciones').value = r.etObservaciones || '';
   etRecompute();
-  var _btnRev=document.getElementById('btn-revertir-entrega');
-  if(_btnRev) _btnRev.style.display = (prendaEstadoNuevo(r)==='entregada') ? '' : 'none';
   document.getElementById('prendas-panel-overlay')?.classList.remove('open');
   document.getElementById('prendas-side-panel')?.classList.remove('open');
   window._prendaReturn = (document.getElementById('v-prendas') && document.getElementById('v-prendas').style.display !== 'none') ? 'prendas' : 'sol';
