@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.6</title>
+<title>Grupo Olyar — Solicitudes v3.8.7</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.6';
+    var APP_VER='v3.8.7';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -5705,7 +5705,7 @@ function renderPrendasEntregadas() {
     <tr style="cursor:pointer" onclick="openPEPanel('${r.id}')">
       <td style="position:sticky;left:0;background:#fff;z-index:1;box-shadow:2px 0 6px rgba(0,0,0,.04)" onclick="event.stopPropagation()">
         <div class="abtns">
-          <button class="ibtn" onclick="editPERecord('${r.id}')" title="Editar">✏️</button>
+          <button class="ibtn" onclick="closePrendasEntregadas();editPrenda('${r.id}')" title="Editar">✏️</button>
           ${isAdmin ? `<button class="ibtn del" onclick="delPERecord('${r.id}')" title="Eliminar">🗑️</button>` : ''}
           ${isAdmin ? `<button class="ibtn" onclick="closePrendasEntregadas();openHistorial('${r.id}')" title="Historial">🕐</button>` : ''}
           ${isAdmin ? `<button class="ibtn" style="font-size:10px;padding:2px 5px;background:#fff0f0;border-color:var(--red);color:var(--red)" onclick="rechazarPrenda('${r.id}')" title="Rechazada por banco">⛔</button>` : ''}
@@ -5834,7 +5834,7 @@ function openPEPanel(id) {
   btns.className = 'panel-btns';
   btns.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
   btns.innerHTML = `
-    <button class="btn btn-p" style="font-size:12px;padding:6px 12px" onclick="closePEPanelSinReabrir();editPERecord('${r.id}')">✏️ Editar</button>
+    <button class="btn btn-p" style="font-size:12px;padding:6px 12px" onclick="closePEPanelSinReabrir();closePrendasEntregadas();editPrenda('${r.id}')">✏️ Editar</button>
     ${isAdmin ? `<button class="btn btn-d" style="font-size:12px;padding:6px 12px" onclick="closePEPanelSinReabrir();delPERecord('${r.id}')">🗑️ Eliminar</button>` : ''}
   `;
   panelHead.appendChild(btns);
