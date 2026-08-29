@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.9</title>
+<title>Grupo Olyar — Solicitudes v3.8.10</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.9';
+    var APP_VER='v3.8.10';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2220,7 +2220,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         </div>
       </div>
 
-      <div class="fg" style="grid-template-columns:1fr 1fr;gap:14px;max-width:720px;margin-top:24px">
+      <div class="fg" style="display:none;grid-template-columns:1fr 1fr;gap:14px;max-width:720px;margin-top:24px">
         <div class="fc span2"><label>En proceso</label><div class="chk-grid" style="grid-template-columns:1fr"><label class="chk-row"><input type="checkbox" id="prenda-en-proceso" onchange="onPrendaEnProcesoChange()"> Sí, está en proceso</label></div></div>
         <div class="fc span2"><label>Presentada</label><div class="chk-grid" style="grid-template-columns:1fr"><label class="chk-row"><input type="checkbox" id="prenda-presentada" onchange="onPrendaPresentadaChange()"> Sí, fue presentada</label></div></div>
         <div class="fc span2"><label>Finalizada (fecha)</label><input type="date" id="prenda-finalizada"></div>
