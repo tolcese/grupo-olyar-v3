@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.5</title>
+<title>Grupo Olyar — Solicitudes v3.8.6</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.5';
+    var APP_VER='v3.8.6';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2227,7 +2227,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         <div class="fc span2"><label>Entregada</label><div class="chk-grid" style="grid-template-columns:1fr"><label class="chk-row"><input type="checkbox" id="prenda-entregada"> Sí, fue entregada al cliente</label></div></div>
       </div>
       <div class="mfoot" style="max-width:720px">
-        <button class="btn btn-s" id="btn-revertir-entrega" onclick="revertirEntregaPrenda()" style="display:none;border-color:#F46A2D;color:#F46A2D" title="Volver a No entregada (temporal, testing)">↩ Revertir entrega</button>
+        <button class="btn btn-s" id="btn-revertir-entrega" onclick="volverInicioPrenda()" style="display:none;border-color:#F46A2D;color:#F46A2D" title="Resetear estado de tramite y volver a En curso (temporal, testing)">↩ Volver a inicio</button>
         <button class="btn btn-s" onclick="closePrendaEdit()">Cancelar</button>
         <button class="btn btn-p" onclick="savePrenda()">💾 Guardar</button>
       </div>
@@ -9865,7 +9865,7 @@ function actualizarBotonRevertir(){
   var idEl=document.getElementById('prenda-id');
   var id=idEl?idEl.value:'';
   var r=id ? RECORDS.find(function(x){return x.id===id;}) : null;
-  b.style.display = (r && prendaEstadoNuevo(r)==='entregada') ? '' : 'none';
+  b.style.display = (r && prendaEstadoNuevo(r)!=='en_curso') ? '' : 'none';
 }
 function creEstadoRenderResumen(){
   var cont=document.getElementById('pe-cre-fechas-resumen'); if(!cont) return;
@@ -9993,11 +9993,14 @@ function editPrenda(id) {
   showV('prenda-edit');
 }
 
-function revertirEntregaPrenda(){
-  var c=document.getElementById('pe-et-t-prenda_entregada');
-  if(!c){ toast('No encontre el paso "Prenda entregada"','er'); return; }
-  if(!c.checked){ toast('La prenda no esta marcada como entregada','warn'); return; }
-  c.checked=false;
+function volverInicioPrenda(){
+  if(!confirm('Resetear el estado de tramite? La prenda vuelve a "En curso" con todos los pasos borrados. (No toca el gestor.)')) return;
+  ET_PASOS.forEach(function(p){
+    var d=document.getElementById('pe-et-f-'+p[0]);
+    var c=document.getElementById('pe-et-t-'+p[0]);
+    if(d) d.value='';
+    if(c) c.checked=false;
+  });
   etRecompute();
   var b=document.getElementById('btn-revertir-entrega'); if(b) b.style.display='none';
   savePrenda();
