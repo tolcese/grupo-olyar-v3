@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.22</title>
+<title>Grupo Olyar — Solicitudes v3.8.23</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.22';
+    var APP_VER='v3.8.23';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -4792,7 +4792,7 @@ function renderPrendasFinalizadas() {
   };
 
   tbody.innerHTML = data.map((r, i) => `
-    <tr style="cursor:pointer" onclick="openPFPanel('${r.id}')">
+    <tr style="cursor:pointer" onclick="openPrendasPanel('${r.id}','finalizadas')">
       <td style="position:sticky;left:0;background:#fff;z-index:1;box-shadow:2px 0 6px rgba(0,0,0,.04)" onclick="event.stopPropagation()">
         <div class="abtns">
           <button class="ibtn" onclick="editPrenda('${r.id}')" title="Editar">✏️</button>
@@ -5705,7 +5705,7 @@ function renderPrendasEntregadas() {
   };
 
   tbody.innerHTML = data.map((r, i) => `
-    <tr style="cursor:pointer" onclick="openPEPanel('${r.id}')">
+    <tr style="cursor:pointer" onclick="openPrendasPanel('${r.id}','entregadas')">
       <td style="position:sticky;left:0;background:#fff;z-index:1;box-shadow:2px 0 6px rgba(0,0,0,.04)" onclick="event.stopPropagation()">
         <div class="abtns">
           <button class="ibtn" onclick="closePrendasEntregadas();editPrenda('${r.id}')" title="Editar">✏️</button>
@@ -10120,7 +10120,10 @@ function initPrendasMirror() {
   mirror.onscroll = () => { if (syncing) return; syncing = true; scroll.scrollLeft = mirror.scrollLeft; syncing = false; };
 }
 
-function openPrendasPanel(id) {
+function openPrendasPanel(id, from) {
+  window._prendasPanelFrom = from || null;
+  if (from === 'finalizadas') closePrendasFinalizadas();
+  else if (from === 'entregadas') closePrendasEntregadas();
   const r = RECORDS.find(x => x.id === id);
   if (!r) return;
 
@@ -10225,7 +10228,7 @@ function openPrendasPanel(id) {
   btns.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
   btns.innerHTML = `
     <button class="btn btn-p" style="font-size:12px;padding:6px 12px" onclick="closePrendasPanelSinReabrir();editPrenda('${r.id}')">✏️ Editar</button>
-    ${isAdmin ? `<button class="btn btn-d" style="font-size:12px;padding:6px 12px" onclick="closePrendasPanelSinReabrir();delPrenda('${r.id}')">🗑️ Eliminar</button>` : ''}
+    ${isAdmin ? `<button class="btn btn-d" style="font-size:12px;padding:6px 12px" onclick="closePrendasPanelSinReabrir();${(from==='finalizadas'||from==='entregadas')?`delPERecord('${r.id}')`:`delPrenda('${r.id}')`}">🗑️ Eliminar</button>` : ''}
   `;
   panelHead.appendChild(btns);
 
@@ -10236,9 +10239,14 @@ function openPrendasPanel(id) {
 function closePrendasPanel() {
   document.getElementById('prendas-panel-overlay').classList.remove('open');
   document.getElementById('prendas-side-panel').classList.remove('open');
+  const _f = window._prendasPanelFrom;
+  window._prendasPanelFrom = null;
+  if (_f === 'finalizadas') document.getElementById('pf-overlay').classList.add('open');
+  else if (_f === 'entregadas') document.getElementById('pe-overlay').classList.add('open');
 }
 
 function closePrendasPanelSinReabrir() {
+  window._prendasPanelFrom = null;
   document.getElementById('prendas-panel-overlay').classList.remove('open');
   document.getElementById('prendas-side-panel').classList.remove('open');
 }
