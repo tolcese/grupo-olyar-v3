@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.20</title>
+<title>Grupo Olyar — Solicitudes v3.8.21</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.20';
+    var APP_VER='v3.8.21';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2057,7 +2057,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <table class="prendas-table">
             <thead>
               <tr>
-                <th>Acciones</th><th>#</th><th>N° Control</th><th>Fecha actual</th><th>Fecha solicitud</th><th>Año</th><th>Gestor asignado</th><th>Cliente</th><th>Banco</th><th>Concesionaria</th><th>Localidad</th><th>Provincia</th><th>Marca</th><th>Descripción vehículo</th><th>Tipo CTA</th><th>Doc 01/08</th><th>Título</th><th>Ver. Pol.</th><th>Dominio</th><th>Tasa</th><th>Imp. Solicitado</th><th>Observaciones</th><th>En proceso</th><th>Presentada</th><th>Finalizada</th>
+                <th>Acciones</th><th>#</th><th>N° Trámite</th><th>Fecha actual</th><th>Fecha solicitud</th><th>Año</th><th>Gestor asignado</th><th>Cliente</th><th>Banco</th><th>Concesionaria</th><th>Localidad</th><th>Provincia</th><th>Marca</th><th>Descripción vehículo</th><th>Tipo CTA</th><th>Doc 01/08</th><th>Título</th><th>Ver. Pol.</th><th>Dominio</th><th>Tasa</th><th>Imp. Solicitado</th><th>Observaciones</th><th>En proceso</th><th>Presentada</th><th>Finalizada</th>
               </tr>
             </thead>
             <tbody id="prendas-tbody"></tbody>
@@ -15292,7 +15292,7 @@ function renderReportes() {
             <tr>
               <th>Acciones</th>
               <th>#</th>
-              <th>N° Control</th>
+              <th>N° Trámite</th>
               <th>Fecha finalizada</th>
               <th>Gestor asignado</th>
               <th>Año</th>
@@ -15432,7 +15432,7 @@ function renderReportes() {
             <tr>
               <th>Acciones</th>
               <th>#</th>
-              <th>N° Control</th>
+              <th>N° Trámite</th>
               <th>Fecha actual</th>
               <th>Fecha finalizada</th>
               <th>Fecha entregada</th>
