@@ -512,32 +512,32 @@
         <div class="field col-span-2">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
             <div class="field">
-              <label>Teléfono Alternativo</label>
-              <input type="tel" id="telefono_alt1" placeholder="Ej: 3512345678" inputmode="numeric">
+              <label>Teléfono Alternativo <span class="req">*</span></label>
+              <input type="tel" id="telefono_alt1" required placeholder="Ej: 3512345678" inputmode="numeric">
             </div>
             <div class="field">
-              <label>Nombre</label>
-              <input type="text" id="telefono_alt1_nombre" placeholder="Ej: María García">
+              <label>Nombre <span class="req">*</span></label>
+              <input type="text" id="telefono_alt1_nombre" required placeholder="Ej: María García">
             </div>
             <div class="field">
-              <label>Relación</label>
-              <input type="text" id="telefono_alt1_relacion" placeholder="Ej: Esposa">
+              <label>Relación <span class="req">*</span></label>
+              <input type="text" id="telefono_alt1_relacion" required placeholder="Ej: Esposa">
             </div>
           </div>
         </div>
         <div class="field col-span-2">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
             <div class="field">
-              <label>Teléfono Alternativo</label>
-              <input type="tel" id="telefono_alt2" placeholder="Ej: 3512345678" inputmode="numeric">
+              <label>Teléfono Alternativo <span class="req">*</span></label>
+              <input type="tel" id="telefono_alt2" required placeholder="Ej: 3512345678" inputmode="numeric">
             </div>
             <div class="field">
-              <label>Nombre</label>
-              <input type="text" id="telefono_alt2_nombre" placeholder="Ej: Juan García">
+              <label>Nombre <span class="req">*</span></label>
+              <input type="text" id="telefono_alt2_nombre" required placeholder="Ej: Juan García">
             </div>
             <div class="field">
-              <label>Relación</label>
-              <input type="text" id="telefono_alt2_relacion" placeholder="Ej: Hijo">
+              <label>Relación <span class="req">*</span></label>
+              <input type="text" id="telefono_alt2_relacion" required placeholder="Ej: Hijo">
             </div>
           </div>
         </div>
@@ -556,7 +556,7 @@
         <div class="file-drop-icon">📄</div>
         <p><strong>Hacé click para adjuntar archivos</strong><br>
         o arrastrá y soltá aquí<br>
-        <small>PDF, documento o imagen · Máx. 10 MB por archivo · Hasta 5 archivos</small></p>
+        <small>Frente y dorso · mínimo 2 archivos · Máx. 10 MB c/u · Hasta 5</small></p>
       </div>
       <div class="file-list" id="fileList"></div>
     </div>
@@ -645,7 +645,7 @@
             <input type="file" id="tituloInput" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif" onchange="handleFilesTitulo(this.files)">
             <div class="file-drop-icon">📃</div>
             <p><strong>Hacé click para adjuntar archivos</strong><br>
-            PDF, documento o imagen · Máx. 10 MB por archivo · Hasta 5 archivos</p>
+            Mínimo 3 archivos · Máx. 10 MB por archivo · Hasta 5</p>
           </div>
           <div class="file-list" id="fileListTitulo"></div>
         </div>
@@ -739,6 +739,7 @@
       selectedFilesTitulo.push(f);
     }
     renderFilesTitulo();
+    updateProgress();
   }
 
   function removeFile(i) {
@@ -750,6 +751,7 @@
   function removeFileTitulo(i) {
     selectedFilesTitulo.splice(i, 1);
     renderFilesTitulo();
+    updateProgress();
   }
 
   function renderFiles() {
@@ -795,14 +797,17 @@
     'provincia','nombre_concesionaria','encargado_operacion',
     'nombre_apellido','dni','telefono','compania_telefono','email_cliente','codigo_postal','estado_civil',
     'fecha_ingreso','nombre_empresa','domicilio_laboral','telefono_laboral',
+    'telefono_alt1','telefono_alt1_nombre','telefono_alt1_relacion',
+    'telefono_alt2','telefono_alt2_nombre','telefono_alt2_relacion',
     'monto_venta','dominio','marca','modelo_version','anio','equipo_gnc',
     'entidad_bancaria','tipo_tasa','monto_financiar','cantidad_cuotas'
   ];
 
   function updateProgress() {
     let filled = requiredIds.filter(id => document.getElementById(id)?.value.trim()).length;
-    if (selectedFiles.length > 0) filled++;
-    const total = requiredIds.length + 1;
+    if (selectedFiles.length >= 2) filled++;
+    if (selectedFilesTitulo.length >= 3) filled++;
+    const total = requiredIds.length + 2;
     document.getElementById('progressFill').style.width = (filled / total * 100) + '%';
   }
 
@@ -822,11 +827,17 @@
       if (!el || !el.value.trim()) { el?.classList.add('invalid'); ok = false; }
       else el?.classList.remove('invalid');
     });
-    if (selectedFiles.length === 0) {
+    if (selectedFiles.length < 2) {
       dropZone.classList.add('invalid-file');
       ok = false;
     } else {
       dropZone.classList.remove('invalid-file');
+    }
+    if (selectedFilesTitulo.length < 3) {
+      dropZoneTitulo.classList.add('invalid-file');
+      ok = false;
+    } else {
+      dropZoneTitulo.classList.remove('invalid-file');
     }
     return ok;
   }
@@ -876,7 +887,7 @@
     e.preventDefault();
 
     if (!validate()) {
-      showStatus('error', 'Por favor completá todos los campos obligatorios y adjuntá al menos un archivo.');
+      showStatus('error', 'Completá todos los campos obligatorios. DNI del solicitante: mínimo 2 archivos (frente y dorso). Título del automotor: mínimo 3 archivos.');
       document.querySelector('.invalid, .invalid-file')?.scrollIntoView({ behavior:'smooth', block:'center' });
       return;
     }
