@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.21</title>
+<title>Grupo Olyar — Solicitudes v3.8.22</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.21';
+    var APP_VER='v3.8.22';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -1662,9 +1662,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
                 <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Banco</th>
                 <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Concesionaria</th>
                 <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Gestor</th>
-                <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">En proceso</th>
-                <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Presentada</th>
-                <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Finalizada</th>
+                <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Último paso</th>
                 <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Estado solicitud</th>
                 <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Días de atraso</th>
               </tr>
@@ -9761,6 +9759,11 @@ function etUltimoPaso(r){
   return last;
 }
 // Estado nuevo de la prenda segun Estado de tramite: 'en_curso' | 'no_entregada' | 'entregada'
+function etFechaPaso(r,key){
+  var data={}; try{ data = (r && r.etPasos) ? JSON.parse(r.etPasos) : {}; }catch(e){ data={}; }
+  var p=data[key];
+  return (p && p.tilde && p.fecha) ? p.fecha : '';
+}
 function prendaEstadoNuevo(r){
   var u=etUltimoPaso(r);
   if(u>=8) return 'entregada';       // prenda_entregada completado
@@ -14106,12 +14109,11 @@ function renderListadoPrendas() {
     let estadoPrend, estadoColor;
     if (r.prendaRechazada) {
       estadoPrend = 'Rechazada'; estadoColor = 'var(--red)';
-    } else if (r.entregada) {
-      estadoPrend = 'Entregada'; estadoColor = 'var(--purple)';
-    } else if (prendaPresentada(r)) {
-      estadoPrend = 'No entregada'; estadoColor = 'var(--blue)';
     } else {
-      estadoPrend = 'En curso'; estadoColor = 'var(--muted)';
+      var _est = prendaEstadoNuevo(r);
+      if (_est === 'entregada')        { estadoPrend = 'Entregada';    estadoColor = 'var(--purple)'; }
+      else if (_est === 'no_entregada'){ estadoPrend = 'No entregada'; estadoColor = 'var(--blue)';   }
+      else                             { estadoPrend = 'En curso';     estadoColor = 'var(--muted)';  }
     }
     return { ...r, estadoPrend, estadoColor };
   });
@@ -14134,8 +14136,8 @@ function renderListadoPrendas() {
       <td style="padding:9px 12px;font-weight:600">${colorBanco(r.banco)}</td>
       <td style="padding:9px 12px;color:var(--blue)">${val(r.gestorAsignado)}</td>
       <td style="padding:9px 12px;font-weight:700;color:${r.estadoColor}">${r.estadoPrend}</td>
-      <td style="padding:9px 12px">${fmtD(r.finalizada)}</td>
-      <td style="padding:9px 12px">${fmtD(r.fechaEntregada)}</td>
+      <td style="padding:9px 12px">${fmtD(etFechaPaso(r,'enviada_casa_central') || r.finalizada)}</td>
+      <td style="padding:9px 12px">${fmtD(etFechaPaso(r,'prenda_entregada') || r.fechaEntregada)}</td>
     </tr>
   `).join('');
 }
@@ -14151,9 +14153,12 @@ function imprimirListadoPrendas() {
   let data = RECORDS.filter(r => r.gestorAsignado).map(r => {
     let estadoPrend;
     if (r.prendaRechazada)  estadoPrend = 'Rechazada';
-    else if (r.entregada)   estadoPrend = 'Entregada';
-    else if (prendaPresentada(r))  estadoPrend = 'No entregada';
-    else                    estadoPrend = 'En curso';
+    else {
+      var _est = prendaEstadoNuevo(r);
+      if (_est === 'entregada')         estadoPrend = 'Entregada';
+      else if (_est === 'no_entregada') estadoPrend = 'No entregada';
+      else                              estadoPrend = 'En curso';
+    }
     return { ...r, estadoPrend };
   });
 
@@ -14170,8 +14175,8 @@ function imprimirListadoPrendas() {
       <td>${colorBanco(r.banco)}</td>
       <td>${val(r.gestorAsignado)}</td>
       <td><b>${r.estadoPrend}</b></td>
-      <td>${fmtD(r.finalizada)}</td>
-      <td>${fmtD(r.fechaEntregada)}</td>
+      <td>${fmtD(etFechaPaso(r,'enviada_casa_central') || r.finalizada)}</td>
+      <td>${fmtD(etFechaPaso(r,'prenda_entregada') || r.fechaEntregada)}</td>
     </tr>`).join('');
 
   const html = `<html><head><title>${titulo}</title>
@@ -14725,8 +14730,6 @@ function cambiarPagHoy(dir) {
 
 function renderPrendasPendientes() {
   const q = (document.getElementById('rep-pend-srch')?.value || '').toLowerCase();
-  const ok  = v => `<span style="color:var(--green);font-weight:700">✓</span>`;
-  const nok = v => `<span style="color:var(--red);font-weight:700">✗</span>`;
 
   // Prendas = registros con gestor asignado donde al menos uno de los 3 campos no está completo, + rechazadas
   // Excluir las que ya tienen fecha_pago_banco (ya fueron cobradas)
@@ -14736,11 +14739,7 @@ function renderPrendasPendientes() {
     if (contData.fechaPagoBanco) return false; // Ya cobrada — excluir
     if ((r.estado||'').toUpperCase().trim() !== 'AVANZA') return false; // Solo AVANZA
     if (r.prendaRechazada) return true; // Rechazadas siempre incluidas
-    const tieneEnProceso = !!r.enProceso;
-    const tienePresentada = !!r.presentada;
-    const tieneFinalizada = !!(r.finalizada && r.finalizada.trim());
-    // Mostrar solo si NO tienen los 3 completos
-    return !(tieneEnProceso && tienePresentada && tieneFinalizada);
+    return prendaEstadoNuevo(r) !== 'entregada'; // Pendiente = prenda no entregada todavía
   });
 
   if (q) data = data.filter(r =>
@@ -14779,9 +14778,7 @@ function renderPrendasPendientes() {
       <td style="padding:8px 10px;font-weight:600">${colorBanco(r.banco)}</td>
       <td style="padding:8px 10px">${r.concesionaria||'—'}</td>
       <td style="padding:8px 10px;color:var(--blue);font-weight:600">${r.gestorAsignado||'—'}</td>
-      <td style="padding:8px 10px;text-align:center">${r.enProceso ? ok() : nok()}</td>
-      <td style="padding:8px 10px;text-align:center">${r.presentada ? ok() : nok()}</td>
-      <td style="padding:8px 10px;text-align:center">${(r.finalizada && r.finalizada.trim()) ? `<span style="color:var(--green);font-weight:600;font-size:11px">${fmtD(r.finalizada)}</span>` : nok()}</td>
+      <td style="padding:8px 10px">${(()=>{var idx=etUltimoPaso(r);return idx<0?'<span style="color:var(--muted);font-size:11px">Sin iniciar</span>':'<span style="color:var(--blue);font-weight:600;font-size:11px">'+ET_PASOS[idx][1]+'</span>';})()}</td>
       <td style="padding:8px 10px">${r.estado ? `<span class="badge b-${r.estado.toLowerCase()}"><span class="bd"></span>${r.estado}</span>` : '—'}</td>
       <td style="padding:8px 10px;text-align:center">${calcDiasAvanza(r)}</td>
     </tr>`).join('');
