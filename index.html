@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.13</title>
+<title>Grupo Olyar — Solicitudes v3.8.14</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.13';
+    var APP_VER='v3.8.14';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -3959,7 +3959,7 @@ async function enterApp() {
   if (ME.rol === 'invitado') document.body.classList.add('is-invitado');
   else document.body.classList.remove('is-invitado');
   document.getElementById('btn-datero').style.display = ME.rol === 'admin' ? 'none' : '';
-  if (ME.usr === 'claudionieva' || ME.rol === 'admin') loadWeather();
+  loadWeather();
   syncUI('ok');
 
   // Verificar mantenimiento ANTES de mostrar la app
@@ -4209,7 +4209,7 @@ function cerrarModalClima() {
 }
 
 // Actualizar clima cada 30 minutos
-setInterval(() => { if (ME?.usr === 'claudionieva' || ME?.rol === 'admin') loadWeather(); }, 30 * 60 * 1000);
+setInterval(() => { loadWeather(); }, 30 * 60 * 1000);
 
 function doLogout() {
   // Limpiar datos del usuario anterior
