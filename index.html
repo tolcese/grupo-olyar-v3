@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.19</title>
+<title>Grupo Olyar — Solicitudes v3.8.20</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.19';
+    var APP_VER='v3.8.20';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2057,7 +2057,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <table class="prendas-table">
             <thead>
               <tr>
-                <th>Acciones</th><th>#</th><th>Fecha actual</th><th>Fecha solicitud</th><th>Año</th><th>Gestor asignado</th><th>Cliente</th><th>Banco</th><th>Concesionaria</th><th>Localidad</th><th>Provincia</th><th>Marca</th><th>Descripción vehículo</th><th>Tipo CTA</th><th>Doc 01/08</th><th>Título</th><th>Ver. Pol.</th><th>Dominio</th><th>Tasa</th><th>Imp. Solicitado</th><th>Observaciones</th><th>En proceso</th><th>Presentada</th><th>Finalizada</th>
+                <th>Acciones</th><th>#</th><th>N° Control</th><th>Fecha actual</th><th>Fecha solicitud</th><th>Año</th><th>Gestor asignado</th><th>Cliente</th><th>Banco</th><th>Concesionaria</th><th>Localidad</th><th>Provincia</th><th>Marca</th><th>Descripción vehículo</th><th>Tipo CTA</th><th>Doc 01/08</th><th>Título</th><th>Ver. Pol.</th><th>Dominio</th><th>Tasa</th><th>Imp. Solicitado</th><th>Observaciones</th><th>En proceso</th><th>Presentada</th><th>Finalizada</th>
               </tr>
             </thead>
             <tbody id="prendas-tbody"></tbody>
@@ -2113,6 +2113,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       <div class="ph">
         <div style="display:flex;align-items:center;gap:18px">
           <div class="ph-t" id="prenda-cliente" style="font-size:23px;font-weight:800">—</div>
+          <div id="prenda-nrocontrol" style="font-family:monospace;font-weight:800;font-size:14px;color:var(--blue);background:var(--surface);border:1.5px solid var(--line);border-radius:8px;padding:3px 11px;display:none"></div>
           <div class="pe-hdr-chks">
             <label class="pe-hdr-chk"><input type="checkbox" id="prenda-preprenda"> Pre Prenda</label>
             <label class="pe-hdr-chk"><input type="checkbox" id="prenda-inscripta"> Prenda Inscripta</label>
@@ -4725,10 +4726,18 @@ function closeSelGestor() {
 async function confirmarAsignacion(gestorId, gestorNombre) {
   if (!ASIGNAR_ID) return;
   try {
-    const { error } = await SB.from('solicitudes').update({ gestor_asignado: gestorNombre, gestor_id: gestorId }).eq('id', ASIGNAR_ID);
-    if (error) throw error;
     const r = RECORDS.find(x => x.id === ASIGNAR_ID);
-    if (r) { r.gestorAsignado = gestorNombre; r.gestorId = gestorId; }
+    const upd = { gestor_asignado: gestorNombre, gestor_id: gestorId };
+    // Nro de control: se genera solo la primera vez; permanece al reasignar
+    if (r && !r.nroControl) {
+      try {
+        const { data: nro, error: eNro } = await SB.rpc('next_nro_control', { p_anio: new Date().getFullYear() });
+        if (!eNro && nro) upd.nro_control = nro;
+      } catch(_) {}
+    }
+    const { error } = await SB.from('solicitudes').update(upd).eq('id', ASIGNAR_ID);
+    if (error) throw error;
+    if (r) { r.gestorAsignado = gestorNombre; r.gestorId = gestorId; if (upd.nro_control) r.nroControl = upd.nro_control; }
     toast('Asignado a ' + gestorNombre + ' ✓', 'ok');
     closeSelGestor();
     renderGestoria();
@@ -4794,6 +4803,7 @@ function renderPrendasFinalizadas() {
         </div>
       </td>
       <td style="color:var(--muted);font-size:11px">${i+1}</td>
+      <td style="font-family:monospace;font-weight:700;color:var(--blue);white-space:nowrap">${val(r.nroControl)}</td>
       <td style="white-space:nowrap;color:var(--green);font-weight:600">${fmtFin(r.finalizada)}</td>
       <td style="font-weight:700;color:var(--blue)">${val(r.gestorAsignado)}</td>
       <td>${val(r.anio)}</td>
@@ -5707,6 +5717,7 @@ function renderPrendasEntregadas() {
         </div>
       </td>
       <td style="color:var(--muted);font-size:11px">${i+1}</td>
+      <td style="font-family:monospace;font-weight:700;color:var(--blue);white-space:nowrap">${val(r.nroControl)}</td>
       <td style="white-space:nowrap">${hoy}</td>
       <td style="white-space:nowrap;color:var(--green);font-weight:600">${fmtFin(r.finalizada)}</td>
       <td style="white-space:nowrap;color:var(--purple);font-weight:600">${fmtFin(r.fechaEntregada)}</td>
@@ -9808,6 +9819,7 @@ function renderPrendas() {
         </div>
       </td>
       <td style="color:var(--muted);font-size:11px">${i+1}</td>
+      <td style="font-family:monospace;font-weight:700;color:var(--blue);white-space:nowrap">${val(r.nroControl)}</td>
       <td style="white-space:nowrap">${hoy}</td>
       <td style="white-space:nowrap">${r.fecha ? r.fecha.split('-').reverse().join('/') : '—'}</td>
       <td>${val(r.anio)}</td>
@@ -9907,6 +9919,7 @@ function editPrenda(id) {
   document.getElementById('prenda-finalizada').value   = r.finalizada || '';
   document.getElementById('prenda-entregada').checked  = r.entregada || false;
   document.getElementById('prenda-cliente').textContent = r.nombrecliente || id;
+  var _nc=document.getElementById('prenda-nrocontrol'); if(_nc){ if(r.nroControl){ _nc.textContent=r.nroControl; _nc.style.display=''; } else { _nc.textContent=''; _nc.style.display='none'; } }
   var _admEdit = (typeof ME!=='undefined' && ME && ME.rol==='admin');
   var _pp=document.getElementById('prenda-preprenda'), _pi=document.getElementById('prenda-inscripta');
   if(_pp){ _pp.checked=!!r.prePrenda; _pp.disabled=!_admEdit; }
@@ -10505,7 +10518,7 @@ async function loadRecords() {
       etRegistro: r.et_registro, etObservaciones: r.et_observaciones, etPasos: r.et_pasos,
       bancos: Array.isArray(r.bancos) ? r.bancos : [],
       tasa: r.tasa, obs: r.obs, comision: r.comision, usuario: r.usuario,
-      fechaReg: r.fecha_reg, gestorAsignado: r.gestor_asignado, gestorId: r.gestor_id,
+      fechaReg: r.fecha_reg, nroControl: r.nro_control, gestorAsignado: r.gestor_asignado, gestorId: r.gestor_id,
       enProceso: r.en_proceso, presentada: r.presentada, finalizada: r.finalizada,
       entregada: r.entregada || false,
       fechaEntregada: r.fecha_entregada, puntodeventa: r.punto_de_venta || '',
@@ -15279,6 +15292,7 @@ function renderReportes() {
             <tr>
               <th>Acciones</th>
               <th>#</th>
+              <th>N° Control</th>
               <th>Fecha finalizada</th>
               <th>Gestor asignado</th>
               <th>Año</th>
@@ -15418,6 +15432,7 @@ function renderReportes() {
             <tr>
               <th>Acciones</th>
               <th>#</th>
+              <th>N° Control</th>
               <th>Fecha actual</th>
               <th>Fecha finalizada</th>
               <th>Fecha entregada</th>
