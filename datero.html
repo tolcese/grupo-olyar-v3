@@ -549,8 +549,9 @@
     <div class="card">
       <div class="section-header">
         <div class="section-icon">📎</div>
-        <h3>Foto DNI Solicitante Frente y Dorso</h3>
+        <h3>Foto DNI Solicitante Frente y Dorso <span class="req">*</span></h3>
       </div>
+      <div style="color:var(--red);font-weight:700;font-size:0.85rem;margin-bottom:6px">⚠️ Obligatorio adjuntar frente y dorso (mínimo 2 archivos).</div>
       <div class="file-drop" id="fileDrop" onclick="document.getElementById('archivoInput').click()">
         <input type="file" id="archivoInput" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif" onchange="handleFiles(this.files)">
         <div class="file-drop-icon">📄</div>
@@ -640,7 +641,8 @@
           </select>
         </div>
         <div class="field col-span-2">
-          <label>Título Completo del Automotor</label>
+          <label>Título Completo del Automotor <span class="req">*</span></label>
+          <div style="color:var(--red);font-weight:700;font-size:0.85rem;margin-bottom:6px">⚠️ Obligatorio adjuntar las 3 hojas del título.</div>
           <div class="file-drop" id="fileDropTitulo" onclick="document.getElementById('tituloInput').click()">
             <input type="file" id="tituloInput" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif" onchange="handleFilesTitulo(this.files)">
             <div class="file-drop-icon">📃</div>
