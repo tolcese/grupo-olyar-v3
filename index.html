@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.12</title>
+<title>Grupo Olyar — Solicitudes v3.8.13</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.12';
+    var APP_VER='v3.8.13';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -672,7 +672,6 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       <div id="weather-widget" style="display:none;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--ink2)">
         <span id="weather-icon">🌤️</span>
         <span id="weather-temp" style="font-weight:700"></span>
-        <span id="weather-desc" style="color:var(--muted)"></span>
       </div>
       <button class="btn btn-s" style="font-size:12px;padding:6px 12px" onclick="doLogout()">Salir</button>
     </div>
@@ -4141,10 +4140,8 @@ async function loadWeather() {
       const cur = data.current_condition[0];
       const temp = cur.temp_C;
       const code = parseInt(cur.weatherCode);
-      const desc = weatherDesc(code);
       document.getElementById('weather-icon').textContent = weatherIcon(code);
       document.getElementById('weather-temp').textContent = `${temp}°C`;
-      document.getElementById('weather-desc').textContent = desc;
       widget.style.display = 'flex';
       widget.style.cursor = 'pointer';
       window._weatherData = data;
