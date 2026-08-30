@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.18</title>
+<title>Grupo Olyar — Solicitudes v3.8.19</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.18';
+    var APP_VER='v3.8.19';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -3447,8 +3447,8 @@ function bankBlockHTML(i, d){
       <div class="fc"><label>MONTO PARA AGENCIA ($)</label><div class="cur"><span class="cur-s">$</span><input type="number" min="0" class="bb-agencia" value="${d.agencia||''}" placeholder="0"></div></div>
       <div class="fc"><label>% PRESTADO POR EL BANCO</label><div class="bb-pct" style="padding:9px 11px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;font-weight:700;color:var(--muted);background:#fff">—</div></div>
       <div class="fc"><label>COMISIÓN ($)</label><div class="cur"><span class="cur-s">$</span><input type="number" min="0" class="bb-comision" value="${d.comision||''}" placeholder="0" style="background:#f0fdf4"></div></div>
-      <div class="fc"><label>ESTADO *</label><select class="bb-estado" onchange="pintarBloqueBanco(this)"><option value="">— Seleccioná —</option><option${se('APROBADO')}>APROBADO</option><option${se('RECHAZADO')}>RECHAZADO</option><option${se('AVANZA')}>AVANZA</option></select></div>
       <div class="fc"><label>% DE COMISIÓN</label><input class="bb-tasa" value="${d.tasa||''}" placeholder="Ej. 3.2" oninput="calcBloqueBanco(this)"></div>
+      <div class="fc"><label>ESTADO *</label><select class="bb-estado" onchange="pintarBloqueBanco(this)"><option value="">— Seleccioná —</option><option${se('APROBADO')}>APROBADO</option><option${se('RECHAZADO')}>RECHAZADO</option><option${se('AVANZA')}>AVANZA</option></select></div>
       <div class="fc span3"><label>OBSERVACIÓN</label><textarea class="bb-obs" placeholder="Notas de este banco...">${d.obs||''}</textarea></div>
     </div>
   </div>`;
