@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.27</title>
+<title>Grupo Olyar — Solicitudes v3.8.28</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.27';
+    var APP_VER='v3.8.28';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -3498,7 +3498,7 @@ function onBancoChange(sel){
   if(sel.value==='__add__'){
     const n=prompt('Nombre del nuevo banco:');
     if(n&&n.trim()){ const nm=n.trim().toUpperCase();
-      if(!(LISTS.banco||[]).includes(nm)){ if(!LISTS.banco)LISTS.banco=[]; LISTS.banco.push(nm); SB.from('listas').insert({campo:'banco',valor:nm}).then(()=>{}).catch(()=>{}); }
+      if(!(LISTS.banco||[]).includes(nm)){ if(!LISTS.banco)LISTS.banco=[]; LISTS.banco.push(nm); SB.from('listas').upsert({campo:'banco',valor:nm},{onConflict:'campo,valor',ignoreDuplicates:true}).then(()=>{}).catch(()=>{}); }
       refreshBancoSelects(); sel.value=nm; if(typeof initBanco==='function') initBanco();
     } else { sel.value=''; }
   }
@@ -10948,7 +10948,7 @@ async function saveRecord() {
     if (d[k] && !LISTS[k]?.includes(d[k])) {
       if (!LISTS[k]) LISTS[k] = [];
       LISTS[k].push(d[k]);
-      SB.from('listas').insert({ campo: k, valor: d[k] }).then(()=>{}).catch(()=>{});
+      SB.from('listas').upsert({ campo: k, valor: d[k] }, { onConflict: 'campo,valor', ignoreDuplicates: true }).then(()=>{}).catch(()=>{});
     }
   }
 
