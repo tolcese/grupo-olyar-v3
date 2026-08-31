@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.28</title>
+<title>Grupo Olyar — Solicitudes v3.8.29</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.28';
+    var APP_VER='v3.8.29';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -10223,10 +10223,16 @@ function openPrendasPanel(id, from) {
       <div class="prow"><span class="pl">DNI</span><span class="pv">${chk(r.docDni)}</span></div>
     </div>
     <div class="panel-section">
-      <div class="panel-section-t">Estado de prenda</div>
-      <div class="prow"><span class="pl">En proceso</span><span class="pv">${chk(r.enProceso)}</span></div>
-      <div class="prow"><span class="pl">Presentada</span><span class="pv">${chk(r.presentada)}</span></div>
-      <div class="prow"><span class="pl">Finalizada</span><span class="pv" style="color:var(--green);font-weight:600">${fmtFin(r.finalizada)}</span></div>
+      <div class="panel-section-t">Estado de trámite</div>
+      ${(()=>{ let et={}; try{ et = r.etPasos ? JSON.parse(r.etPasos) : {}; }catch(e){ et={}; }
+        return ET_PASOS.map(([k,lbl])=>{
+          const p = et[k] || {};
+          const done = !!(p.tilde && p.fecha);
+          return `<div class="prow"><span class="pl">${lbl}</span><span class="pv">${done
+            ? '<span class="pchk yes">✓</span> <span style="color:var(--muted);font-weight:600;font-size:12px">'+fmtD(p.fecha)+'</span>'
+            : '<span class="pchk no">—</span>'}</span></div>`;
+        }).join('');
+      })()}
     </div>
     ${r.obs ? `<div class="panel-section"><div class="panel-section-t">Observaciones</div><div style="font-size:13px;color:var(--ink2);line-height:1.6">${r.obs}</div></div>` : ''}
   `;
