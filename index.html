@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.25</title>
+<title>Grupo Olyar — Solicitudes v3.8.26</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.25';
+    var APP_VER='v3.8.26';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -4730,8 +4730,18 @@ async function confirmarAsignacion(gestorId, gestorNombre) {
     if (r && !r.nroControl) {
       try {
         const { data: nro, error: eNro } = await SB.rpc('next_nro_control', { p_anio: new Date().getFullYear() });
-        if (!eNro && nro) upd.nro_control = nro;
-      } catch(_) {}
+        if (eNro) {
+          console.error('[N° Trámite] error RPC next_nro_control:', eNro);
+          toast('No se pudo generar el N° Trámite: ' + (eNro.message || eNro.code || 'error'), 'warn');
+        } else {
+          // Normalizar el retorno: puede venir como texto, array u objeto según supabase-js
+          let val = nro;
+          if (Array.isArray(val)) val = val[0];
+          if (val && typeof val === 'object') val = val.next_nro_control ?? Object.values(val)[0];
+          if (val) upd.nro_control = String(val);
+          else console.warn('[N° Trámite] RPC devolvió vacío:', nro);
+        }
+      } catch(e) { console.error('[N° Trámite] excepción RPC:', e); }
     }
     const { error } = await SB.from('solicitudes').update(upd).eq('id', ASIGNAR_ID);
     if (error) throw error;
