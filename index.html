@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.26</title>
+<title>Grupo Olyar — Solicitudes v3.8.27</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.26';
+    var APP_VER='v3.8.27';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -4653,15 +4653,15 @@ async function desasignarGestoria(id) {
   if (!requireEdit()) return;
   const r = RECORDS.find(x => x.id === id);
   const nombre = r?.nombrecliente || 'esta operación';
-  if (!confirm(`¿Desasignar gestor de "${nombre}"? La operación volverá al estado "APROBADO".`)) return;
-  const { error } = await SB.from('solicitudes').update({ gestor_asignado: null, gestor_id: null, estado: 'APROBADO' }).eq('id', id);
+  if (!confirm(`¿Desasignar gestor de "${nombre}"? La operación quedará en Gestoría (AVANZA) lista para reasignar.`)) return;
+  const { error } = await SB.from('solicitudes').update({ gestor_asignado: null, gestor_id: null }).eq('id', id);
   if (error) { toast('Error al desasignar gestor', 'er'); return; }
   const rec = RECORDS.find(x => x.id === id);
-  if (rec) { rec.gestorAsignado = null; rec.gestorId = null; rec.estado = 'APROBADO'; }
+  if (rec) { rec.gestorAsignado = null; rec.gestorId = null; }
   renderGestoria();
   refreshAllPrendaViews();
   renderTable();
-  toast('Gestor desasignado — estado vuelto a APROBADO ✓', 'ok');
+  toast('Gestor desasignado — queda en Gestoría para reasignar ✓', 'ok');
 }
 
 async function asignarGestoria(id) {
