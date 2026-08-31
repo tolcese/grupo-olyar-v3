@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.30</title>
+<title>Grupo Olyar — Solicitudes v3.8.31</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.30';
+    var APP_VER='v3.8.31';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -4805,7 +4805,7 @@ function renderPrendasFinalizadas() {
     <tr style="cursor:pointer" onclick="openPrendasPanel('${r.id}','finalizadas')">
       <td style="position:sticky;left:0;background:#fff;z-index:1;box-shadow:2px 0 6px rgba(0,0,0,.04)" onclick="event.stopPropagation()">
         <div class="abtns">
-          <button class="ibtn" onclick="editPrenda('${r.id}')" title="Editar">✏️</button>
+          <button class="ibtn" onclick="closePrendasFinalizadas();editPrenda('${r.id}')" title="Editar">✏️</button>
           <button class="ibtn" onclick="abrirAcuse('${r.id}')" title="Generar acuse">📄</button>
           ${isAdmin ? `<button class="ibtn" onclick="closePrendasFinalizadas();openHistorial('${r.id}')" title="Historial">🕐</button>` : ''}
         </div>
