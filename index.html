@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.37</title>
+<title>Grupo Olyar — Solicitudes v3.8.39</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.37';
+    var APP_VER='v3.8.39';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2956,7 +2956,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <button class="btn btn-s" onclick="showV('panel-principal')" style="padding:6px 12px">← Volver</button>
           <div><div class="ph-t">📋 Copas Registrales</div><div class="ph-s">Registro y seguimiento de copas registrales</div></div>
         </div>
-        <button class="btn btn-p" onclick="nuevaCopa()">＋ Nueva copa</button>
+        <button class="btn btn-p" onclick="nuevaCopa()">＋ Nueva copia registral</button>
       </div>
       <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
         <div class="searchbox" style="min-width:260px">
@@ -2986,7 +2986,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       <div id="copa-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--muted)">
         <div style="font-size:48px;margin-bottom:12px">📋</div>
         <div style="font-size:15px;font-weight:700;color:var(--ink2);margin-bottom:6px">Sin copas registrales</div>
-        <div style="font-size:13px">Usá el botón <b>＋ Nueva copa</b> para agregar</div>
+        <div style="font-size:13px">Usá el botón <b>＋ Nueva copia registral</b> para agregar</div>
       </div>
     </div>
 
