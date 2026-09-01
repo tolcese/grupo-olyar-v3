@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.35</title>
+<title>Grupo Olyar — Solicitudes v3.8.36</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.35';
+    var APP_VER='v3.8.36';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -6496,9 +6496,9 @@ function closeCreditoNuevo() {
 function filtrarSolicitudesAvanza() {
   const q    = (document.getElementById('cred-buscar-sol')?.value||'').toLowerCase();
   const lista = document.getElementById('cred-sol-lista');
-  // Solicitudes AVANZA que no tienen crédito aún
-  const creditadasIds = new Set(CREDITOS_CACHE.map(c => c.solicitudId));
-  let sols = RECORDS.filter(r => (r.estado||'').toUpperCase() === 'AVANZA' && !creditadasIds.has(r.id));
+  // Solicitudes AVANZA cuyo DNI aún no tiene crédito (un crédito por cliente)
+  const creditadasDnis = new Set(CREDITOS_CACHE.map(c => String(c.dni||'').trim()).filter(Boolean));
+  let sols = RECORDS.filter(r => (r.estado||'').toUpperCase() === 'AVANZA' && !creditadasDnis.has(String(r.dni||'').trim()));
   if (q) sols = sols.filter(r => [(r.nombrecliente||''), (r.dni||'')].some(v => v.toLowerCase().includes(q)));
 
   if (!sols.length) {
@@ -6549,6 +6549,10 @@ function calcCuotaMonto() {
 
 async function saveNuevoCredito() {
   if (!CRED_SOL_SEL) { toast('Seleccioná una solicitud','er'); return; }
+  const dniSel = String(CRED_SOL_SEL.dni||'').trim();
+  if (dniSel && CREDITOS_CACHE.some(c => String(c.dni||'').trim() === dniSel)) {
+    toast('Ese cliente (DNI '+dniSel+') ya tiene un crédito cargado','er'); return;
+  }
   const cant   = parseInt(document.getElementById('cred-cant-cuotas').value);
   const inicio = document.getElementById('cred-fecha-inicio').value;
   if (!cant || cant < 1) { toast('Ingresá la cantidad de cuotas','er'); return; }
