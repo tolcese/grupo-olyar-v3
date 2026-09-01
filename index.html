@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.43</title>
+<title>Grupo Olyar — Solicitudes v3.8.44</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.43';
+    var APP_VER='v3.8.44';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -4126,24 +4126,24 @@ async function enterApp() {
   if (ME.rol === 'presupuestos') {
     // Solo cargar lo necesario para presupuestos
     await loadPresupuestos();
-    initPresupRealtime();
+    initPresupRealtime(); initSolRealtime();
   } else if (ME.rol === 'administracion') {
     // Solo cargar lo necesario para administración
     // (sin datos del sistema por ahora)
-    initPresupRealtime();
+    initPresupRealtime(); initSolRealtime();
   } else if (ME.rol === 'usuario_presupuestos') {
     await Promise.all([loadLists(), loadRecords(), loadClientes(), loadContabilidad(), loadConcesionarias(), loadCreditos()]);
     Promise.all([loadGestores(), loadDatero(), loadGastos(), loadPorcentajesBanco()]).catch(()=>{});
     await loadPresupuestos();
-    initPresupRealtime();
+    initPresupRealtime(); initSolRealtime();
   } else if (ME.rol === 'administracion' || ME.rol === 'usuario_administracion') {
     await Promise.all([loadLists(), loadRecords(), loadClientes(), loadContabilidad(), loadConcesionarias(), loadCreditos()]);
     Promise.all([loadGestores(), loadDatero(), loadGastos(), loadPorcentajesBanco()]).catch(()=>{});
-    initPresupRealtime();
+    initPresupRealtime(); initSolRealtime();
   } else {
     await Promise.all([loadLists(), loadRecords(), loadClientes(), loadContabilidad(), loadConcesionarias(), loadCreditos()]);
     Promise.all([loadGestores(), loadDatero(), loadGastos(), loadPorcentajesBanco()]).catch(()=>{});
-    initPresupRealtime();
+    initPresupRealtime(); initSolRealtime();
   }
   SB.from('coeficientes').select('*').eq('id',1).single().then(({data}) => {
     if (data) COEFICIENTES = { impCredito: data.imp_credito, comLukaya: data.com_lukaya, comGestor: data.com_gestor, retribBanco: data.retrib_banco };
@@ -5010,6 +5010,24 @@ async function loadPresupuestos() {
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--red)">Error al cargar: ${e.message}</td></tr>`;
   }
+}
+
+// Realtime sync solicitudes — refleja al instante cambios de otros usuarios
+// (paso de prenda: en curso -> no entregada -> entregada, y demás ediciones)
+let _solRealtimeChannel = null, _solRtTimer = null;
+function initSolRealtime() {
+  if (_solRealtimeChannel) return;
+  _solRealtimeChannel = SB.channel('solicitudes-sync')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'solicitudes' }, () => {
+      clearTimeout(_solRtTimer);
+      _solRtTimer = setTimeout(() => {
+        loadRecords().then(() => {
+          try { refreshAllPrendaViews(); } catch(e) {}
+          try { if (document.getElementById('gestoria-overlay')?.classList.contains('open')) renderGestoria(); } catch(e) {}
+        }).catch(() => {});
+      }, 400);
+    })
+    .subscribe();
 }
 
 // Realtime sync presupuestos — actualiza automáticamente cuando otro usuario modifica
