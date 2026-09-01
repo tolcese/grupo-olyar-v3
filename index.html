@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.42</title>
+<title>Grupo Olyar — Solicitudes v3.8.43</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.42';
+    var APP_VER='v3.8.43';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2281,7 +2281,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
               <div class="pe-f"><label>Vencimiento de Cuota</label><input class="pe-in" type="date" id="pe-cre-venc"></div>
               <div class="pe-f"><label>Valor de Cuota (aprox.)</label><input class="pe-in" type="text" inputmode="decimal" id="pe-cre-valorcuota" placeholder="$"></div>
               <div class="pe-f"><label>Cantidad de Cuotas</label><input class="pe-in" type="text" inputmode="numeric" id="pe-cre-cantcuotas"></div>
-              <div class="pe-f"><label>Estado</label><select class="pe-in" id="pe-cre-estado" onchange="creEstadoOnEstadoChange()"><option>No solicitado</option><option>Solicitado</option><option>Carga documentación</option><option>Pendiente seguro</option><option>En proceso de liquidación</option></select></div>
+              <div class="pe-f"><label>Estado</label><select class="pe-in" id="pe-cre-estado" onchange="creEstadoOnEstadoChange()"><option>No solicitado</option><option>Solicitado</option><option>Carga documentación</option><option>Pendiente seguro</option><option>En proceso de liquidación</option><option>Liquidado</option></select></div>
               <div class="pe-f"><label id="pe-cre-fecha-label">Fecha del estado</label><input class="pe-in" type="date" id="pe-cre-estadofecha" onchange="creEstadoOnFechaChange()"></div>
               <div class="pe-f"><label>&nbsp;</label><button type="button" class="btn btn-s" onclick="showV('creditos')" style="border-color:var(--blue);color:var(--blue)">💳 Sistema de créditos</button></div>
               <div class="pe-f pe-f-full"><label>Fechas por estado</label><div id="pe-cre-fechas-resumen" style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;align-items:center;min-height:20px"></div></div>
@@ -10184,7 +10184,7 @@ function etRecompute(){
 function creEstadoRenderResumen(){
   var cont=document.getElementById('pe-cre-fechas-resumen'); if(!cont) return;
   var map=window._creEstadoFechas||{};
-  var orden=['No solicitado','Solicitado','Carga documentación','Pendiente seguro','En proceso de liquidación'];
+  var orden=['No solicitado','Solicitado','Carga documentación','Pendiente seguro','En proceso de liquidación','Liquidado'];
   var chips=orden.filter(function(k){return map[k];}).map(function(k){
     var dmy=String(map[k]).split('-').reverse().join('/');
     return '<span style="background:rgba(15,23,42,.05);border:1px solid var(--line);border-radius:6px;padding:3px 8px"><b>'+k+':</b> '+dmy+'</span>';
