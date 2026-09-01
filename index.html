@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.47</title>
+<title>Grupo Olyar — Solicitudes v3.8.48</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.47';
+    var APP_VER='v3.8.48';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2081,16 +2081,31 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
     </div>
     <div id="v-prendas-finalizadas" style="display:none">
   <div class="pe-modal" onclick="event.stopPropagation()">
-    <div class="pe-head">
-      <div>
-        <div style="font-size:17px;font-weight:800;color:var(--ink)">🏁 Prendas no entregadas</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="pf-count">—</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <div class="searchbox" style="min-width:220px">
-          <span style="color:var(--muted)">🔍</span>
-          <input id="pf-srch" placeholder="Buscar cliente, banco, gestor..." oninput="renderPrendasFinalizadas()">
+    <div class="pe-head" style="flex-direction:column;align-items:stretch;gap:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:17px;font-weight:800;color:var(--ink)">🏁 Prendas no entregadas</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px" id="pf-count">—</div>
         </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div class="searchbox" style="min-width:200px">
+            <span style="color:var(--muted)">🔍</span>
+            <input id="pf-srch" placeholder="Buscar cliente, banco, gestor..." oninput="renderPrendasFinalizadas()">
+          </div>
+          <button class="btn btn-s" style="font-size:12px" onclick="exportarPFExcel()">📊 Excel</button>
+          <button class="btn btn-s" style="font-size:12px" onclick="exportarPFPDF()">📄 PDF</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="pf-f-banco" onchange="renderPrendasFinalizadas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Banco</option></select>
+        <select id="pf-f-gestor" onchange="renderPrendasFinalizadas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Gestor</option></select>
+        <select id="pf-f-prov" onchange="renderPrendasFinalizadas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Provincia</option></select>
+        <select id="pf-f-conce" onchange="renderPrendasFinalizadas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Concesionaria</option></select>
+        <select id="pf-f-anio" onchange="renderPrendasFinalizadas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Año</option></select>
+        <span style="font-size:12px;color:var(--muted)">Enviada:</span>
+        <input type="date" id="pf-f-desde" onchange="renderPrendasFinalizadas()" style="padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px" title="Desde">
+        <input type="date" id="pf-f-hasta" onchange="renderPrendasFinalizadas()" style="padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px" title="Hasta">
+        <button class="btn btn-s" style="font-size:12px" onclick="limpiarFiltrosPF()">✕ Limpiar</button>
       </div>
     </div>
     <div class="pe-body">
@@ -4921,14 +4936,116 @@ function openPrendasFinalizadas() {
 
 function closePrendasFinalizadas() { /* vista full: sin modal que cerrar */ }
 
-function renderPrendasFinalizadas() {
+function getPFData() {
   const q = (document.getElementById('pf-srch')?.value || '').toLowerCase();
-  const isAdmin = ME?.rol === 'admin';
-
+  const fB = document.getElementById('pf-f-banco')?.value || '';
+  const fG = document.getElementById('pf-f-gestor')?.value || '';
+  const fP = document.getElementById('pf-f-prov')?.value || '';
+  const fC = document.getElementById('pf-f-conce')?.value || '';
+  const fA = document.getElementById('pf-f-anio')?.value || '';
+  const fD = document.getElementById('pf-f-desde')?.value || '';
+  const fH = document.getElementById('pf-f-hasta')?.value || '';
   let data = RECORDS.filter(r => r.gestorAsignado && prendaEstadoNuevo(r) === 'no_entregada');
-  if (q) data = data.filter(r =>
-    [r.nombrecliente, r.banco, r.concesionaria, r.provincia, r.localidad, r.gestorAsignado].some(v => (v||'').toLowerCase().includes(q))
-  );
+  if (q) data = data.filter(r => [r.nombrecliente, r.banco, r.concesionaria, r.provincia, r.localidad, r.gestorAsignado].some(v => (v||'').toLowerCase().includes(q)));
+  if (fB) data = data.filter(r => (r.banco||'') === fB);
+  if (fG) data = data.filter(r => (r.gestorAsignado||'') === fG);
+  if (fP) data = data.filter(r => (r.provincia||'') === fP);
+  if (fC) data = data.filter(r => (r.concesionaria||'') === fC);
+  if (fA) data = data.filter(r => String(r.anio||'') === fA);
+  if (fD || fH) data = data.filter(r => {
+    const f = etFechaPaso(r, 'enviada_casa_central');
+    if (!f) return false;
+    if (fD && f < fD) return false;
+    if (fH && f > fH) return false;
+    return true;
+  });
+  return data;
+}
+
+function poblarFiltrosPF() {
+  const base = RECORDS.filter(r => r.gestorAsignado && prendaEstadoNuevo(r) === 'no_entregada');
+  const fill = (id, label, values) => {
+    const sel = document.getElementById(id); if (!sel) return;
+    const cur = sel.value;
+    const opts = [...new Set(values.filter(v => v && String(v).trim() !== ''))].sort();
+    sel.innerHTML = '<option value="">'+label+'</option>' + opts.map(v => `<option>${v}</option>`).join('');
+    if (opts.includes(cur)) sel.value = cur;
+  };
+  fill('pf-f-banco','Banco', base.map(r => r.banco));
+  fill('pf-f-gestor','Gestor', base.map(r => r.gestorAsignado));
+  fill('pf-f-prov','Provincia', base.map(r => r.provincia));
+  fill('pf-f-conce','Concesionaria', base.map(r => r.concesionaria));
+  fill('pf-f-anio','Año', base.map(r => String(r.anio||'')));
+}
+
+function limpiarFiltrosPF() {
+  ['pf-srch','pf-f-banco','pf-f-gestor','pf-f-prov','pf-f-conce','pf-f-anio','pf-f-desde','pf-f-hasta'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  renderPrendasFinalizadas();
+}
+
+function _pfExportRows() {
+  const fD = v => v ? String(v).split('-').reverse().join('/') : '';
+  return getPFData().map(r => ({
+    'N° Trámite': r.nroControl || '',
+    'Enviada': fD(etFechaPaso(r,'enviada_casa_central')),
+    'Cliente': r.nombrecliente || '',
+    'Gestor': r.gestorAsignado || '',
+    'Banco': r.banco || '',
+    'Concesionaria': r.concesionaria || '',
+    'Localidad': r.localidad || '',
+    'Provincia': r.provincia || '',
+    'Año': r.anio || '',
+    'Descripción vehículo': r.descripcion || '',
+    'Observaciones': r.obs || ''
+  }));
+}
+
+async function exportarPFExcel() {
+  const rows = _pfExportRows();
+  if (!rows.length) return alert('No hay datos para exportar');
+  if (!window.XLSX) {
+    await new Promise((res, rej) => { const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+  }
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:14},{wch:11},{wch:22},{wch:20},{wch:14},{wch:20},{wch:16},{wch:16},{wch:8},{wch:24},{wch:24}];
+  XLSX.utils.book_append_sheet(wb, ws, 'No entregadas');
+  XLSX.writeFile(wb, `Prendas_no_entregadas_${hoyLocal()}.xlsx`);
+}
+
+async function exportarPFPDF() {
+  const rows = _pfExportRows();
+  if (!rows.length) return alert('No hay datos para exportar');
+  if (!window.jspdf) {
+    await new Promise((res, rej) => { const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+  }
+  if (!window.jspdf?.jsPDF?.API?.autoTable) {
+    await new Promise((res, rej) => { const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  doc.setFontSize(13);
+  doc.text('Prendas no entregadas', 14, 14);
+  doc.setFontSize(9); doc.setTextColor(120);
+  doc.text(new Date().toLocaleDateString('es-AR') + ' — ' + rows.length + ' registro' + (rows.length!==1?'s':''), 14, 20);
+  const cols = Object.keys(rows[0]);
+  doc.autoTable({
+    head: [cols],
+    body: rows.map(r => cols.map(c => r[c])),
+    startY: 25,
+    styles: { fontSize: 7, cellPadding: 1.5 },
+    headStyles: { fillColor: [29, 111, 206], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245, 247, 250] }
+  });
+  doc.save(`Prendas_no_entregadas_${hoyLocal()}.pdf`);
+}
+
+function renderPrendasFinalizadas() {
+  const isAdmin = ME?.rol === 'admin';
+  poblarFiltrosPF();
+  let data = getPFData();
 
   const tbody = document.getElementById('pf-tbody');
   const empty = document.getElementById('pf-empty');
@@ -10810,7 +10927,7 @@ function showV(v) {
   if (v==='sol')      renderTable();
   if (v==='gestores') { const _lw=document.getElementById('gestores-list-wrap'), _fw=document.getElementById('gestor-form-wrap'); if(_lw)_lw.style.display=''; if(_fw)_fw.style.display='none'; loadGestores(); }
   if (v==='prendas')  { renderPrendas(); setTimeout(initPrendasMirror, 150); }
-  if (v==='prendas-finalizadas') { renderPrendasFinalizadas(); setTimeout(initPFMirror, 150); }
+  if (v==='prendas-finalizadas') { poblarFiltrosPF(); renderPrendasFinalizadas(); setTimeout(initPFMirror, 150); }
   if (v==='prendas-entregadas') { renderPrendasEntregadas(); setTimeout(initPEMirror, 150); }
   if (v==='nueva') {
     if (!window._isDuplicating && !window._isEditing) {
