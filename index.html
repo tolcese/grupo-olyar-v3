@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.39</title>
+<title>Grupo Olyar — Solicitudes v3.8.40</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.39';
+    var APP_VER='v3.8.40';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -4301,6 +4301,9 @@ function openSidebar() {
     if (ME?.rol === 'admin') renderSidebarPV();
     return;
   }
+
+  // rrodriguez: menú reducido (Panel Principal, Mi cuenta, Configuración, Cerrar sesión)
+  if (ME?.usr === 'rrodriguez') { aplicarMenuRrodriguez(); return; }
 
   // Mostrar config solo si admin
   document.getElementById('sb-nueva').style.display = ME?.rol === 'admin' ? 'none' : '';
@@ -10484,6 +10487,22 @@ document.getElementById('l-u').addEventListener('keydown', e => { if(e.key==='En
 // ══════════════════════════════════════════════
 // PANEL PRINCIPAL (pre-panel de acceso)
 // ══════════════════════════════════════════════
+function aplicarMenuRrodriguez() {
+  // Topbar: solo Inicio (que lleva al Panel Principal)
+  document.querySelectorAll('.tn').forEach(btn => btn.style.display = 'none');
+  const _dat = document.getElementById('btn-datero'); if (_dat) _dat.style.display = 'none';
+  const _ini = document.getElementById('tn-sol');
+  if (_ini) { _ini.style.display = ''; _ini.setAttribute('onclick', "showV('panel-principal')"); }
+  // Sidebar: solo Panel Principal, Mi cuenta, Configuración, Cerrar sesión
+  document.querySelectorAll('.sb-item').forEach(btn => btn.style.display = 'none');
+  const _pp = document.getElementById('sb-panel-principal'); if (_pp) _pp.style.display = '';
+  const _cfg = document.getElementById('sb-config'); if (_cfg) _cfg.style.display = '';
+  const _mc = document.querySelector('.sb-item[onclick*="micuenta"]'); if (_mc) _mc.style.display = '';
+  const _ls = document.querySelector('.sb-item[onclick*="doLogout"]'); if (_ls) _ls.style.display = '';
+  const _dc = document.getElementById('sb-div-cuenta'); if (_dc) _dc.style.display = '';
+  const _lc = document.getElementById('sb-lbl-cuenta'); if (_lc) _lc.style.display = '';
+}
+
 function aplicarModoSidebar(modo) {
   // Oculta todo y muestra solo lo que corresponde al modo elegido
   document.querySelectorAll('.tn').forEach(btn => btn.style.display = 'none');
@@ -10671,8 +10690,11 @@ function showV(v) {
     });
   }
   closeAllDD();
-  if (v==='copas')    loadCopas();
-  if (v==='panel-principal') { const _pk=document.getElementById('pp-card-copas'); if(_pk) _pk.style.display=(ME && (ME.rol==='admin'||ME.usr==='rrodriguez'))?'':'none'; }
+  if (v==='copas')    { loadCopas(); if (ME?.usr==='rrodriguez') aplicarMenuRrodriguez(); }
+  if (v==='panel-principal') {
+    const _pk=document.getElementById('pp-card-copas'); if(_pk) _pk.style.display=(ME && (ME.rol==='admin'||ME.usr==='rrodriguez'))?'':'none';
+    if (ME?.usr==='rrodriguez') aplicarMenuRrodriguez();
+  }
   if (v==='sol')      renderTable();
   if (v==='gestores') { const _lw=document.getElementById('gestores-list-wrap'), _fw=document.getElementById('gestor-form-wrap'); if(_lw)_lw.style.display=''; if(_fw)_fw.style.display='none'; loadGestores(); }
   if (v==='prendas')  { renderPrendas(); setTimeout(initPrendasMirror, 150); }
