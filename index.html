@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.41</title>
+<title>Grupo Olyar — Solicitudes v3.8.42</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.41';
+    var APP_VER='v3.8.42';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2124,6 +2124,56 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
     </div>
     <div class="pe-scroll-mirror" id="pf-mirror">
       <div class="pe-scroll-mirror-inner" id="pf-mirror-inner"></div>
+    </div>
+  </div>
+</div>
+    <div id="v-prendas-entregadas" style="display:none">
+  <div class="pe-modal" onclick="event.stopPropagation()">
+    <div class="pe-head">
+      <div>
+        <div style="font-size:17px;font-weight:800;color:var(--ink)">✅ Prendas entregadas</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="pe-count">—</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="searchbox" style="min-width:220px">
+          <span style="color:var(--muted)">🔍</span>
+          <input id="pe-srch" placeholder="Buscar cliente, banco, gestor..." oninput="renderPrendasEntregadas()">
+        </div>
+      </div>
+    </div>
+    <div class="pe-body">
+      <div class="pe-scroll-x" id="pe-scroll">
+        <table class="pe-table">
+          <thead>
+            <tr>
+              <th>Acciones</th>
+              <th>#</th>
+              <th>N° Trámite</th>
+              <th>Fecha actual</th>
+              <th>Enviada</th>
+              <th>Entregada</th>
+              <th>Gestor asignado</th>
+              <th>Año</th>
+              <th>Cliente</th>
+              <th>Banco</th>
+              <th>Concesionaria</th>
+              <th>Localidad</th>
+              <th>Provincia</th>
+              <th>Descripción vehículo</th>
+              <th>Observaciones</th>
+            </tr>
+          </thead>
+          <tbody id="pe-tbody"></tbody>
+        </table>
+      </div>
+      <div id="pe-empty" class="empty-state" style="display:none">
+        <div class="ei">✅</div>
+        <h3>Sin prendas entregadas</h3>
+        <p>Aparecen acá los registros que tienen fecha de finalización en Prendas</p>
+      </div>
+    </div>
+    <div class="pe-scroll-mirror" id="pe-mirror">
+      <div class="pe-scroll-mirror-inner" id="pe-mirror-inner"></div>
     </div>
   </div>
 </div>
@@ -5764,14 +5814,10 @@ function closePRPanel() {
 }
 
 function openPrendasEntregadas() {
-  document.getElementById('pe-overlay').classList.add('open');
-  renderPrendasEntregadas();
-  setTimeout(initPEMirror, 150);
+  showV('prendas-entregadas');
 }
 
-function closePrendasEntregadas() {
-  document.getElementById('pe-overlay').classList.remove('open');
-}
+function closePrendasEntregadas() { /* vista full: sin modal que cerrar */ }
 
 function renderPrendasEntregadas() {
   const q = (document.getElementById('pe-srch')?.value || '').toLowerCase();
@@ -10260,6 +10306,7 @@ function editPrenda(id) {
   window._prendaReturn = (() => {
     const vis = id => { const e=document.getElementById(id); return e && e.style.display !== 'none'; };
     if (vis('v-prendas-finalizadas')) return 'prendas-finalizadas';
+    if (vis('v-prendas-entregadas')) return 'prendas-entregadas';
     if (vis('v-prendas')) return 'prendas';
     return 'sol';
   })();
@@ -10392,7 +10439,6 @@ function initPrendasMirror() {
 
 function openPrendasPanel(id, from) {
   window._prendasPanelFrom = from || null;
-  if (from === 'entregadas') closePrendasEntregadas();
   const r = RECORDS.find(x => x.id === id);
   if (!r) return;
 
@@ -10517,9 +10563,7 @@ function openPrendasPanel(id, from) {
 function closePrendasPanel() {
   document.getElementById('prendas-panel-overlay').classList.remove('open');
   document.getElementById('prendas-side-panel').classList.remove('open');
-  const _f = window._prendasPanelFrom;
   window._prendasPanelFrom = null;
-  if (_f === 'entregadas') document.getElementById('pe-overlay').classList.add('open');
 }
 
 function closePrendasPanelSinReabrir() {
@@ -10725,7 +10769,7 @@ function showV(v) {
       setTimeout(renderReportes, 50);
     }
   }
-  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','central-deudores','copas','prendas-finalizadas'].forEach(id => {
+  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','central-deudores','copas','prendas-finalizadas','prendas-entregadas'].forEach(id => {
     const el = document.getElementById('v-'+id);
     if (el) el.style.display = id===v ? '' : 'none';
 
@@ -10749,6 +10793,7 @@ function showV(v) {
   if (v==='gestores') { const _lw=document.getElementById('gestores-list-wrap'), _fw=document.getElementById('gestor-form-wrap'); if(_lw)_lw.style.display=''; if(_fw)_fw.style.display='none'; loadGestores(); }
   if (v==='prendas')  { renderPrendas(); setTimeout(initPrendasMirror, 150); }
   if (v==='prendas-finalizadas') { renderPrendasFinalizadas(); setTimeout(initPFMirror, 150); }
+  if (v==='prendas-entregadas') { renderPrendasEntregadas(); setTimeout(initPEMirror, 150); }
   if (v==='nueva') {
     if (!window._isDuplicating && !window._isEditing) {
       editId = null;
@@ -15665,57 +15710,7 @@ function renderReportes() {
   </div>
 </div>
 
-<div class="pe-overlay" id="pe-overlay" onclick="if(event.target===this)closePrendasEntregadas()">
-  <div class="pe-modal" onclick="event.stopPropagation()">
-    <div class="pe-head">
-      <div>
-        <div style="font-size:17px;font-weight:800;color:var(--ink)">✅ Prendas entregadas</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="pe-count">—</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <div class="searchbox" style="min-width:220px">
-          <span style="color:var(--muted)">🔍</span>
-          <input id="pe-srch" placeholder="Buscar cliente, banco, gestor..." oninput="renderPrendasEntregadas()">
-        </div>
-        <button class="xbtn" onclick="closePrendasEntregadas()" style="width:34px;height:34px;font-size:18px">×</button>
-      </div>
-    </div>
-    <div class="pe-body">
-      <div class="pe-scroll-x" id="pe-scroll">
-        <table class="pe-table">
-          <thead>
-            <tr>
-              <th>Acciones</th>
-              <th>#</th>
-              <th>N° Trámite</th>
-              <th>Fecha actual</th>
-              <th>Enviada</th>
-              <th>Entregada</th>
-              <th>Gestor asignado</th>
-              <th>Año</th>
-              <th>Cliente</th>
-              <th>Banco</th>
-              <th>Concesionaria</th>
-              <th>Localidad</th>
-              <th>Provincia</th>
-              <th>Descripción vehículo</th>
-              <th>Observaciones</th>
-            </tr>
-          </thead>
-          <tbody id="pe-tbody"></tbody>
-        </table>
-      </div>
-      <div id="pe-empty" class="empty-state" style="display:none">
-        <div class="ei">✅</div>
-        <h3>Sin prendas entregadas</h3>
-        <p>Aparecen acá los registros que tienen fecha de finalización en Prendas</p>
-      </div>
-    </div>
-    <div class="pe-scroll-mirror" id="pe-mirror">
-      <div class="pe-scroll-mirror-inner" id="pe-mirror-inner"></div>
-    </div>
-  </div>
-</div>
+
 
 <!-- MODAL EDITAR PRENDA ENTREGADA -->
 <div class="overlay" id="pe-edit-overlay" onclick="if(event.target===this)closePEEdit()" style="z-index:700">
