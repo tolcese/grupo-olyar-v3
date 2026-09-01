@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.36</title>
+<title>Grupo Olyar — Solicitudes v3.8.37</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.36';
+    var APP_VER='v3.8.37';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -700,6 +700,11 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <div style="font-size:46px;margin-bottom:14px">🚗</div>
             <div style="font-size:16px;font-weight:800;color:var(--ink)">Comercializadora</div>
             <div style="font-size:12px;color:var(--muted);margin-top:4px">Sistema de solicitudes y gestión</div>
+          </div>
+          <div class="pp-card" id="pp-card-copas" onclick="showV('copas')" style="display:none;cursor:pointer;border:1.5px solid var(--line);border-radius:16px;padding:34px 22px;text-align:center;transition:all .15s;background:#fff" onmouseenter="this.style.borderColor='var(--blue)';this.style.boxShadow='0 8px 24px rgba(29,111,206,.12)';this.style.transform='translateY(-3px)'" onmouseleave="this.style.borderColor='var(--line)';this.style.boxShadow='none';this.style.transform='none'">
+            <div style="font-size:46px;margin-bottom:14px">📋</div>
+            <div style="font-size:16px;font-weight:800;color:var(--ink)">Copas Registrales</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">Registro y seguimiento de copas</div>
           </div>
           <div class="pp-card" id="pp-card-contabilidad" onclick="irAModoPrincipal('contabilidad')" style="display:none;cursor:pointer;border:1.5px solid var(--line);border-radius:16px;padding:34px 22px;text-align:center;transition:all .15s;background:#fff" onmouseenter="this.style.borderColor='var(--blue)';this.style.boxShadow='0 8px 24px rgba(29,111,206,.12)';this.style.transform='translateY(-3px)'" onmouseleave="this.style.borderColor='var(--line)';this.style.boxShadow='none';this.style.transform='none'">
             <div style="font-size:46px;margin-bottom:14px">🧾</div>
@@ -2945,6 +2950,46 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
     </div>
 
     <!-- CONTABILIDAD -->
+    <div id="v-copas" style="display:none">
+      <div class="ph">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-s" onclick="showV('panel-principal')" style="padding:6px 12px">← Volver</button>
+          <div><div class="ph-t">📋 Copas Registrales</div><div class="ph-s">Registro y seguimiento de copas registrales</div></div>
+        </div>
+        <button class="btn btn-p" onclick="nuevaCopa()">＋ Nueva copa</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <div class="searchbox" style="min-width:260px">
+          <span style="color:var(--muted)">🔍</span>
+          <input id="copa-srch" placeholder="Buscar nombre, DNI, dominio, N° trámite..." oninput="renderCopas()">
+        </div>
+        <div id="copa-count" style="font-size:12px;color:var(--muted)">—</div>
+      </div>
+      <div id="copa-list-wrap" style="overflow-x:auto;border:1.5px solid var(--line);border-radius:12px">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap">
+          <thead>
+            <tr style="background:var(--surface)">
+              <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line)">Acciones</th>
+              <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line)">N° Trámite</th>
+              <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line)">Nombre y apellido</th>
+              <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line)">DNI</th>
+              <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line)">Dominio</th>
+              <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line)">Sucursal</th>
+              <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line)">Fecha pedido</th>
+              <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line)">Entregada</th>
+              <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line)">Pedido por</th>
+            </tr>
+          </thead>
+          <tbody id="copa-tbody"></tbody>
+        </table>
+      </div>
+      <div id="copa-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--muted)">
+        <div style="font-size:48px;margin-bottom:12px">📋</div>
+        <div style="font-size:15px;font-weight:700;color:var(--ink2);margin-bottom:6px">Sin copas registrales</div>
+        <div style="font-size:13px">Usá el botón <b>＋ Nueva copa</b> para agregar</div>
+      </div>
+    </div>
+
     <div id="v-contabilidad" style="display:none">
       <div class="ph">
         <div><div class="ph-t">🧾 Contabilidad</div><div class="ph-s">Gestión contable y coeficientes</div></div>
@@ -6165,6 +6210,7 @@ function cargarBanco(url, nombre) {
 // ══════════════════════════════════════════════
 let CREDITOS_CACHE = [];
 let CUOTAS_CACHE   = [];
+let COPAS_CACHE    = [];
 let CRED_SOL_SEL   = null; // solicitud seleccionada
 
 function showCredTab(tab) {
@@ -6614,6 +6660,161 @@ async function saveNuevoCredito() {
     closeCreditoNuevo();
     renderCreditos();
   } catch(e) { toast('Error: '+e.message,'er'); }
+}
+
+// ===================== COPAS REGISTRALES =====================
+async function loadCopas() {
+  try {
+    const { data, error } = await SB.from('copas_registrales').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    COPAS_CACHE = (data || []).map(c => ({
+      id: c.id, nroTramite: c.nro_tramite, nombre: c.nombre, dni: c.dni,
+      dominio: c.dominio, sucursal: c.sucursal, fechaPedido: c.fecha_pedido,
+      fechaEntregada: c.fecha_entregada, pedidoPor: c.pedido_por
+    }));
+    renderCopas();
+  } catch(e) { console.error('loadCopas:', e); toast('Error al cargar copas registrales','er'); }
+}
+
+function renderCopas() {
+  const tbody = document.getElementById('copa-tbody');
+  const empty = document.getElementById('copa-empty');
+  const wrap  = document.getElementById('copa-list-wrap');
+  if (!tbody) return;
+  const fmtD = v => v ? String(v).split('-').reverse().join('/') : '—';
+  const val  = v => (v!==null && v!==undefined && String(v).trim()!=='') ? v : '—';
+  const q = (document.getElementById('copa-srch')?.value || '').toLowerCase().trim();
+  let data = COPAS_CACHE.slice();
+  if (q) data = data.filter(c =>
+    (c.nombre||'').toLowerCase().includes(q) ||
+    (c.dni||'').toLowerCase().includes(q) ||
+    (c.dominio||'').toLowerCase().includes(q) ||
+    (c.nroTramite||'').toLowerCase().includes(q)
+  );
+  const cnt = document.getElementById('copa-count');
+  if (cnt) cnt.textContent = data.length + (data.length===1?' copa':' copas');
+  if (!data.length) {
+    tbody.innerHTML = '';
+    if (wrap) wrap.style.display = 'none';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (wrap) wrap.style.display = '';
+  if (empty) empty.style.display = 'none';
+  const isAdmin = ME?.rol === 'admin';
+  tbody.innerHTML = data.map(c => `
+    <tr style="border-bottom:1px solid var(--line)">
+      <td style="padding:8px 12px" onclick="event.stopPropagation()">
+        <div class="abtns">
+          <button class="ibtn" onclick="editCopa('${c.id}')" title="Editar">✏️</button>
+          ${isAdmin ? `<button class="ibtn" onclick="delCopa('${c.id}')" title="Eliminar">🗑️</button>` : ''}
+        </div>
+      </td>
+      <td style="padding:8px 12px;font-family:monospace;font-weight:700;color:var(--blue)">${val(c.nroTramite)}</td>
+      <td style="padding:8px 12px;font-weight:700">${val(c.nombre)}</td>
+      <td style="padding:8px 12px">${val(c.dni)}</td>
+      <td style="padding:8px 12px;font-family:monospace;text-transform:uppercase">${val(c.dominio)}</td>
+      <td style="padding:8px 12px">${val(c.sucursal)}</td>
+      <td style="padding:8px 12px;white-space:nowrap">${fmtD(c.fechaPedido)}</td>
+      <td style="padding:8px 12px;white-space:nowrap;color:${c.fechaEntregada?'var(--green)':'var(--muted)'};font-weight:600">${fmtD(c.fechaEntregada)}</td>
+      <td style="padding:8px 12px;max-width:220px;overflow:hidden;text-overflow:ellipsis">${val(c.pedidoPor)}</td>
+    </tr>`).join('');
+}
+
+function nuevaCopa() {
+  document.getElementById('copa-id').value = '';
+  document.getElementById('copa-form-title').textContent = '📋 Nueva copa registral';
+  const badge = document.getElementById('copa-nro-badge');
+  badge.style.display = 'none'; badge.textContent = '';
+  ['copa-nombre','copa-dni','copa-dominio','copa-sucursal','copa-fecha-pedido','copa-fecha-entregada','copa-pedido-por'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('copa-fecha-pedido').value = new Date().toISOString().slice(0,10);
+  document.getElementById('copa-form-overlay').classList.add('open');
+}
+
+function editCopa(id) {
+  const c = COPAS_CACHE.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('copa-id').value = c.id;
+  document.getElementById('copa-form-title').textContent = '📋 Editar copa registral';
+  const badge = document.getElementById('copa-nro-badge');
+  if (c.nroTramite) { badge.style.display = ''; badge.textContent = 'N° Trámite: ' + c.nroTramite; }
+  else { badge.style.display = 'none'; }
+  document.getElementById('copa-nombre').value = c.nombre || '';
+  document.getElementById('copa-dni').value = c.dni || '';
+  document.getElementById('copa-dominio').value = c.dominio || '';
+  document.getElementById('copa-sucursal').value = c.sucursal || '';
+  document.getElementById('copa-fecha-pedido').value = c.fechaPedido || '';
+  document.getElementById('copa-fecha-entregada').value = c.fechaEntregada || '';
+  document.getElementById('copa-pedido-por').value = c.pedidoPor || '';
+  document.getElementById('copa-form-overlay').classList.add('open');
+}
+
+function closeCopaForm() {
+  document.getElementById('copa-form-overlay').classList.remove('open');
+}
+
+async function saveCopa() {
+  if (!requireEdit()) return;
+  const id       = document.getElementById('copa-id').value;
+  const nombre   = document.getElementById('copa-nombre').value.trim();
+  const dni      = document.getElementById('copa-dni').value.trim();
+  const dominio  = document.getElementById('copa-dominio').value.trim().toUpperCase();
+  const sucursal = document.getElementById('copa-sucursal').value.trim();
+  const fPedido  = document.getElementById('copa-fecha-pedido').value;
+  const fEntrega = document.getElementById('copa-fecha-entregada').value;
+  const pedidoPor= document.getElementById('copa-pedido-por').value.trim();
+
+  if (!nombre)  { toast('Ingresá el nombre y apellido','er'); return; }
+  if (!dni)     { toast('Ingresá el DNI','er'); return; }
+  if (!dominio) { toast('Ingresá el N° de dominio','er'); return; }
+  if (!fPedido) { toast('Ingresá la fecha de pedido','er'); return; }
+
+  const upd = {
+    nombre, dni, dominio,
+    sucursal: sucursal || null,
+    fecha_pedido: fPedido,
+    fecha_entregada: fEntrega || null,
+    pedido_por: pedidoPor || null,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    if (id) {
+      const { error } = await SB.from('copas_registrales').update(upd).eq('id', id);
+      if (error) throw error;
+      const rec = COPAS_CACHE.find(x => x.id === id);
+      if (rec) Object.assign(rec, { nombre, dni, dominio, sucursal: upd.sucursal, fechaPedido: fPedido, fechaEntregada: upd.fecha_entregada, pedidoPor: upd.pedido_por });
+      toast('Copa registral actualizada ✓','ok');
+    } else {
+      const newId = Date.now().toString();
+      let nro = null;
+      try {
+        const { data, error: eNro } = await SB.rpc('next_nro_copa', { p_anio: new Date().getFullYear() });
+        if (eNro) console.error('[Copa] error RPC next_nro_copa:', eNro);
+        else nro = data;
+      } catch(e) { console.error('[Copa] excepción RPC:', e); }
+      const row = { id: newId, nro_tramite: nro, ...upd };
+      const { error } = await SB.from('copas_registrales').insert(row);
+      if (error) throw error;
+      COPAS_CACHE.unshift({ id: newId, nroTramite: nro, nombre, dni, dominio, sucursal: upd.sucursal, fechaPedido: fPedido, fechaEntregada: upd.fecha_entregada, pedidoPor: upd.pedido_por });
+      toast('Copa registral creada ✓','ok');
+    }
+    closeCopaForm();
+    renderCopas();
+  } catch(e) { toast('Error: '+(e.message||'no se pudo guardar'),'er'); }
+}
+
+async function delCopa(id) {
+  if (!requireEdit()) return;
+  const c = COPAS_CACHE.find(x => x.id === id);
+  if (!confirm(`¿Eliminar la copa registral de "${c?.nombre||'esta copa'}"? Esta acción no se puede deshacer.`)) return;
+  try {
+    const { error } = await SB.from('copas_registrales').delete().eq('id', id);
+    if (error) throw error;
+    COPAS_CACHE = COPAS_CACHE.filter(x => x.id !== id);
+    renderCopas();
+    toast('Copa registral eliminada ✓','ok');
+  } catch(e) { toast('Error al eliminar','er'); }
 }
 
 function openCredPanel(id) {
@@ -10455,7 +10656,7 @@ function showV(v) {
       setTimeout(renderReportes, 50);
     }
   }
-  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','central-deudores'].forEach(id => {
+  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','central-deudores','copas'].forEach(id => {
     const el = document.getElementById('v-'+id);
     if (el) el.style.display = id===v ? '' : 'none';
 
@@ -10470,6 +10671,8 @@ function showV(v) {
     });
   }
   closeAllDD();
+  if (v==='copas')    loadCopas();
+  if (v==='panel-principal') { const _pk=document.getElementById('pp-card-copas'); if(_pk) _pk.style.display=(ME && (ME.rol==='admin'||ME.usr==='rrodriguez'))?'':'none'; }
   if (v==='sol')      renderTable();
   if (v==='gestores') { const _lw=document.getElementById('gestores-list-wrap'), _fw=document.getElementById('gestor-form-wrap'); if(_lw)_lw.style.display=''; if(_fw)_fw.style.display='none'; loadGestores(); }
   if (v==='prendas')  { renderPrendas(); setTimeout(initPrendasMirror, 150); }
@@ -15755,6 +15958,31 @@ function renderReportes() {
     <div class="mfoot">
       <button class="btn btn-s" onclick="closeCreditoNuevo()">Cancelar</button>
       <button class="btn btn-p" id="cred-guardar-btn" onclick="saveNuevoCredito()" style="display:none">💾 Guardar y generar cuotas</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COPA REGISTRAL -->
+<div class="overlay" id="copa-form-overlay" onclick="if(event.target===this)closeCopaForm()" style="z-index:600">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto" onclick="event.stopPropagation()">
+    <div class="mh">
+      <div class="mt" id="copa-form-title">📋 Nueva copa registral</div>
+      <button class="xbtn" onclick="closeCopaForm()">×</button>
+    </div>
+    <input type="hidden" id="copa-id">
+    <div id="copa-nro-badge" style="display:none;background:#eff6ff;color:var(--blue);font-family:monospace;font-weight:700;padding:6px 12px;border-radius:8px;margin-bottom:14px;font-size:13px"></div>
+    <div class="fg" style="grid-template-columns:repeat(2,1fr);gap:12px">
+      <div class="fc span2"><label>Nombre y apellido *</label><input id="copa-nombre" placeholder="Ej: Juan Pérez"></div>
+      <div class="fc"><label>DNI *</label><input id="copa-dni" inputmode="numeric" placeholder="Ej: 30123456"></div>
+      <div class="fc"><label>N° Dominio *</label><input id="copa-dominio" placeholder="Ej: AB123CD" style="text-transform:uppercase"></div>
+      <div class="fc"><label>Sucursal</label><input id="copa-sucursal" inputmode="numeric" placeholder="Ej: 5"></div>
+      <div class="fc"><label>Fecha de pedido *</label><input id="copa-fecha-pedido" type="date"></div>
+      <div class="fc"><label>Entregada</label><input id="copa-fecha-entregada" type="date"></div>
+      <div class="fc span2"><label>Quién lo pide</label><textarea id="copa-pedido-por" style="min-height:70px" placeholder="Nombre / área de quien lo solicita..."></textarea></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-s" onclick="closeCopaForm()">Cancelar</button>
+      <button class="btn btn-p" onclick="saveCopa()">💾 Guardar</button>
     </div>
   </div>
 </div>
