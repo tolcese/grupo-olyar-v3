@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.50</title>
+<title>Grupo Olyar — Solicitudes v3.8.51</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.50';
+    var APP_VER='v3.8.51';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2266,8 +2266,8 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <div class="ph-t" id="prenda-cliente" style="font-size:23px;font-weight:800">—</div>
           <div id="prenda-nrocontrol" style="font-family:monospace;font-weight:800;font-size:14px;color:var(--blue);background:var(--surface);border:1.5px solid var(--line);border-radius:8px;padding:3px 11px;display:none"></div>
           <div class="pe-hdr-chks">
-            <label class="pe-hdr-chk"><input type="checkbox" id="prenda-preprenda"> Pre Prenda</label>
-            <label class="pe-hdr-chk"><input type="checkbox" id="prenda-inscripta"> Prenda Inscripta</label>
+            <label class="pe-hdr-chk"><input type="checkbox" id="prenda-preprenda" onchange="if(this.checked){var o=document.getElementById('prenda-inscripta');if(o)o.checked=false;}"> Pre Prenda</label>
+            <label class="pe-hdr-chk"><input type="checkbox" id="prenda-inscripta" onchange="if(this.checked){var o=document.getElementById('prenda-preprenda');if(o)o.checked=false;}"> Prenda Inscripta</label>
           </div>
         </div>
         <button class="btn btn-s" style="font-size:12px;padding:6px 12px" onclick="closePrendaEdit()">← Volver</button>
