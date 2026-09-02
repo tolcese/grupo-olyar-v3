@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.51</title>
+<title>Grupo Olyar — Solicitudes v3.8.52</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.51';
+    var APP_VER='v3.8.52';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -6900,6 +6900,47 @@ function calcCuotaMonto() {
   document.getElementById('cred-monto-cuota').value = monto || '';
 }
 
+// Alta automática de crédito desde el editor de prenda.
+// Requiere las 3 condiciones: cantidad de cuotas + vencimiento + valor de cuota.
+// Anti-duplicado: si ese DNI ya tiene crédito, NO crea (solo crea si no existe).
+async function autoAltaCreditoDesdePrenda(r, venc, valorCuota, cantStr) {
+  const cant = parseInt(cantStr) || 0;
+  if (!cant || cant < 1) return;            // falta cantidad de cuotas
+  if (!venc) return;                        // falta vencimiento
+  if (!valorCuota || valorCuota <= 0) return; // falta valor de cuota
+  const dni = String(r.dni||'').trim();
+  if (!dni) return;
+  try {
+    // Anti-duplicado consultando la base por DNI (no depende del cache)
+    const { data: exist, error: eEx } = await SB.from('creditos').select('id').eq('dni', dni).limit(1);
+    if (eEx) { console.error('[auto-crédito] chequeo DNI:', eEx); return; }
+    if (exist && exist.length) return; // ya tiene crédito → no crear otro
+
+    const id = Date.now().toString();
+    const monto = Math.round(valorCuota);
+    // Generar cuotas mensuales desde el vencimiento
+    const cuotas = [];
+    let fecha = new Date(venc + 'T00:00:00');
+    for (let i = 1; i <= cant; i++) {
+      cuotas.push({ id: id+'_'+i, credito_id: id, nro: i, vencimiento: fecha.toISOString().slice(0,10), monto, estado: 'Pendiente' });
+      fecha.setMonth(fecha.getMonth() + 1);
+    }
+    const dbCredito = {
+      id, solicitud_id: r.id, cliente: r.nombrecliente, dni,
+      banco: r.banco, importe: parseFloat(r.importe)||null, tasa: r.tasa,
+      cant_cuotas: cant, monto_cuota: monto, fecha_inicio: venc, estado: 'Activo', obs: ''
+    };
+    const { error: e1 } = await SB.from('creditos').insert(dbCredito);
+    if (e1) throw e1;
+    const { error: e2 } = await SB.from('cuotas').insert(cuotas);
+    if (e2) throw e2;
+    // Actualizar caches en memoria (formato del cache)
+    CREDITOS_CACHE.push({ id, solicitudId: r.id, cliente: r.nombrecliente, dni, banco: r.banco, importe: r.importe, tasa: r.tasa, cantCuotas: cant, montoCuota: monto, fechaInicio: venc, estado: 'Activo', obs: '' });
+    CUOTAS_CACHE.push(...cuotas.map(q => ({ id: q.id, creditoId: q.credito_id, nro: q.nro, vencimiento: q.vencimiento, monto: q.monto, estado: q.estado })));
+    toast('Crédito dado de alta automáticamente (' + cant + ' cuotas) ✓', 'ok');
+  } catch(e) { console.error('[auto-crédito]', e); toast('No se pudo dar de alta el crédito: ' + (e.message||''), 'er'); }
+}
+
 async function saveNuevoCredito() {
   if (!CRED_SOL_SEL) { toast('Seleccioná una solicitud','er'); return; }
   const dniSel = String(CRED_SOL_SEL.dni||'').trim();
@@ -10661,6 +10702,7 @@ async function savePrenda() {
     const cambiosPrenda = diffObjetos(viejaPrenda, { enProceso, presentada, finalizada, entregada }, ['enProceso','presentada','finalizada','entregada']);
     registrarHistorial('prenda', id, cambiosPrenda);
     toast('Prenda actualizada ✓', 'ok');
+    if (r) await autoAltaCreditoDesdePrenda(r, creVenc, creValorCuota, creCantCuotas);
     refreshAllPrendaViews();
   } catch(e) { toast('Error: ' + e.message, 'er'); }
 }
