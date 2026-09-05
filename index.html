@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.54</title>
+<title>Grupo Olyar — Solicitudes v3.8.55</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.54';
+    var APP_VER='v3.8.55';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -5026,6 +5026,7 @@ function _pfExportRows() {
     'Enviada': fD(etFechaPaso(r,'enviada_casa_central')),
     'Cliente': r.nombrecliente || '',
     'Gestor': r.gestorAsignado || '',
+    'PP/PI': (r.prePrenda?'PP':(r.prendaInscripta?'PI':'')),
     'Banco': r.banco || '',
     'Concesionaria': r.concesionaria || '',
     'Localidad': r.localidad || '',
@@ -6019,7 +6020,7 @@ function limpiarFiltrosPE() {
 }
 function _peExportRows() {
   const fD=v=>v?String(v).split('-').reverse().join('/'):'';
-  return getPEData().map(r=>({'N° Trámite':r.nroControl||'','Enviada':fD(etFechaPaso(r,'enviada_casa_central')),'Entregada':fD(etFechaPaso(r,'prenda_entregada')),'Cliente':r.nombrecliente||'','Gestor':r.gestorAsignado||'','Banco':r.banco||'','Concesionaria':r.concesionaria||'','Localidad':r.localidad||'','Provincia':r.provincia||'','Año':r.anio||'','Descripción vehículo':r.descripcion||'','Observaciones':r.obs||''}));
+  return getPEData().map(r=>({'N° Trámite':r.nroControl||'','Enviada':fD(etFechaPaso(r,'enviada_casa_central')),'Entregada':fD(etFechaPaso(r,'prenda_entregada')),'Cliente':r.nombrecliente||'','Gestor':r.gestorAsignado||'','PP/PI':(r.prePrenda?'PP':(r.prendaInscripta?'PI':'')),'Banco':r.banco||'','Concesionaria':r.concesionaria||'','Localidad':r.localidad||'','Provincia':r.provincia||'','Año':r.anio||'','Descripción vehículo':r.descripcion||'','Observaciones':r.obs||''}));
 }
 async function exportarPEExcel() {
   const rows=_peExportRows(); if(!rows.length) return alert('No hay datos para exportar');
@@ -10379,7 +10380,7 @@ function limpiarFiltrosPC() {
 }
 function _pcExportRows() {
   const fD=v=>v?String(v).split('-').reverse().join('/'):'';
-  return getPCData().map(r=>({'N° Trámite':r.nroControl||'','Fecha solicitud':fD(r.fecha),'Cliente':r.nombrecliente||'','Gestor':r.gestorAsignado||'','Banco':r.banco||'','Concesionaria':r.concesionaria||'','Localidad':r.localidad||'','Provincia':r.provincia||'','Año':r.anio||'','Marca':r.marca||'','Descripción vehículo':r.descripcion||'','Tipo CTA':r.tipocta||''}));
+  return getPCData().map(r=>({'N° Trámite':r.nroControl||'','Fecha solicitud':fD(r.fecha),'Cliente':r.nombrecliente||'','Gestor':r.gestorAsignado||'','PP/PI':(r.prePrenda?'PP':(r.prendaInscripta?'PI':'')),'Banco':r.banco||'','Concesionaria':r.concesionaria||'','Localidad':r.localidad||'','Provincia':r.provincia||'','Año':r.anio||'','Marca':r.marca||'','Descripción vehículo':r.descripcion||'','Tipo CTA':r.tipocta||''}));
 }
 async function exportarPCExcel() {
   const rows=_pcExportRows(); if(!rows.length) return alert('No hay datos para exportar');
