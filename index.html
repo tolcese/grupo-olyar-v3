@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.59</title>
+<title>Grupo Olyar — Solicitudes v3.8.60</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.59';
+    var APP_VER='v3.8.60';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -7180,8 +7180,7 @@ async function delCopa(id) {
 function openCredPanel(id) {
   const c   = CREDITOS_CACHE.find(x => x.id === id) || {};
   const cuotas = CUOTAS_CACHE.filter(q => q.creditoId === id);
-  const pagadas  = cuotas.filter(q => q.estado === 'Pagada').length;
-  const vencidas = cuotas.filter(q => q.estado === 'Vencida').length;
+  const notificadas = cuotas.filter(q => q.estado === 'Notificada').length;
   const pendientes = cuotas.filter(q => q.estado === 'Pendiente').length;
   const mon  = v => v ? '$'+Number(v).toLocaleString('es-AR') : '—';
   const fmtD = v => v ? v.split('-').reverse().join('/') : '—';
@@ -7260,8 +7259,7 @@ function openCredPanel(id) {
         const hoy = new Date(); hoy.setHours(0,0,0,0);
         return cuotas.map(q => {
           const venc = q.vencimiento ? new Date(q.vencimiento + 'T12:00:00') : null;
-          const vencida = venc && venc < hoy && q.estado !== 'Pagada';
-          const color = q.estado === 'Pagada' ? 'var(--green)' : vencida ? 'var(--red)' : 'var(--ink2)';
+          const color = q.estado === 'Notificada' ? 'var(--green)' : 'var(--ink2)';
           const fmtV = v => v ? v.split('-').reverse().join('/') : '—';
           return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line)">
             <div style="font-size:12px">
@@ -7513,6 +7511,14 @@ async function checkRecordatoriosCreditos() {
 
 async function marcarRecordatorioEnviado(creditoId, mes) {
   await SB.from('recordatorios_enviados').upsert({ credito_id: creditoId, mes, enviado_por: ME?.usr || '—' }, { onConflict: 'credito_id,mes' });
+  // Marcar como Notificada la cuota cuyo vencimiento cae en ese mes (YYYY-MM)
+  try {
+    const _cq = CUOTAS_CACHE.find(q => q.creditoId === creditoId && (q.vencimiento||'').slice(0,7) === mes);
+    if (_cq && _cq.estado !== 'Notificada') {
+      const { error: _eq } = await SB.from('cuotas').update({ estado: 'Notificada' }).eq('id', _cq.id);
+      if (!_eq) _cq.estado = 'Notificada';
+    }
+  } catch(_){}
   // Quitar el badge
   const badge = document.getElementById('cred-recordatorio-badge');
   if (badge) badge.style.display = 'none';
@@ -15889,8 +15895,7 @@ function renderReportes() {
         <label>Estado</label>
         <select id="edit-cuota-estado">
           <option value="Pendiente">Pendiente</option>
-          <option value="Pagada">Pagada</option>
-          <option value="Vencida">Vencida</option>
+          <option value="Notificada">Notificada</option>
         </select>
       </div>
       <button class="btn btn-p" onclick="guardarEditCuota()">💾 Guardar</button>
