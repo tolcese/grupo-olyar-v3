@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.53</title>
+<title>Grupo Olyar — Solicitudes v3.8.54</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.53';
+    var APP_VER='v3.8.54';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -2080,7 +2080,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <table class="prendas-table">
             <thead>
               <tr>
-                <th>Acciones</th><th>#</th><th>N° Trámite</th><th>Fecha actual</th><th>Fecha solicitud</th><th>Cliente</th><th>Gestor asignado</th><th>Banco</th><th>Concesionaria</th><th>Localidad</th><th>Provincia</th><th>Año</th><th>Marca</th><th>Descripción vehículo</th><th>Tipo CTA</th><th>Doc 01/08</th><th>Título</th><th>Ver. Pol.</th><th>Dominio</th><th>Tasa</th><th>Imp. Solicitado</th><th>Observaciones</th><th>En proceso</th><th>Presentada</th><th>Finalizada</th>
+                <th>Acciones</th><th>#</th><th>N° Trámite</th><th>Fecha actual</th><th>Fecha solicitud</th><th>Cliente</th><th>Gestor asignado</th><th>PP/PI</th><th>Banco</th><th>Concesionaria</th><th>Localidad</th><th>Provincia</th><th>Año</th><th>Marca</th><th>Descripción vehículo</th><th>Tipo CTA</th><th>Doc 01/08</th><th>Título</th><th>Ver. Pol.</th><th>Dominio</th><th>Tasa</th><th>Imp. Solicitado</th><th>Observaciones</th><th>En proceso</th><th>Presentada</th><th>Finalizada</th>
               </tr>
             </thead>
             <tbody id="prendas-tbody"></tbody>
@@ -2136,6 +2136,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
               <th>Enviada</th>
               <th>Cliente</th>
               <th>Gestor asignado</th>
+              <th>PP/PI</th>
               <th>Banco</th>
               <th>Concesionaria</th>
               <th>Localidad</th>
@@ -2201,6 +2202,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
               <th>Entregada</th>
               <th>Cliente</th>
               <th>Gestor asignado</th>
+              <th>PP/PI</th>
               <th>Banco</th>
               <th>Concesionaria</th>
               <th>Localidad</th>
@@ -5109,6 +5111,7 @@ function renderPrendasFinalizadas() {
       <td style="white-space:nowrap;color:var(--green);font-weight:600">${fmtFin(etFechaPaso(r,'enviada_casa_central'))}</td>
       <td style="font-weight:700;min-width:130px">${val(r.nombrecliente)}</td>
       <td style="font-weight:700;color:var(--blue)">${val(r.gestorAsignado)}</td>
+      <td class="chk">${ r.prePrenda ? '<span style="display:inline-block;padding:1px 7px;border-radius:5px;background:#fff3e0;color:#e8821a;font-weight:700;font-size:11px">PP</span>' : (r.prendaInscripta ? '<span style="display:inline-block;padding:1px 7px;border-radius:5px;background:#e8f5e9;color:var(--green);font-weight:700;font-size:11px">PI</span>' : '<span style="color:var(--line)">—</span>') }</td>
       <td style="font-weight:600">${colorBanco(r.banco)}</td>
       <td>${val(r.concesionaria)}</td>
       <td>${val(r.localidad)}</td>
@@ -6083,6 +6086,7 @@ function renderPrendasEntregadas() {
       <td style="white-space:nowrap;color:var(--purple);font-weight:600">${fmtFin(etFechaPaso(r,'prenda_entregada'))}</td>
       <td style="font-weight:700;min-width:130px">${val(r.nombrecliente)}</td>
       <td style="font-weight:700;color:var(--blue)">${val(r.gestorAsignado)}</td>
+      <td class="chk">${ r.prePrenda ? '<span style="display:inline-block;padding:1px 7px;border-radius:5px;background:#fff3e0;color:#e8821a;font-weight:700;font-size:11px">PP</span>' : (r.prendaInscripta ? '<span style="display:inline-block;padding:1px 7px;border-radius:5px;background:#e8f5e9;color:var(--green);font-weight:700;font-size:11px">PI</span>' : '<span style="color:var(--line)">—</span>') }</td>
       <td style="font-weight:600">${colorBanco(r.banco)}</td>
       <td>${val(r.concesionaria)}</td>
       <td>${val(r.localidad)}</td>
@@ -10436,6 +10440,7 @@ function renderPrendas() {
       <td style="white-space:nowrap">${r.fecha ? r.fecha.split('-').reverse().join('/') : '—'}</td>
       <td style="font-weight:700;min-width:130px">${val(r.nombrecliente)}</td>
       <td style="font-weight:700;color:var(--blue)">${val(r.gestorAsignado)}</td>
+      <td class="chk">${ r.prePrenda ? '<span style="display:inline-block;padding:1px 7px;border-radius:5px;background:#fff3e0;color:#e8821a;font-weight:700;font-size:11px">PP</span>' : (r.prendaInscripta ? '<span style="display:inline-block;padding:1px 7px;border-radius:5px;background:#e8f5e9;color:var(--green);font-weight:700;font-size:11px">PI</span>' : '<span style="color:var(--line)">—</span>') }</td>
       <td style="font-weight:600">${colorBanco(r.banco)}</td>
       <td>${val(r.concesionaria)}</td>
       <td>${val(r.localidad)}</td>
