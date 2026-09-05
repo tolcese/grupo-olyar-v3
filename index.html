@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.57</title>
+<title>Grupo Olyar — Solicitudes v3.8.58</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.57';
+    var APP_VER='v3.8.58';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -4128,6 +4128,8 @@ async function enterApp() {
   document.documentElement.style.webkitTransform = '';
   document.getElementById('tb-av').textContent = ME.nom[0].toUpperCase();
   document.getElementById('tb-uname').textContent = ME.nom;
+  iniciarAutoActualizacion();
+  iniciarLogoutInactividad();
   document.getElementById('tb-role').textContent = ME.rol === 'admin' ? '⚡ Admin' : ME.rol === 'invitado' ? '👁️ Invitado' : ME.rol === 'presupuestos' ? '📄 Presupuestos' : ME.rol === 'usuario_presupuestos' ? '👤+ Presupuestos' : ME.rol === 'administracion' ? '🏢 Administración' : ME.rol === 'usuario_administracion' ? '👤+ Administración' : '👤 Usuario';
   if (ME.rol === 'admin') {
     document.getElementById('sb-usuarios').style.display = '';
@@ -16795,6 +16797,81 @@ window.addEventListener('orientationchange', () => setTimeout(fixMobileHeight, 3
 
 <!-- PWA: registro del Service Worker -->
 <script>
+// ═══════════════════════════════════════════════════════
+// AUTO-ACTUALIZACIÓN DE VERSIÓN (chequea sw.js cada 5 min)
+// ═══════════════════════════════════════════════════════
+let _updCheckTimer = null;
+async function checkForUpdate() {
+  try {
+    const res = await fetch('sw.js?_=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const txt = await res.text();
+    const m = txt.match(/CACHE_NAME\s*=\s*['"]grupo-olyar-(v[\d.]+)['"]/);
+    if (!m) return;
+    const serverVer = m[1];
+    if (!serverVer || serverVer === APP_VER) return;
+    // Guarda anti-loop: si ya recargamos a esta versión y sigue sin coincidir (deploy incompleto), no recargar en bucle
+    if (sessionStorage.getItem('olyar_upd_target') === serverVer) { mostrarBannerUpdate(serverVer, false); return; }
+    sessionStorage.setItem('olyar_upd_target', serverVer);
+    mostrarBannerUpdate(serverVer, true);
+    setTimeout(async () => {
+      try {
+        if (navigator.serviceWorker) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.update().catch(()=>{})));
+        }
+      } catch(_){}
+      location.reload();
+    }, 6000);
+  } catch(e) {}
+}
+function mostrarBannerUpdate(ver, autoRecarga) {
+  if (document.getElementById('upd-banner')) return;
+  const b = document.createElement('div');
+  b.id = 'upd-banner';
+  b.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99999;background:#0f172a;color:#fff;padding:14px 20px;border-radius:12px;box-shadow:0 12px 40px rgba(15,23,42,.35);font-size:14px;display:flex;align-items:center;gap:14px;max-width:92vw';
+  b.innerHTML = (autoRecarga
+    ? '<span>🔄 Nueva versión disponible (' + ver + '). Actualizando…</span>'
+    : '<span>🔄 Hay una versión nueva (' + ver + ').</span>')
+    + '<button onclick="location.reload()" style="background:#F46A2D;color:#fff;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">Actualizar ahora</button>';
+  document.body.appendChild(b);
+}
+function iniciarAutoActualizacion() {
+  if (_updCheckTimer) return;
+  setTimeout(checkForUpdate, 20000);
+  _updCheckTimer = setInterval(checkForUpdate, 5 * 60 * 1000);
+}
+
+// ═══════════════════════════════════════════════════════
+// LOGOUT POR INACTIVIDAD (2 horas)
+// ═══════════════════════════════════════════════════════
+let _inactLast = Date.now();
+let _inactTimer = null;
+let _inactThrottle = 0;
+let _inactBound = false;
+function _marcarActividad() {
+  const now = Date.now();
+  if (now - _inactThrottle < 3000) return;
+  _inactThrottle = now; _inactLast = now;
+}
+function iniciarLogoutInactividad() {
+  const LIMITE = 2 * 60 * 60 * 1000; // 2 horas
+  _inactLast = Date.now();
+  if (!_inactBound) {
+    ['mousemove','mousedown','keydown','scroll','touchstart','click'].forEach(ev =>
+      window.addEventListener(ev, _marcarActividad, { passive: true }));
+    _inactBound = true;
+  }
+  if (_inactTimer) clearInterval(_inactTimer);
+  _inactTimer = setInterval(() => {
+    if (Date.now() - _inactLast >= LIMITE) {
+      clearInterval(_inactTimer); _inactTimer = null;
+      if (typeof toast === 'function') toast('Sesión cerrada por inactividad', 'in');
+      try { doLogout(); } catch(_){ location.reload(); }
+    }
+  }, 60 * 1000);
+}
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js')
