@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.55</title>
+<title>Grupo Olyar — Solicitudes v3.8.56</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.55';
+    var APP_VER='v3.8.56';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -6250,12 +6250,16 @@ function renderClientes() {
   const q = (document.getElementById('clientes-srch')?.value || '').toLowerCase();
   const isAdmin = ME?.rol === 'admin';
 
-  // Deduplicar por DNI — un registro por cliente
-  const vistos = {};
-  RECORDS.forEach(r => {
-    if (r.dni && !vistos[r.dni]) vistos[r.dni] = r;
-  });
-  let data = Object.values(vistos);
+  // Fuente: tabla clientes (base propia). Fallback de nombre a solicitudes si faltara.
+  const _nomSol = {};
+  RECORDS.forEach(r => { if (r.dni && !_nomSol[r.dni] && r.nombrecliente) _nomSol[r.dni] = r.nombrecliente; });
+  let data = Object.values(CLIENTES_DATA).map(c => ({
+    dni: c.dni,
+    nombrecliente: c.nombre || _nomSol[c.dni] || '',
+    direccion: c.direccion, localidad: c.localidad, provincia: c.provincia,
+    telefono: c.telefono, email: c.email
+  }));
+  data.sort((a,b) => (a.nombrecliente||'').localeCompare(b.nombrecliente||'', 'es'));
   if (q) data = data.filter(r =>
     [(r.nombrecliente||''), (r.dni||'')].some(v => v.toLowerCase().includes(q))
   );
@@ -6276,7 +6280,7 @@ function renderClientes() {
   const val = v => v || '—';
 
   tbody.innerHTML = data.map((r, i) => {
-    const cd = CLIENTES_DATA[r.dni] || {};
+    const cd = r;
     return `
     <tr style="cursor:pointer" onclick="openClientesPanel('${r.dni}')">
       <td style="position:sticky;left:0;background:#fff;z-index:1;box-shadow:2px 0 6px rgba(0,0,0,.04)" onclick="event.stopPropagation()">
@@ -6327,7 +6331,7 @@ async function saveCliente() {
   try {
     const { error } = await SB.from('clientes').upsert({ dni, direccion, localidad, provincia, telefono, email });
     if (error) throw error;
-    CLIENTES_DATA[dni] = { direccion, localidad, provincia, telefono, email };
+    CLIENTES_DATA[dni] = { ...(CLIENTES_DATA[dni]||{}), dni, direccion, localidad, provincia, telefono, email };
     toast('Cliente guardado ✓', 'ok');
     closeClienteEdit();
     renderClientes();
@@ -6374,17 +6378,18 @@ function openClientesPanel(dni) {
   const cd = CLIENTES_DATA[dni] || {};
   const isAdmin = ME?.rol === 'admin';
   const val = v => v || '—';
+  const _nom = cd.nombre || (r ? r.nombrecliente : '') || '';
 
   // Cerrar modal Clientes
   document.getElementById('clientes-overlay').classList.remove('open');
 
-  document.getElementById('clientes-panel-name').textContent = r ? (r.nombrecliente || '—') : '—';
+  document.getElementById('clientes-panel-name').textContent = _nom || '—';
   document.getElementById('clientes-panel-sub').textContent  = 'DNI: ' + (dni || '—');
 
   document.getElementById('clientes-panel-body').innerHTML = `
     <div class="panel-section">
       <div class="panel-section-t">Datos personales</div>
-      <div class="prow"><span class="pl">Nombre</span><span class="pv bold">${val(r?.nombrecliente)}</span></div>
+      <div class="prow"><span class="pl">Nombre</span><span class="pv bold">${val(_nom)}</span></div>
       <div class="prow"><span class="pl">DNI</span><span class="pv mono">${val(dni)}</span></div>
     </div>
     <div class="panel-section">
@@ -6407,7 +6412,7 @@ function openClientesPanel(dni) {
   const btns = document.createElement('div');
   btns.className = 'panel-btns';
   btns.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
-  const nombre = r ? (r.nombrecliente||'').replace(/'/g,"\\'") : '';
+  const nombre = (_nom||'').replace(/'/g,"\\'");
   btns.innerHTML = `
     <button class="btn btn-p" style="font-size:12px;padding:6px 12px" onclick="closeClientesPanelSinReabrir();editCliente('${dni}','${nombre}')">✏️ Editar</button>
     ${isAdmin ? `<button class="btn btn-d" style="font-size:12px;padding:6px 12px" onclick="closeClientesPanelSinReabrir();delCliente('${dni}')">🗑️ Eliminar</button>` : ''}
@@ -10711,6 +10716,7 @@ async function savePrenda() {
         const _prev = CLIENTES_DATA[r.dni] || {};
         const _cli = {
           dni: r.dni,
+          nombre:    (r.nombrecliente || _prev.nombre || ''),
           direccion: cliDireccion || _prev.direccion || '',
           localidad: (r.localidad || _prev.localidad || ''),
           provincia: (r.provincia || _prev.provincia || ''),
@@ -10719,7 +10725,7 @@ async function savePrenda() {
         };
         const { error: _ce } = await SB.from('clientes').upsert(_cli);
         if (!_ce) {
-          CLIENTES_DATA[r.dni] = { direccion:_cli.direccion, localidad:_cli.localidad, provincia:_cli.provincia, telefono:_cli.telefono, email:_cli.email };
+          CLIENTES_DATA[r.dni] = { dni:r.dni, nombre:_cli.nombre, direccion:_cli.direccion, localidad:_cli.localidad, provincia:_cli.provincia, telefono:_cli.telefono, email:_cli.email };
           if (typeof renderClientes === 'function') { try { renderClientes(); } catch(_){} }
         }
       } catch(_e) { /* no bloquear el guardado de la prenda */ }
