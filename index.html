@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.52</title>
+<title>Grupo Olyar — Solicitudes v3.8.53</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.52';
+    var APP_VER='v3.8.53';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -10699,6 +10699,25 @@ async function savePrenda() {
       r.docInforme = docInforme; r.docInformeFecha = docInformeFecha; r.docDni = docDni;
       r.etRegistro = etRegistro; r.etObservaciones = etObs; r.etPasos = etPasosJSON;
       if(_admSave){ r.prePrenda = preprenda; r.prendaInscripta = inscripta; } }
+    // Sincronizar contacto/domicilio con la ficha de Clientes (match por DNI, merge sin pisar con vacío)
+    if (r && r.dni) {
+      try {
+        const _prev = CLIENTES_DATA[r.dni] || {};
+        const _cli = {
+          dni: r.dni,
+          direccion: cliDireccion || _prev.direccion || '',
+          localidad: (r.localidad || _prev.localidad || ''),
+          provincia: (r.provincia || _prev.provincia || ''),
+          telefono:  cliTelefono || _prev.telefono || '',
+          email:     cliMail || _prev.email || ''
+        };
+        const { error: _ce } = await SB.from('clientes').upsert(_cli);
+        if (!_ce) {
+          CLIENTES_DATA[r.dni] = { direccion:_cli.direccion, localidad:_cli.localidad, provincia:_cli.provincia, telefono:_cli.telefono, email:_cli.email };
+          if (typeof renderClientes === 'function') { try { renderClientes(); } catch(_){} }
+        }
+      } catch(_e) { /* no bloquear el guardado de la prenda */ }
+    }
     const cambiosPrenda = diffObjetos(viejaPrenda, { enProceso, presentada, finalizada, entregada }, ['enProceso','presentada','finalizada','entregada']);
     registrarHistorial('prenda', id, cambiosPrenda);
     toast('Prenda actualizada ✓', 'ok');
