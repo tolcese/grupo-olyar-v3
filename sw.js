@@ -1,4 +1,4 @@
-const CACHE_NAME = 'grupo-olyar-v3.8.57';
+const CACHE_NAME = 'grupo-olyar-v3.8.58';
 
 // Solo cacheamos iconos y manifest — el index.html siempre va a la red
 const STATIC_ASSETS = [
@@ -36,6 +36,11 @@ self.addEventListener('fetch', event => {
       url.hostname.includes('unpkg') ||
       url.hostname.includes('fonts.googleapis') ||
       url.hostname.includes('fonts.gstatic')) {
+    return;
+  }
+
+  // sw.js (chequeo de versión de la app): siempre red, sin cachear
+  if (url.pathname.endsWith('/sw.js')) {
     return;
   }
 
