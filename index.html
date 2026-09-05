@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.56</title>
+<title>Grupo Olyar — Solicitudes v3.8.57</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.56';
+    var APP_VER='v3.8.57';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -11654,6 +11654,26 @@ async function saveRecord() {
     }
     syncUI('ok');
     toast(editId?'Solicitud actualizada ✓':'Solicitud guardada ✓','ok');
+    // Sincronizar nombre a la ficha de Clientes (match por DNI; no pisa contacto)
+    if (rec && rec.dni && rec.nombrecliente) {
+      try {
+        const _p = CLIENTES_DATA[rec.dni] || {};
+        const _cli = {
+          dni: rec.dni,
+          nombre: rec.nombrecliente,
+          direccion: _p.direccion || '',
+          localidad: _p.localidad || '',
+          provincia: _p.provincia || '',
+          telefono:  _p.telefono  || '',
+          email:     _p.email     || ''
+        };
+        const { error: _ce } = await SB.from('clientes').upsert(_cli);
+        if (!_ce) {
+          CLIENTES_DATA[rec.dni] = _cli;
+          if (typeof renderClientes === 'function') { try { renderClientes(); } catch(_){} }
+        }
+      } catch(_e) { /* no bloquear el guardado de la solicitud */ }
+    }
 
     // El descuento de stock ocurre al asignar gestor en Gestoría (confirmarAsignacion)
 
