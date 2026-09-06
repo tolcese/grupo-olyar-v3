@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.63</title>
+<title>Grupo Olyar — Solicitudes v3.8.64</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.63';
+    var APP_VER='v3.8.64';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -688,7 +688,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       <div style="max-width:880px;margin:40px auto;padding:0 20px">
         <div style="text-align:center;margin-bottom:40px">
           <div style="font-size:26px;font-weight:800;color:#fff;margin-bottom:6px">¿A dónde querés ir?</div>
-          <div style="font-size:14px;color:rgba(255,255,255,.82)">Elegí una sección para continuar</div>
+          <div style="font-size:14px;color:rgba(255,255,255,.82)">Elegí una sección para continuar ✨</div>
         </div>
         <div id="pp-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:22px">
           <div class="pp-card" onclick="irAModoPrincipal('presupuestos')" style="cursor:pointer;border:1.5px solid var(--line);border-radius:16px;padding:34px 22px;text-align:center;transition:all .15s;background:#fff" onmouseenter="this.style.borderColor='var(--blue)';this.style.boxShadow='0 8px 24px rgba(29,111,206,.12)';this.style.transform='translateY(-3px)'" onmouseleave="this.style.borderColor='var(--line)';this.style.boxShadow='none';this.style.transform='none'">
