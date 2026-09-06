@@ -28,13 +28,14 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.62</title>
+<title>Grupo Olyar — Solicitudes v3.8.63</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.62';
+    var APP_VER='v3.8.63';
+    try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -16816,7 +16817,8 @@ async function checkForUpdate() {
     const m = txt.match(/CACHE_NAME\s*=\s*['"]grupo-olyar-(v[\d.]+)['"]/);
     if (!m) return;
     const serverVer = m[1];
-    if (!serverVer || serverVer === APP_VER) return;
+    const _appVer = (typeof window !== 'undefined' && window.OLYAR_VER) || '';
+    if (!serverVer || !_appVer || serverVer === _appVer) return;
     // Guarda anti-loop: si ya recargamos a esta versión y sigue sin coincidir (deploy incompleto), no recargar en bucle
     if (sessionStorage.getItem('olyar_upd_target') === serverVer) { mostrarBannerUpdate(serverVer, false); return; }
     sessionStorage.setItem('olyar_upd_target', serverVer);
