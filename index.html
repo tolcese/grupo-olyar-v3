@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.61</title>
+<title>Grupo Olyar — Solicitudes v3.8.62</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.61';
+    var APP_VER='v3.8.62';
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
       var last=null; try{ last=localStorage.getItem('olyar_last_ver'); }catch(e){}
@@ -16845,8 +16845,12 @@ function mostrarBannerUpdate(ver, autoRecarga) {
 }
 function iniciarAutoActualizacion() {
   if (_updCheckTimer) return;
-  setTimeout(checkForUpdate, 20000);
-  _updCheckTimer = setInterval(checkForUpdate, 5 * 60 * 1000);
+  setTimeout(checkForUpdate, 5000);
+  _updCheckTimer = setInterval(checkForUpdate, 3 * 60 * 1000);
+  // Chequear también cuando el usuario vuelve a la pestaña (más responsivo)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkForUpdate();
+  });
 }
 
 // ═══════════════════════════════════════════════════════
