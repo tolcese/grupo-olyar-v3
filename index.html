@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.71</title>
+<title>Grupo Olyar — Solicitudes v3.8.72</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.71';
+    var APP_VER='v3.8.72';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -148,7 +148,6 @@ body::-webkit-scrollbar-thumb:hover{background:#cbd5e1;}
 .tb-brand{font-size:15px;font-weight:800;color:var(--ink);letter-spacing:-.03em;display:flex;align-items:center;gap:8px;}
 .tb-dot{width:7px;height:7px;border-radius:50%;background:var(--blue);}
 .tb-nav{display:flex;gap:2px;min-width:0;overflow-x:auto;scrollbar-width:none;}
-#tn-central-deudores,#tn-reportes,#tn-gestoria,#tn-prendas,#tn-pf,#tn-pe,#tn-datero{display:none !important;}
 .tb-nav::-webkit-scrollbar{display:none;}
 .tn{padding:7px 13px;border-radius:7px;border:none;background:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .12s;}
 .tn:hover{color:var(--ink);background:var(--surface);}
@@ -15670,12 +15669,6 @@ function renderReportes() {
     </button>
     <button class="sb-item" onclick="closeSidebar();openGestoria()">
       <span class="sb-icon">📁</span> Gestoría
-    </button>
-    <button class="sb-item" onclick="closeSidebar();showV('central-deudores')">
-      <span class="sb-icon">🏦</span> Central de Deudores
-    </button>
-    <button class="sb-item" onclick="closeSidebar();showV('reportes')">
-      <span class="sb-icon">📊</span> Reportes
     </button>
     <button class="sb-item" onclick="closeSidebar();showV('creditos')" style="position:relative">
       <span class="sb-icon">💳</span> Sistema de créditos
