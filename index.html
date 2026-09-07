@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.67</title>
+<title>Grupo Olyar — Solicitudes v3.8.69</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.67';
+    var APP_VER='v3.8.69';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -845,13 +845,6 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <div class="combo"><input id="f-dominio" placeholder="Ej. ABC123" style="text-transform:uppercase">
               <div class="combo-btns"><button class="cb" onclick="toggleDD('dominio')" type="button">▾</button></div>
               <div class="cdd" id="dd-dominio"></div></div></div>
-          <div class="fc span3" style="display:none !important"><label>DOCUMENTACIÓN</label>
-            <div class="chk-grid">
-              <label class="chk-row"><input type="checkbox" id="f-doc01"><span>Documento 01/08</span></label>
-              <label class="chk-row"><input type="checkbox" id="f-titulo"><span>Título unidad</span></label>
-              <label class="chk-row"><input type="checkbox" id="f-verif"><span>Verificación policial (12)</span></label>
-              <label class="chk-row"><input type="checkbox" id="f-infdom"><span>Informe dominio</span></label>
-            </div></div>
         </div>
         <div style="margin-top:24px;padding-top:20px;border-top:2px solid var(--line)">
           <div style="margin-bottom:14px">
@@ -11568,8 +11561,6 @@ function getForm() {
     localidad:g('f-localidad').toUpperCase(), dni:g('f-dni'),
     nombrecliente:g('f-nombrecliente').toUpperCase(), dominio:g('f-dominio').toUpperCase(),
     marca:g('f-marca').toUpperCase(), descripcion:g('f-descripcion').toUpperCase(),
-    doc01:document.getElementById('f-doc01').checked, titulo:document.getElementById('f-titulo').checked,
-    verif:document.getElementById('f-verif').checked, infdom:document.getElementById('f-infdom').checked,
     bancos,
     banco:repr.banco||'', tipocta:repr.tipocta||'', importe:repr.importe||'',
     agencia:repr.agencia||'', vehiculo:repr.vehiculo||'', comision:repr.comision||'',
@@ -11590,10 +11581,6 @@ function fillForm(r) {
   document.getElementById('f-dominio').value=r.dominio||'';
   document.getElementById('f-marca').value=r.marca||'';
   document.getElementById('f-descripcion').value=r.descripcion||'';
-  document.getElementById('f-doc01').checked=!!r.doc01;
-  document.getElementById('f-titulo').checked=!!r.titulo;
-  document.getElementById('f-verif').checked=!!r.verif;
-  document.getElementById('f-infdom').checked=!!r.infdom;
   document.getElementById('f-vehiculo').value = (bancoRepresentativo(getBancos(r))||{}).vehiculo || r.vehiculo || '';
   renderBancosForm(getBancos(r));
   document.querySelectorAll('#bancos-container .bank-block .bb-importe').forEach(el=>calcBloqueBanco(el));
@@ -12782,8 +12769,8 @@ function clearFechas() {
 function exportCSV() {
   const exportData = FILTERED_RECORDS.length ? FILTERED_RECORDS : RECORDS;
   if (!exportData.length) { toast('Sin datos','in'); return; }
-  const H=['ID','Fecha','Banco','Concesionaria','Provincia','Localidad','DNI','Cliente','Dominio','Marca','Descripción','Tipo CTA','Importe','Agencia','Vehículo','Estado','Inf. Dom.','Tasa','Obs','Usuario','Fecha Reg'];
-  const rows=exportData.map(r=>[r.id,r.fecha,r.banco,r.concesionaria,r.provincia,r.localidad,r.dni,r.nombrecliente,r.dominio,r.marca,r.descripcion,r.tipocta,r.importe,r.agencia,r.vehiculo,r.estado,r.infdom?'Sí':'No',r.tasa,r.obs,r.usuario,r.fechaReg].map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(';'));
+  const H=['ID','Fecha','Banco','Concesionaria','Provincia','Localidad','DNI','Cliente','Dominio','Marca','Descripción','Tipo CTA','Importe','Agencia','Vehículo','Estado','Tasa','Obs','Usuario','Fecha Reg'];
+  const rows=exportData.map(r=>[r.id,r.fecha,r.banco,r.concesionaria,r.provincia,r.localidad,r.dni,r.nombrecliente,r.dominio,r.marca,r.descripcion,r.tipocta,r.importe,r.agencia,r.vehiculo,r.estado,r.tasa,r.obs,r.usuario,r.fechaReg].map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(';'));
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['\uFEFF'+[H.join(';'),...rows].join('\n')],{type:'text/csv;charset=utf-8;'}));
   a.download=`solicitudes_${hoyLocal()}.csv`;
@@ -13788,10 +13775,6 @@ function exportPDF() {
       <td>${mon(r.vehiculo)}</td>
       ${ME?.rol==='admin' ? `<td style="color:#059669"><b>${mon(r.comision)}</b></td>` : ''}
       <td><span class="est est-${(r.estado||'').toLowerCase()}">${val(r.estado)}</span></td>
-      <td>${chk(r.doc01)}</td>
-      <td>${chk(r.titulo)}</td>
-      <td>${chk(r.verif)}</td>
-      <td>${chk(r.infdom)}</td>
       <td>${val(r.obs)}</td>
       <td>${val(r.usuario)}</td>
     </tr>
@@ -13867,7 +13850,6 @@ function exportPDF() {
         <th>DNI</th><th>Cliente</th><th>Dominio</th><th>Marca</th><th>Descripción</th>
         <th>Tipo CTA</th><th>Tasa</th><th>Imp. Solicitado</th><th>Monto Agencia</th>
         <th>Monto Vehículo</th><th>Comisión</th><th>Estado</th>
-        <th>Doc</th><th>Tít.</th><th>Ver.</th><th>Inf.</th>
         <th>Observaciones</th><th>Usuario</th>
       </tr>
     </thead>
@@ -13990,7 +13972,6 @@ function openStatModal(tipo) {
               <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Monto Vehículo</th>
               <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap" class="admin-only">Comisión</th>
               <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Estado</th>
-              <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Inf. Dom.</th>
               <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Observaciones</th>
               <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Usuario</th>
             </tr>
@@ -14016,7 +13997,6 @@ function openStatModal(tipo) {
                 <td style="padding:8px 10px;font-family:monospace;white-space:nowrap">${mon(r.vehiculo)}</td>
                 ${ME?.rol==='admin' ? `<td style="padding:8px 10px;font-family:monospace;color:var(--green);white-space:nowrap">${mon(r.comision)}</td>` : ''}
                 <td style="padding:8px 10px;white-space:nowrap">${r.estado?`<span class="badge b-${r.estado.toLowerCase()}"><span class="bd"></span>${r.estado}</span>`:'-'}</td>
-                <td style="padding:8px 10px;text-align:center">${chk(r.infdom)}</td>
                 <td style="padding:8px 10px;max-width:200px">${val(r.obs)}</td>
                 <td style="padding:8px 10px;white-space:nowrap">${val(r.usuario)}</td>
               </tr>
@@ -14107,10 +14087,6 @@ function openPanel(id) {
     }).join('')}
     <div class="panel-section">
       <div class="panel-section-t">Documentación</div>
-      <div class="prow"><span class="pl">Documento 01/08</span><span class="pv">${chk(r.doc01)}</span></div>
-      <div class="prow"><span class="pl">Título unidad</span><span class="pv">${chk(r.titulo)}</span></div>
-      <div class="prow"><span class="pl">Verif. policial (12)</span><span class="pv">${chk(r.verif)}</span></div>
-      <div class="prow"><span class="pl">Informe dominio</span><span class="pv">${chk(r.infdom)}</span></div>
     </div>
   `;
 
