@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.65</title>
+<title>Grupo Olyar — Solicitudes v3.8.67</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.65';
+    var APP_VER='v3.8.67';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -2082,7 +2082,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <table class="prendas-table">
             <thead>
               <tr>
-                <th>Acciones</th><th>#</th><th>N° Trámite</th><th>Fecha actual</th><th>Fecha solicitud</th><th>Cliente</th><th>Gestor asignado</th><th>PP/PI</th><th>Banco</th><th>Concesionaria</th><th>Localidad</th><th>Provincia</th><th>Año</th><th>Marca</th><th>Descripción vehículo</th><th>Tipo CTA</th><th>Doc 01/08</th><th>Título</th><th>Ver. Pol.</th><th>Dominio</th><th>Tasa</th><th>Imp. Solicitado</th><th>Observaciones</th><th>En proceso</th><th>Presentada</th><th>Finalizada</th>
+                <th>Acciones</th><th>#</th><th>N° Trámite</th><th>Fecha actual</th><th>Fecha solicitud</th><th>Cliente</th><th>Gestor asignado</th><th>PP/PI</th><th>Banco</th><th>Concesionaria</th><th>Localidad</th><th>Provincia</th><th>Año</th><th>Marca</th><th>Descripción vehículo</th><th>Tipo CTA</th><th>Dominio</th><th>Tasa</th><th>Imp. Solicitado</th><th>Observaciones</th>
               </tr>
             </thead>
             <tbody id="prendas-tbody"></tbody>
@@ -10465,16 +10465,10 @@ function renderPrendas() {
       <td>${val(r.marca)}</td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis" title="${r.descripcion||''}">${val(r.descripcion)}</td>
       <td>${val(r.tipocta)}</td>
-      <td class="chk">${chk(r.doc01)}</td>
-      <td class="chk">${chk(r.titulo)}</td>
-      <td class="chk">${chk(r.verif)}</td>
       <td style="font-family:monospace">${val(r.dominio)}</td>
       <td>${val(r.tasa)}</td>
       <td style="font-family:monospace">${r.importe ? '$'+Number(String(r.importe).replace(/[$,]/g,'')).toLocaleString('es-AR') : '—'}</td>
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis" title="${r.obs||''}">${val(r.obs)}</td>
-      <td class="chk">${ep ? '<span style="color:var(--green);font-weight:700">✓</span>' : '<span style="color:var(--line)">—</span>'}</td>
-      <td class="chk">${pr ? '<span style="color:var(--green);font-weight:700">✓</span>' : '<span style="color:var(--line)">—</span>'}</td>
-      <td style="white-space:nowrap;font-size:12px;color:var(--green);font-weight:600">${fi ? fi.split('-').reverse().join('/') : '<span style="color:var(--muted)">—</span>'}</td>
     </tr>`;
   }).join('');
 
@@ -12788,8 +12782,8 @@ function clearFechas() {
 function exportCSV() {
   const exportData = FILTERED_RECORDS.length ? FILTERED_RECORDS : RECORDS;
   if (!exportData.length) { toast('Sin datos','in'); return; }
-  const H=['ID','Fecha','Banco','Concesionaria','Provincia','Localidad','DNI','Cliente','Dominio','Marca','Descripción','Tipo CTA','Importe','Agencia','Vehículo','Estado','Doc 01/08','Título','Ver. Pol.','Inf. Dom.','Tasa','Obs','Usuario','Fecha Reg'];
-  const rows=exportData.map(r=>[r.id,r.fecha,r.banco,r.concesionaria,r.provincia,r.localidad,r.dni,r.nombrecliente,r.dominio,r.marca,r.descripcion,r.tipocta,r.importe,r.agencia,r.vehiculo,r.estado,r.doc01?'Sí':'No',r.titulo?'Sí':'No',r.verif?'Sí':'No',r.infdom?'Sí':'No',r.tasa,r.obs,r.usuario,r.fechaReg].map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(';'));
+  const H=['ID','Fecha','Banco','Concesionaria','Provincia','Localidad','DNI','Cliente','Dominio','Marca','Descripción','Tipo CTA','Importe','Agencia','Vehículo','Estado','Inf. Dom.','Tasa','Obs','Usuario','Fecha Reg'];
+  const rows=exportData.map(r=>[r.id,r.fecha,r.banco,r.concesionaria,r.provincia,r.localidad,r.dni,r.nombrecliente,r.dominio,r.marca,r.descripcion,r.tipocta,r.importe,r.agencia,r.vehiculo,r.estado,r.infdom?'Sí':'No',r.tasa,r.obs,r.usuario,r.fechaReg].map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(';'));
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['\uFEFF'+[H.join(';'),...rows].join('\n')],{type:'text/csv;charset=utf-8;'}));
   a.download=`solicitudes_${hoyLocal()}.csv`;
@@ -13996,9 +13990,6 @@ function openStatModal(tipo) {
               <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Monto Vehículo</th>
               <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap" class="admin-only">Comisión</th>
               <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Estado</th>
-              <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Doc 01/08</th>
-              <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Título</th>
-              <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Ver. Pol.</th>
               <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Inf. Dom.</th>
               <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Observaciones</th>
               <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line);white-space:nowrap">Usuario</th>
@@ -14025,9 +14016,6 @@ function openStatModal(tipo) {
                 <td style="padding:8px 10px;font-family:monospace;white-space:nowrap">${mon(r.vehiculo)}</td>
                 ${ME?.rol==='admin' ? `<td style="padding:8px 10px;font-family:monospace;color:var(--green);white-space:nowrap">${mon(r.comision)}</td>` : ''}
                 <td style="padding:8px 10px;white-space:nowrap">${r.estado?`<span class="badge b-${r.estado.toLowerCase()}"><span class="bd"></span>${r.estado}</span>`:'-'}</td>
-                <td style="padding:8px 10px;text-align:center">${chk(r.doc01)}</td>
-                <td style="padding:8px 10px;text-align:center">${chk(r.titulo)}</td>
-                <td style="padding:8px 10px;text-align:center">${chk(r.verif)}</td>
                 <td style="padding:8px 10px;text-align:center">${chk(r.infdom)}</td>
                 <td style="padding:8px 10px;max-width:200px">${val(r.obs)}</td>
                 <td style="padding:8px 10px;white-space:nowrap">${val(r.usuario)}</td>
