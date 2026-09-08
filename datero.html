@@ -428,7 +428,7 @@
         </div>
         <div class="field">
           <label>Número de DNI <span class="req">*</span></label>
-          <input type="text" id="dni" required placeholder="Sin puntos ni espacios" inputmode="numeric">
+          <input type="text" id="dni" required placeholder="7 u 8 dígitos, sin puntos ni espacios" inputmode="numeric" maxlength="8" pattern="\d{7,8}">
         </div>
         <div class="field">
           <label>Número de Teléfono <span class="req">*</span></label>
@@ -475,8 +475,8 @@
               <input type="text" id="conyuge_nombre" placeholder="Nombre completo">
             </div>
             <div class="field">
-              <label>CUIT/CUIL</label>
-              <input type="text" id="conyuge_cuit" placeholder="Ej: 20-12345678-9" inputmode="numeric">
+              <label>Número de DNI</label>
+              <input type="text" id="conyuge_cuit" placeholder="7 u 8 dígitos, sin puntos ni espacios" inputmode="numeric" maxlength="8" pattern="\d{7,8}">
             </div>
             <div class="field">
               <label>Género</label>
@@ -821,6 +821,17 @@
     document.getElementById(id)?.addEventListener('change', updateProgress);
   });
 
+  // DNI: solo números, máximo 8 dígitos
+  document.getElementById('dni')?.addEventListener('input', function() {
+    const v = this.value.replace(/\D/g, '').slice(0, 8);
+    if (this.value !== v) this.value = v;
+  });
+  // DNI cónyuge: solo números, máximo 8 dígitos
+  document.getElementById('conyuge_cuit')?.addEventListener('input', function() {
+    const v = this.value.replace(/\D/g, '').slice(0, 8);
+    if (this.value !== v) this.value = v;
+  });
+
   // ── Validation ─────────────────────────────────────────────────
   function validate() {
     let ok = true;
@@ -829,6 +840,13 @@
       if (!el || !el.value.trim()) { el?.classList.add('invalid'); ok = false; }
       else el?.classList.remove('invalid');
     });
+    const _dniEl = document.getElementById('dni');
+    if (_dniEl && !/^\d{7,8}$/.test(_dniEl.value.trim())) { _dniEl.classList.add('invalid'); ok = false; }
+    const _cyEl = document.getElementById('conyuge_cuit');
+    const _cyFields = document.getElementById('conyuge-fields');
+    if (_cyEl && _cyFields && _cyFields.style.display !== 'none' && _cyEl.value.trim() && !/^\d{7,8}$/.test(_cyEl.value.trim())) {
+      _cyEl.classList.add('invalid'); ok = false;
+    } else if (_cyEl) { _cyEl.classList.remove('invalid'); }
     if (selectedFiles.length < 1) {
       dropZone.classList.add('invalid-file');
       ok = false;
@@ -888,6 +906,13 @@
   document.getElementById('dateroForm').addEventListener('submit', async e => {
     e.preventDefault();
 
+    const _dniVal = document.getElementById('dni').value.trim();
+    if (!/^\d{7,8}$/.test(_dniVal)) {
+      document.getElementById('dni').classList.add('invalid');
+      showStatus('error', 'El DNI debe tener 7 u 8 dígitos numéricos.');
+      document.getElementById('dni').scrollIntoView({ behavior:'smooth', block:'center' });
+      return;
+    }
     if (!validate()) {
       showStatus('error', 'Completá todos los campos obligatorios. Adjuntá al menos 1 archivo del DNI del solicitante y 1 del título del automotor.');
       document.querySelector('.invalid, .invalid-file')?.scrollIntoView({ behavior:'smooth', block:'center' });
