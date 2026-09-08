@@ -431,6 +431,10 @@
           <input type="text" id="dni" required placeholder="7 u 8 dígitos, sin puntos ni espacios" inputmode="numeric" maxlength="8" pattern="\d{7,8}">
         </div>
         <div class="field">
+          <label>Fecha de Nacimiento</label>
+          <input type="date" id="fecha_nacimiento">
+        </div>
+        <div class="field">
           <label>Número de Teléfono <span class="req">*</span></label>
           <input type="tel" id="telefono" required placeholder="Ej: 3512345678" inputmode="numeric">
         </div>
@@ -966,6 +970,7 @@
         encargado_operacion:  getVal('encargado_operacion'),
         nombre_apellido:      getVal('nombre_apellido'),
         dni:                  getVal('dni'),
+        fecha_nacimiento:     document.getElementById('fecha_nacimiento').value || null,
         telefono:             getVal('telefono'),
         compania_telefono:    getVal('compania_telefono'),
         telefono_alt1:        getVal('telefono_alt1') || null,
