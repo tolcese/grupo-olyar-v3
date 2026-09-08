@@ -431,8 +431,8 @@
           <input type="text" id="dni" required placeholder="7 u 8 dígitos, sin puntos ni espacios" inputmode="numeric" maxlength="8" pattern="\d{7,8}">
         </div>
         <div class="field">
-          <label>Fecha de Nacimiento</label>
-          <input type="date" id="fecha_nacimiento">
+          <label>Fecha de Nacimiento <span class="req">*</span></label>
+          <input type="date" id="fecha_nacimiento" required>
         </div>
         <div class="field">
           <label>Número de Teléfono <span class="req">*</span></label>
@@ -801,7 +801,7 @@
   // ── Progress bar ───────────────────────────────────────────────
   const requiredIds = [
     'provincia','nombre_concesionaria','encargado_operacion',
-    'nombre_apellido','dni','telefono','compania_telefono','email_cliente','codigo_postal','estado_civil',
+    'nombre_apellido','dni','fecha_nacimiento','telefono','compania_telefono','email_cliente','codigo_postal','estado_civil',
     'fecha_ingreso','nombre_empresa','domicilio_laboral','telefono_laboral',
     'telefono_alt1','telefono_alt1_nombre','telefono_alt1_relacion',
     'telefono_alt2','telefono_alt2_nombre','telefono_alt2_relacion',
