@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.74</title>
+<title>Grupo Olyar — Solicitudes v3.8.75</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.74';
+    var APP_VER='v3.8.75';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -5439,6 +5439,7 @@ function editarPresupuesto(id) {
   document.getElementById('pf-honorarios').value = p.honorarios || '';
   document.getElementById('pf-obs').value = p.observaciones || '';
   calcPresup();
+  document.querySelectorAll('#v-presupuesto-form input[inputmode="decimal"]').forEach(el=>fmtCampoMoneda(el));
   document.getElementById('presup-list-section').style.display = 'none';
   document.getElementById('v-presupuesto-form').style.display = '';
 }
@@ -5466,7 +5467,7 @@ function eliminarFormulario(idx) {
 }
 
 function calcFormularioImporte(idx) {
-  const precio = parseFloat(document.getElementById(`pf-form-precio-${idx}`)?.value) || 0;
+  const precio = parseMoneda(document.getElementById(`pf-form-precio-${idx}`)?.value) || 0;
   const cant   = parseFloat(document.getElementById(`pf-form-cant-${idx}`)?.value) || 1;
   const el     = document.getElementById(`pf-form-importe-${idx}`);
   if (!el) return;
@@ -5517,7 +5518,7 @@ function renderFormulariosList() {
       </div>
       <div class="fc" style="flex:1;min-width:100px">
         <label style="font-size:10px">Precio Unitario</label>
-        <input type="number" id="pf-form-precio-${idx}" value="${item.precio||''}" placeholder="0" oninput="calcFormularioImporte(${idx})" style="padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;width:100%;font-size:13px">
+        <input type="text" inputmode="decimal" id="pf-form-precio-${idx}" value="${item.precio||''}" placeholder="0" oninput="calcFormularioImporte(${idx})" style="padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;width:100%;font-size:13px">
       </div>
       <div class="fc" style="flex:0 0 70px">
         <label style="font-size:10px">Cant.</label>
@@ -5601,11 +5602,19 @@ document.addEventListener('paste', function(e){
   el.dispatchEvent(new Event('input',{bubbles:true}));
 }, true);
 
+// Formatear campos de moneda del presupuesto al salir del campo (igual que nueva solicitud)
+document.addEventListener('focusout', function(e){
+  const el = e.target;
+  if(el && el.tagName==='INPUT' && el.getAttribute('inputmode')==='decimal' && el.closest && el.closest('#v-presupuesto-form')){
+    fmtCampoMoneda(el);
+  }
+}, true);
+
 function calcPresup() {
   const n = id => parseMoneda(document.getElementById(id)?.value);
   const val = n('pf-valuacion');
   const base70 = Math.round(val * 0.70 * 100) / 100;
-  if (!window._baseImpManual) document.getElementById('pf-base-imp').value = base70 || '';
+  if (!window._baseImpManual) document.getElementById('pf-base-imp').value = base70 ? fmtMonedaAR(base70) : '';
   const total = 
     n('pf-certificacion') + getTotalFormularios() + n('pf-arancel') +
     n('pf-sellado-base') + n('pf-sellado-prenda') + n('pf-legalizaciones') +
