@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.75</title>
+<title>Grupo Olyar — Solicitudes v3.8.76</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.75';
+    var APP_VER='v3.8.76';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -5621,8 +5621,7 @@ function calcPresup() {
     n('pf-anotaciones') + n('pf-informe-dominio') +
     n('pf-mun1-valor') + n('pf-mun2-valor') + n('pf-multas-valor') +
     n('pf-munjuicios-valor') + n('pf-rentasjuicios-valor') +
-    n('pf-movilidad') + n('pf-altas-bajas') + n('pf-honorarios') +
-    n('pf-base-imp');
+    n('pf-movilidad') + n('pf-altas-bajas') + n('pf-honorarios');
   document.getElementById('pf-total-display').textContent = '$' + total.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
