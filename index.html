@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.77</title>
+<title>Grupo Olyar — Solicitudes v3.8.78</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.77';
+    var APP_VER='v3.8.78';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -252,6 +252,7 @@ td.mcell{text-align:center}
 .xbtn{width:30px;height:30px;border-radius:7px;border:none;background:var(--surface);cursor:pointer;font-size:16px;color:var(--muted);display:flex;align-items:center;justify-content:center;}
 .fg{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;}
 .fc{display:flex;flex-direction:column;gap:5px;}
+.segth{padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:2px solid var(--line)}
 .fc.span2{grid-column:span 2;}
 .fc.span3{grid-column:1/-1;}
 .fc label{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
@@ -734,11 +735,67 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
     <!-- SEGUROS -->
     <div id="v-seguros" style="display:none">
       <div class="ph">
-        <div><div class="ph-t">Seguros</div><div class="ph-s">Gestión de seguros</div></div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-s" onclick="showV('panel-principal')" style="padding:6px 12px">← Volver</button>
+          <div><div class="ph-t">🛡️ Seguros</div><div class="ph-s">Cotizaciones de seguros</div></div>
+        </div>
+        <button class="btn btn-p" onclick="nuevaCotizacion()">＋ Nueva cotización</button>
       </div>
-      <div style="max-width:880px;margin:30px auto;padding:0 20px;text-align:center;color:var(--muted)">
-        <div style="font-size:46px;margin-bottom:12px">🛡️</div>
-        <div style="font-size:15px">Sección en construcción.</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <div class="searchbox" style="min-width:260px">
+          <span style="color:var(--muted)">🔍</span>
+          <input id="seg-srch" placeholder="Buscar nombre, DNI, dominio, vehículo..." oninput="renderSeguros()">
+        </div>
+        <div id="seg-count" style="font-size:12px;color:var(--muted)">—</div>
+      </div>
+      <div id="seg-list-wrap" style="overflow-x:auto;border:1.5px solid var(--line);border-radius:12px">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap">
+          <thead>
+            <tr style="background:var(--surface)">
+              <th class="segth">Acciones</th>
+              <th class="segth">Apellido y nombre</th>
+              <th class="segth">DNI</th>
+              <th class="segth">Fecha nac.</th>
+              <th class="segth">C.P.</th>
+              <th class="segth">Dominio</th>
+              <th class="segth">Vehículo</th>
+              <th class="segth">Año</th>
+              <th class="segth">GNC</th>
+              <th class="segth">Cargada</th>
+            </tr>
+          </thead>
+          <tbody id="seg-tbody"></tbody>
+        </table>
+      </div>
+      <div id="seg-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--muted)">
+        <div style="font-size:48px;margin-bottom:12px">🛡️</div>
+        <div style="font-size:15px;font-weight:700;color:var(--ink2);margin-bottom:6px">Sin cotizaciones</div>
+        <div style="font-size:13px">Usá el botón <b>＋ Nueva cotización</b> para agregar</div>
+      </div>
+    </div>
+
+    <!-- SEGUROS - NUEVA COTIZACIÓN -->
+    <div id="v-seguros-nueva" style="display:none">
+      <div class="ph">
+        <div><div class="ph-t" id="seg-form-title">Nueva cotización</div><div class="ph-s">Completá y guardá</div></div>
+        <button class="btn btn-s" onclick="showV('seguros')">← Volver</button>
+      </div>
+      <div class="card" style="padding:26px">
+        <input type="hidden" id="seg-id">
+        <div class="fg">
+          <div class="fc"><label>APELLIDO Y NOMBRE *</label><input id="seg-nombre" placeholder="Apellido, Nombre"></div>
+          <div class="fc"><label>DNI *</label><input id="seg-dni" inputmode="numeric" maxlength="8" placeholder="7 u 8 dígitos" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+          <div class="fc"><label>FECHA DE NACIMIENTO *</label><input type="date" id="seg-fnac"></div>
+          <div class="fc"><label>CÓDIGO POSTAL *</label><input id="seg-cp" inputmode="numeric" maxlength="8" placeholder="Ej. 5000" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+          <div class="fc"><label>DOMINIO *</label><input id="seg-dominio" placeholder="Ej. ABC123 / AB123CD" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"></div>
+          <div class="fc"><label>VEHÍCULO *</label><input id="seg-vehiculo" placeholder="Marca y modelo"></div>
+          <div class="fc"><label>AÑO *</label><select id="seg-anio"><option value="">— Seleccioná —</option><option>2026</option><option>2025</option><option>2024</option><option>2023</option><option>2022</option><option>2021</option><option>2020</option><option>2019</option><option>2018</option><option>2017</option><option>2016</option><option>2015</option><option>2014</option><option>2013</option><option>2012</option><option>2011</option><option>2010</option><option>2009</option><option>2008</option><option>2007</option><option>2006</option><option>2005</option><option>2004</option><option>2003</option><option>2002</option><option>2001</option><option>2000</option><option>1999</option><option>1998</option><option>1997</option><option>1996</option><option>1995</option><option>1994</option><option>1993</option><option>1992</option><option>1991</option><option>1990</option><option>1989</option><option>1988</option><option>1987</option><option>1986</option><option>1985</option><option>1984</option><option>1983</option><option>1982</option><option>1981</option><option>1980</option></select></div>
+          <div class="fc"><label>POSEE GNC *</label><select id="seg-gnc"><option value="">— Seleccioná —</option><option>SI</option><option>NO</option></select></div>
+        </div>
+        <div class="mfoot">
+          <button class="btn btn-s" onclick="resetCotizacion()">Limpiar</button>
+          <button class="btn btn-p invitado-hidden" onclick="guardarCotizacion()">💾 Guardar cotización</button>
+        </div>
       </div>
     </div>
 
@@ -7207,6 +7264,161 @@ async function delCopa(id) {
   } catch(e) { toast('Error al eliminar','er'); }
 }
 
+// ===== SEGUROS =====
+let SEGUROS_CACHE = [];
+
+async function loadSeguros() {
+  try {
+    const { data, error } = await SB.from('seguros_cotizaciones').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    SEGUROS_CACHE = (data || []).map(s => ({
+      id: s.id, nombre: s.nombre, dni: s.dni, fnac: s.fecha_nacimiento,
+      cp: s.codigo_postal, dominio: s.dominio, vehiculo: s.vehiculo,
+      anio: s.anio, gnc: s.posee_gnc, creado: s.created_at
+    }));
+    renderSeguros();
+  } catch(e) { console.error('loadSeguros:', e); toast('Error al cargar cotizaciones','er'); }
+}
+
+function renderSeguros() {
+  const tbody = document.getElementById('seg-tbody');
+  const empty = document.getElementById('seg-empty');
+  const wrap  = document.getElementById('seg-list-wrap');
+  if (!tbody) return;
+  const fmtD = v => v ? String(v).split('T')[0].split('-').reverse().join('/') : '—';
+  const val  = v => (v!==null && v!==undefined && String(v).trim()!=='') ? v : '—';
+  const q = (document.getElementById('seg-srch')?.value || '').toLowerCase().trim();
+  let data = SEGUROS_CACHE.slice();
+  if (q) data = data.filter(s =>
+    (s.nombre||'').toLowerCase().includes(q) ||
+    (String(s.dni||'')).toLowerCase().includes(q) ||
+    (s.dominio||'').toLowerCase().includes(q) ||
+    (s.vehiculo||'').toLowerCase().includes(q)
+  );
+  const cnt = document.getElementById('seg-count');
+  if (cnt) cnt.textContent = data.length + (data.length===1?' cotización':' cotizaciones');
+  if (!data.length) {
+    tbody.innerHTML = '';
+    if (wrap) wrap.style.display = 'none';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (wrap) wrap.style.display = '';
+  if (empty) empty.style.display = 'none';
+  const isAdmin = ME?.rol === 'admin';
+  tbody.innerHTML = data.map(s => `
+    <tr style="border-bottom:1px solid var(--line)">
+      <td style="padding:8px 12px" onclick="event.stopPropagation()">
+        <div class="abtns">
+          <button class="ibtn" onclick="editCotizacion('${s.id}')" title="Editar">✏️</button>
+          ${isAdmin ? `<button class="ibtn" onclick="delCotizacion('${s.id}')" title="Eliminar">🗑️</button>` : ''}
+        </div>
+      </td>
+      <td style="padding:8px 12px;font-weight:700">${val(s.nombre)}</td>
+      <td style="padding:8px 12px">${val(s.dni)}</td>
+      <td style="padding:8px 12px;white-space:nowrap">${fmtD(s.fnac)}</td>
+      <td style="padding:8px 12px">${val(s.cp)}</td>
+      <td style="padding:8px 12px;font-family:monospace;text-transform:uppercase">${val(s.dominio)}</td>
+      <td style="padding:8px 12px">${val(s.vehiculo)}</td>
+      <td style="padding:8px 12px">${val(s.anio)}</td>
+      <td style="padding:8px 12px;font-weight:700;color:${s.gnc==='SI'?'var(--green)':'var(--muted)'}">${val(s.gnc)}</td>
+      <td style="padding:8px 12px;white-space:nowrap;color:var(--muted)">${fmtD(s.creado)}</td>
+    </tr>`).join('');
+}
+
+function resetCotizacion() {
+  ['seg-nombre','seg-dni','seg-fnac','seg-cp','seg-dominio','seg-vehiculo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const a=document.getElementById('seg-anio'); if(a)a.value='';
+  const g=document.getElementById('seg-gnc'); if(g)g.value='';
+}
+
+function nuevaCotizacion() {
+  const h=document.getElementById('seg-id'); if(h)h.value='';
+  const t=document.getElementById('seg-form-title'); if(t)t.textContent='Nueva cotización';
+  resetCotizacion();
+  showV('seguros-nueva');
+}
+
+function editCotizacion(id) {
+  const s = SEGUROS_CACHE.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('seg-id').value = s.id;
+  document.getElementById('seg-form-title').textContent = 'Editar cotización';
+  document.getElementById('seg-nombre').value   = s.nombre || '';
+  document.getElementById('seg-dni').value       = s.dni || '';
+  document.getElementById('seg-fnac').value      = s.fnac ? String(s.fnac).split('T')[0] : '';
+  document.getElementById('seg-cp').value        = s.cp || '';
+  document.getElementById('seg-dominio').value   = s.dominio || '';
+  document.getElementById('seg-vehiculo').value  = s.vehiculo || '';
+  document.getElementById('seg-anio').value      = s.anio || '';
+  document.getElementById('seg-gnc').value       = s.gnc || '';
+  showV('seguros-nueva');
+}
+
+async function guardarCotizacion() {
+  if (!requireEdit()) return;
+  const id       = document.getElementById('seg-id').value;
+  const nombre   = document.getElementById('seg-nombre').value.trim();
+  const dni      = document.getElementById('seg-dni').value.trim();
+  const fnac     = document.getElementById('seg-fnac').value;
+  const cp       = document.getElementById('seg-cp').value.trim();
+  const dominio  = document.getElementById('seg-dominio').value.trim().toUpperCase();
+  const vehiculo = document.getElementById('seg-vehiculo').value.trim();
+  const anio     = document.getElementById('seg-anio').value;
+  const gnc      = document.getElementById('seg-gnc').value;
+
+  if (!nombre) { toast('Ingresá apellido y nombre','er'); return; }
+  if (!/^\d{7,8}$/.test(dni)) { toast('El DNI debe tener 7 u 8 dígitos','er'); return; }
+  if (!fnac) { toast('Ingresá la fecha de nacimiento','er'); return; }
+  if (!cp) { toast('Ingresá el código postal','er'); return; }
+  if (!dominio) { toast('Ingresá el dominio','er'); return; }
+  if (!vehiculo) { toast('Ingresá el vehículo','er'); return; }
+  if (!anio) { toast('Seleccioná el año','er'); return; }
+  if (!gnc) { toast('Indicá si posee GNC','er'); return; }
+
+  const upd = {
+    nombre, dni,
+    fecha_nacimiento: fnac,
+    codigo_postal: cp,
+    dominio, vehiculo,
+    anio: parseInt(anio,10),
+    posee_gnc: gnc,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    if (id) {
+      const { error } = await SB.from('seguros_cotizaciones').update(upd).eq('id', id);
+      if (error) throw error;
+      const rec = SEGUROS_CACHE.find(x => x.id === id);
+      if (rec) Object.assign(rec, { nombre, dni, fnac, cp, dominio, vehiculo, anio: upd.anio, gnc });
+      toast('Cotización actualizada ✓','ok');
+    } else {
+      const newId = Date.now().toString();
+      const row = { id: newId, ...upd };
+      const { error } = await SB.from('seguros_cotizaciones').insert(row);
+      if (error) throw error;
+      SEGUROS_CACHE.unshift({ id: newId, nombre, dni, fnac, cp, dominio, vehiculo, anio: upd.anio, gnc, creado: new Date().toISOString() });
+      toast('Cotización creada ✓','ok');
+    }
+    showV('seguros');
+  } catch(e) { toast('Error: '+(e.message||'no se pudo guardar'),'er'); }
+}
+
+async function delCotizacion(id) {
+  if (!requireEdit()) return;
+  const s = SEGUROS_CACHE.find(x => x.id === id);
+  if (!confirm(`¿Eliminar la cotización de "${s?.nombre||'este registro'}"? Esta acción no se puede deshacer.`)) return;
+  try {
+    const { error } = await SB.from('seguros_cotizaciones').delete().eq('id', id);
+    if (error) throw error;
+    SEGUROS_CACHE = SEGUROS_CACHE.filter(x => x.id !== id);
+    renderSeguros();
+    toast('Cotización eliminada ✓','ok');
+  } catch(e) { toast('Error al eliminar','er'); }
+}
+// ===== FIN SEGUROS =====
+
 function openCredPanel(id) {
   const c   = CREDITOS_CACHE.find(x => x.id === id) || {};
   const cuotas = CUOTAS_CACHE.filter(q => q.creditoId === id);
@@ -11142,7 +11354,7 @@ function showV(v) {
       setTimeout(renderReportes, 50);
     }
   }
-  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','seguros','central-deudores','copas','prendas-finalizadas','prendas-entregadas'].forEach(id => {
+  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','seguros','seguros-nueva','central-deudores','copas','prendas-finalizadas','prendas-entregadas'].forEach(id => {
     const el = document.getElementById('v-'+id);
     if (el) el.style.display = id===v ? '' : 'none';
 
@@ -11163,6 +11375,7 @@ function showV(v) {
     const _pk=document.getElementById('pp-card-copas'); if(_pk) _pk.style.display=(ME && (ME.rol==='admin'||ME.usr==='rrodriguez'))?'':'none';
     if (ME?.usr==='rrodriguez') aplicarMenuRrodriguez();
   }
+  if (v==='seguros')  loadSeguros();
   if (v==='sol')      renderTable();
   if (v==='gestores') { const _lw=document.getElementById('gestores-list-wrap'), _fw=document.getElementById('gestor-form-wrap'); if(_lw)_lw.style.display=''; if(_fw)_fw.style.display='none'; loadGestores(); }
   if (v==='prendas')  { poblarFiltrosPC(); renderPrendas(); setTimeout(initPrendasMirror, 150); }
