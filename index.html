@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.76</title>
+<title>Grupo Olyar — Solicitudes v3.8.77</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.76';
+    var APP_VER='v3.8.77';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -707,6 +707,11 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <div style="font-size:16px;font-weight:800;color:var(--ink)">Comercializadora</div>
             <div style="font-size:12px;color:var(--muted);margin-top:4px">Sistema de solicitudes y gestión</div>
           </div>
+          <div class="pp-card" onclick="irAModoPrincipal('seguros')" style="cursor:pointer;border:1.5px solid var(--line);border-radius:16px;padding:34px 22px;text-align:center;transition:all .15s;background:#fff" onmouseenter="this.style.borderColor='var(--blue)';this.style.boxShadow='0 8px 24px rgba(29,111,206,.12)';this.style.transform='translateY(-3px)'" onmouseleave="this.style.borderColor='var(--line)';this.style.boxShadow='none';this.style.transform='none'">
+            <div style="font-size:46px;margin-bottom:14px">🛡️</div>
+            <div style="font-size:16px;font-weight:800;color:var(--ink)">Seguros</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">Gestión de seguros</div>
+          </div>
           <div class="pp-card" id="pp-card-copas" onclick="showV('copas')" style="display:none;cursor:pointer;border:1.5px solid var(--line);border-radius:16px;padding:34px 22px;text-align:center;transition:all .15s;background:#fff" onmouseenter="this.style.borderColor='var(--blue)';this.style.boxShadow='0 8px 24px rgba(29,111,206,.12)';this.style.transform='translateY(-3px)'" onmouseleave="this.style.borderColor='var(--line)';this.style.boxShadow='none';this.style.transform='none'">
             <div style="font-size:46px;margin-bottom:14px">📋</div>
             <div style="font-size:16px;font-weight:800;color:var(--ink)">Copas Registrales</div>
@@ -723,6 +728,17 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <div style="font-size:12px;color:var(--muted);margin-top:4px">Acceso exclusivo de administración</div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- SEGUROS -->
+    <div id="v-seguros" style="display:none">
+      <div class="ph">
+        <div><div class="ph-t">Seguros</div><div class="ph-s">Gestión de seguros</div></div>
+      </div>
+      <div style="max-width:880px;margin:30px auto;padding:0 20px;text-align:center;color:var(--muted)">
+        <div style="font-size:46px;margin-bottom:12px">🛡️</div>
+        <div style="font-size:15px">Sección en construcción.</div>
       </div>
     </div>
 
@@ -10951,6 +10967,14 @@ function aplicarModoSidebar(modo) {
   document.getElementById('sb-panel-principal').style.display = '';
   { const _salir=document.querySelector('.sb-item[onclick*="doLogout"]'); if(_salir) _salir.style.display=''; }
 
+  if (modo === 'seguros') {
+    const miCuentaSeg = document.querySelector('.sb-item[onclick*="micuenta"]');
+    if (miCuentaSeg) miCuentaSeg.style.display = '';
+    const divCuentaSeg = document.getElementById('sb-div-cuenta');
+    if (divCuentaSeg) divCuentaSeg.style.display = '';
+    const lblCuentaSeg = document.getElementById('sb-lbl-cuenta');
+    if (lblCuentaSeg) lblCuentaSeg.style.display = '';
+  }
   if (modo === 'presupuestos') {
     document.getElementById('sb-presupuestos').style.display = '';
     document.getElementById('sb-historico-presup').style.display = '';
@@ -11049,6 +11073,8 @@ async function irAModoPrincipal(modo) {
     if (!window._cuotasPopupVisto) {
       checkCuotasVencimientoPopup();
     }
+  } else if (modo === 'seguros') {
+    showV('seguros');
   } else if (modo === 'contabilidad') {
     showV('contabilidad');
   } else if (modo === 'administracion-admin') {
@@ -11116,7 +11142,7 @@ function showV(v) {
       setTimeout(renderReportes, 50);
     }
   }
-  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','central-deudores','copas','prendas-finalizadas','prendas-entregadas'].forEach(id => {
+  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','seguros','central-deudores','copas','prendas-finalizadas','prendas-entregadas'].forEach(id => {
     const el = document.getElementById('v-'+id);
     if (el) el.style.display = id===v ? '' : 'none';
 
