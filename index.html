@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.79</title>
+<title>Grupo Olyar — Solicitudes v3.8.80</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.79';
+    var APP_VER='v3.8.80';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -753,6 +753,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <thead>
             <tr style="background:var(--surface)">
               <th class="segth">Acciones</th>
+              <th class="segth">Cargada</th>
               <th class="segth">Apellido y nombre</th>
               <th class="segth">DNI</th>
               <th class="segth">Fecha nac.</th>
@@ -761,7 +762,6 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
               <th class="segth">Vehículo</th>
               <th class="segth">Año</th>
               <th class="segth">GNC</th>
-              <th class="segth">Cargada</th>
             </tr>
           </thead>
           <tbody id="seg-tbody"></tbody>
@@ -7315,6 +7315,7 @@ function renderSeguros() {
           ${isAdmin ? `<button class="ibtn" onclick="delCotizacion('${s.id}')" title="Eliminar">🗑️</button>` : ''}
         </div>
       </td>
+      <td style="padding:8px 12px;white-space:nowrap;color:var(--muted)">${fmtD(s.creado)}</td>
       <td style="padding:8px 12px;font-weight:700">${val(s.nombre)}</td>
       <td style="padding:8px 12px">${val(s.dni)}</td>
       <td style="padding:8px 12px;white-space:nowrap">${fmtD(s.fnac)}</td>
@@ -7323,7 +7324,6 @@ function renderSeguros() {
       <td style="padding:8px 12px">${val(s.vehiculo)}</td>
       <td style="padding:8px 12px">${val(s.anio)}</td>
       <td style="padding:8px 12px;font-weight:700;color:${s.gnc==='SI'?'var(--green)':'var(--muted)'}">${val(s.gnc)}</td>
-      <td style="padding:8px 12px;white-space:nowrap;color:var(--muted)">${fmtD(s.creado)}</td>
     </tr>`).join('');
 }
 
