@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.80</title>
+<title>Grupo Olyar — Solicitudes v3.8.81</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.80';
+    var APP_VER='v3.8.81';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -746,6 +746,10 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <span style="color:var(--muted)">🔍</span>
           <input id="seg-srch" placeholder="Buscar nombre, DNI, dominio, vehículo..." oninput="renderSeguros()">
         </div>
+        <select id="seg-fest" onchange="renderSeguros()" style="padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;background:#fff">
+          <option value="">Todos los estados</option>
+          <option>Pendiente</option><option>En cotización</option><option>Propuesta recibida</option><option>Enviada al cliente</option><option>Aceptada</option><option>No aceptada</option>
+        </select>
         <div id="seg-count" style="font-size:12px;color:var(--muted)">—</div>
       </div>
       <div id="seg-list-wrap" style="overflow-x:auto;border:1.5px solid var(--line);border-radius:12px">
@@ -754,6 +758,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <tr style="background:var(--surface)">
               <th class="segth">Acciones</th>
               <th class="segth">Cargada</th>
+              <th class="segth">Estado</th>
               <th class="segth">Apellido y nombre</th>
               <th class="segth">DNI</th>
               <th class="segth">Fecha nac.</th>
@@ -791,6 +796,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <div class="fc"><label>VEHÍCULO *</label><input id="seg-vehiculo" placeholder="Marca y modelo"></div>
           <div class="fc"><label>AÑO *</label><select id="seg-anio"><option value="">— Seleccioná —</option><option>2026</option><option>2025</option><option>2024</option><option>2023</option><option>2022</option><option>2021</option><option>2020</option><option>2019</option><option>2018</option><option>2017</option><option>2016</option><option>2015</option><option>2014</option><option>2013</option><option>2012</option><option>2011</option><option>2010</option><option>2009</option><option>2008</option><option>2007</option><option>2006</option><option>2005</option><option>2004</option><option>2003</option><option>2002</option><option>2001</option><option>2000</option><option>1999</option><option>1998</option><option>1997</option><option>1996</option><option>1995</option><option>1994</option><option>1993</option><option>1992</option><option>1991</option><option>1990</option><option>1989</option><option>1988</option><option>1987</option><option>1986</option><option>1985</option><option>1984</option><option>1983</option><option>1982</option><option>1981</option><option>1980</option></select></div>
           <div class="fc"><label>POSEE GNC *</label><select id="seg-gnc"><option value="">— Seleccioná —</option><option>SI</option><option>NO</option></select></div>
+          <div class="fc"><label>ESTADO *</label><select id="seg-estado"><option>Pendiente</option><option>En cotización</option><option>Propuesta recibida</option><option>Enviada al cliente</option><option>Aceptada</option><option>No aceptada</option></select></div>
         </div>
         <div class="mfoot">
           <button class="btn btn-s" onclick="resetCotizacion()">Limpiar</button>
@@ -7266,6 +7272,20 @@ async function delCopa(id) {
 }
 
 // ===== SEGUROS =====
+const SEG_ESTADOS = ['Pendiente','En cotización','Propuesta recibida','Enviada al cliente','Aceptada','No aceptada'];
+const SEG_ESTADO_COLOR = {
+  'Pendiente':          {bg:'#f1f5f9', fg:'#475569'},
+  'En cotización':      {bg:'#e0edfb', fg:'#1d6fce'},
+  'Propuesta recibida': {bg:'#efe6f5', fg:'#682489'},
+  'Enviada al cliente': {bg:'#fdefe0', fg:'#c2691a'},
+  'Aceptada':           {bg:'#dcfce7', fg:'#15803d'},
+  'No aceptada':        {bg:'#fee2e2', fg:'#dc2626'}
+};
+function segBadge(e){
+  const t = e || 'Pendiente';
+  const c = SEG_ESTADO_COLOR[t] || SEG_ESTADO_COLOR['Pendiente'];
+  return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background:${c.bg};color:${c.fg};white-space:nowrap">${t}</span>`;
+}
 let SEGUROS_CACHE = [];
 
 async function loadSeguros() {
@@ -7275,7 +7295,7 @@ async function loadSeguros() {
     SEGUROS_CACHE = (data || []).map(s => ({
       id: s.id, nombre: s.nombre, dni: s.dni, fnac: s.fecha_nacimiento,
       cp: s.codigo_postal, dominio: s.dominio, vehiculo: s.vehiculo,
-      anio: s.anio, gnc: s.posee_gnc, creado: s.created_at
+      anio: s.anio, gnc: s.posee_gnc, estado: s.estado || 'Pendiente', creado: s.created_at
     }));
     renderSeguros();
   } catch(e) { console.error('loadSeguros:', e); toast('Error al cargar cotizaciones','er'); }
@@ -7296,6 +7316,8 @@ function renderSeguros() {
     (s.dominio||'').toLowerCase().includes(q) ||
     (s.vehiculo||'').toLowerCase().includes(q)
   );
+  const fe = document.getElementById('seg-fest')?.value || '';
+  if (fe) data = data.filter(s => (s.estado||'Pendiente') === fe);
   const cnt = document.getElementById('seg-count');
   if (cnt) cnt.textContent = data.length + (data.length===1?' cotización':' cotizaciones');
   if (!data.length) {
@@ -7316,6 +7338,7 @@ function renderSeguros() {
         </div>
       </td>
       <td style="padding:8px 12px;white-space:nowrap;color:var(--muted)">${fmtD(s.creado)}</td>
+      <td style="padding:8px 12px">${segBadge(s.estado)}</td>
       <td style="padding:8px 12px;font-weight:700">${val(s.nombre)}</td>
       <td style="padding:8px 12px">${val(s.dni)}</td>
       <td style="padding:8px 12px;white-space:nowrap">${fmtD(s.fnac)}</td>
@@ -7331,6 +7354,7 @@ function resetCotizacion() {
   ['seg-nombre','seg-dni','seg-fnac','seg-cp','seg-dominio','seg-vehiculo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   const a=document.getElementById('seg-anio'); if(a)a.value='';
   const g=document.getElementById('seg-gnc'); if(g)g.value='';
+  const es=document.getElementById('seg-estado'); if(es)es.value='Pendiente';
 }
 
 function nuevaCotizacion() {
@@ -7353,6 +7377,7 @@ function editCotizacion(id) {
   document.getElementById('seg-vehiculo').value  = s.vehiculo || '';
   document.getElementById('seg-anio').value      = s.anio || '';
   document.getElementById('seg-gnc').value       = s.gnc || '';
+  document.getElementById('seg-estado').value    = s.estado || 'Pendiente';
   showV('seguros-nueva');
 }
 
@@ -7367,6 +7392,7 @@ async function guardarCotizacion() {
   const vehiculo = document.getElementById('seg-vehiculo').value.trim();
   const anio     = document.getElementById('seg-anio').value;
   const gnc      = document.getElementById('seg-gnc').value;
+  const estado   = document.getElementById('seg-estado').value || 'Pendiente';
 
   if (!nombre) { toast('Ingresá apellido y nombre','er'); return; }
   if (!/^\d{7,8}$/.test(dni)) { toast('El DNI debe tener 7 u 8 dígitos','er'); return; }
@@ -7384,6 +7410,7 @@ async function guardarCotizacion() {
     dominio, vehiculo,
     anio: parseInt(anio,10),
     posee_gnc: gnc,
+    estado,
     updated_at: new Date().toISOString()
   };
 
@@ -7392,14 +7419,14 @@ async function guardarCotizacion() {
       const { error } = await SB.from('seguros_cotizaciones').update(upd).eq('id', id);
       if (error) throw error;
       const rec = SEGUROS_CACHE.find(x => x.id === id);
-      if (rec) Object.assign(rec, { nombre, dni, fnac, cp, dominio, vehiculo, anio: upd.anio, gnc });
+      if (rec) Object.assign(rec, { nombre, dni, fnac, cp, dominio, vehiculo, anio: upd.anio, gnc, estado });
       toast('Cotización actualizada ✓','ok');
     } else {
       const newId = Date.now().toString();
       const row = { id: newId, ...upd };
       const { error } = await SB.from('seguros_cotizaciones').insert(row);
       if (error) throw error;
-      SEGUROS_CACHE.unshift({ id: newId, nombre, dni, fnac, cp, dominio, vehiculo, anio: upd.anio, gnc, creado: new Date().toISOString() });
+      SEGUROS_CACHE.unshift({ id: newId, nombre, dni, fnac, cp, dominio, vehiculo, anio: upd.anio, gnc, estado, creado: new Date().toISOString() });
       toast('Cotización creada ✓','ok');
     }
     showV('seguros');
