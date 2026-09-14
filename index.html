@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.84</title>
+<title>Grupo Olyar — Solicitudes v3.8.85</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.84';
+    var APP_VER='v3.8.85';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -6702,14 +6702,7 @@ async function renderRecordatoriosWA() {
         ${enviadosMes.map(c => {
           const venc = proximoVencimientoCuota(c);
           const cant = parseInt(c.cantCuotas) || 0;
-          let nroCuota = 1;
-          if (c.fechaInicio) {
-            const partes = c.fechaInicio.split('-');
-            const inicio = new Date(parseInt(partes[0]), parseInt(partes[1])-1, parseInt(partes[2]));
-            const hoyN = new Date(); hoyN.setHours(0,0,0,0);
-            const meses = (hoyN.getFullYear() - inicio.getFullYear()) * 12 + (hoyN.getMonth() - inicio.getMonth());
-            nroCuota = Math.min(Math.max(meses + 1, 1), cant);
-          }
+          const nroCuota = proximoNroCuota(c);
           const infoCuota = cant ? `<span style="color:var(--blue);font-weight:700"> · Cuota ${nroCuota} de ${cant}</span>` : '';
           return `<div style="font-size:12px;padding:5px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between">
             <span style="font-weight:600">${c.cliente||'—'}</span>
@@ -6750,16 +6743,9 @@ async function renderRecordatoriosWA() {
     if (!cd.localidad) faltantes.push('localidad');
     if (!cd.provincia) faltantes.push('provincia');
     const datosIncompletos = faltantes.length > 0;
-    // Calcular número de cuota actual
+    // Número de cuota actual (de la cuota real)
     const cant = parseInt(c.cantCuotas) || 0;
-    let nroCuota = 1;
-    if (c.fechaInicio) {
-      const partes = c.fechaInicio.split('-');
-      const inicio = new Date(parseInt(partes[0]), parseInt(partes[1])-1, parseInt(partes[2]));
-      const hoyN = new Date(); hoyN.setHours(0,0,0,0);
-      const meses = (hoyN.getFullYear() - inicio.getFullYear()) * 12 + (hoyN.getMonth() - inicio.getMonth());
-      nroCuota = Math.min(Math.max(meses + 1, 1), cant);
-    }
+    const nroCuota = proximoNroCuota(c);
     const infoCuota = cant ? ` (Cuota ${nroCuota} de ${cant})` : '';
     const msg = `${saludo}, ${c.cliente||''}. Le recordamos que el día ${fmtF(venc)}, es el vencimiento de la cuota${infoCuota} del vehículo ${vehiculo} gestionado con la entidad bancaria ${c.banco||''}. Recorda que abonar en tiempo evita recargos y mora en su línea de crédito. ¡Que tengas un excelente día!`;
     const waUrl = tel ? `https://wa.me/${tel}?text=${encodeURIComponent(msg)}` : '';
@@ -7062,8 +7048,9 @@ async function autoAltaCreditoDesdePrenda(r, venc, valorCuota, cantStr) {
 
 async function saveNuevoCredito() {
   if (!CRED_SOL_SEL) { toast('Seleccioná una solicitud','er'); return; }
+  const editId = (document.getElementById('cred-nuevo-id').value || '').trim();
   const dniSel = String(CRED_SOL_SEL.dni||'').trim();
-  if (dniSel && CREDITOS_CACHE.some(c => String(c.dni||'').trim() === dniSel)) {
+  if (!editId && dniSel && CREDITOS_CACHE.some(c => String(c.dni||'').trim() === dniSel)) {
     toast('Ese cliente (DNI '+dniSel+') ya tiene un crédito cargado','er'); return;
   }
   const cant   = parseInt(document.getElementById('cred-cant-cuotas').value);
@@ -7071,10 +7058,43 @@ async function saveNuevoCredito() {
   if (!cant || cant < 1) { toast('Ingresá la cantidad de cuotas','er'); return; }
   if (!inicio)            { toast('Ingresá la fecha del primer vencimiento','er'); return; }
 
-  const id     = Date.now().toString();
-  const monto  = Math.round((parseFloat(CRED_SOL_SEL.importe||0)||0) / cant);
   const estado = document.getElementById('cred-estado').value;
   const obs    = document.getElementById('cred-obs').value.trim();
+  const monto  = Math.round((parseFloat(CRED_SOL_SEL.importe||0)||0) / cant);
+  const ymd    = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+  // ===== MODO EDICIÓN: actualiza el crédito y recalcula cuotas conservando estados =====
+  if (editId) {
+    try {
+      const { error: euc } = await SB.from('creditos').update({
+        cant_cuotas: cant, monto_cuota: monto, fecha_inicio: inicio, estado, obs
+      }).eq('id', editId);
+      if (euc) throw euc;
+      const existentes = CUOTAS_CACHE.filter(q => q.creditoId === editId);
+      const estadoPorNro = {}; existentes.forEach(q => { estadoPorNro[q.nro] = q.estado; });
+      const nuevas = [];
+      let f = new Date(inicio + 'T00:00:00');
+      for (let i = 1; i <= cant; i++) {
+        nuevas.push({ id: editId+'_'+i, credito_id: editId, nro: i, vencimiento: ymd(f), monto, estado: estadoPorNro[i] || 'Pendiente' });
+        f.setMonth(f.getMonth() + 1);
+      }
+      const { error: euq } = await SB.from('cuotas').upsert(nuevas);
+      if (euq) throw euq;
+      const sobrantes = existentes.filter(q => q.nro > cant).map(q => q.id);
+      if (sobrantes.length) await SB.from('cuotas').delete().in('id', sobrantes);
+      const cc = CREDITOS_CACHE.find(x => x.id === editId);
+      if (cc) { cc.cantCuotas = cant; cc.montoCuota = monto; cc.fechaInicio = inicio; cc.estado = estado; cc.obs = obs; }
+      CUOTAS_CACHE = CUOTAS_CACHE.filter(q => q.creditoId !== editId)
+        .concat(nuevas.map(q => ({ id:q.id, creditoId:q.credito_id, nro:q.nro, vencimiento:q.vencimiento, monto:q.monto, estado:q.estado })));
+      toast('Crédito actualizado ✓','ok');
+      closeCreditoNuevo();
+      renderCreditos();
+      if (typeof renderCuotas === 'function') { try { renderCuotas(); } catch(_){} }
+      return;
+    } catch(e) { toast('Error al actualizar: '+(e.message||''),'er'); return; }
+  }
+
+  const id     = Date.now().toString();
 
   // Generar cuotas
   const cuotas = [];
@@ -7730,7 +7750,27 @@ function diasHabilesAtras(fecha, dias) {
   return d;
 }
 
+// Devuelve la próxima cuota REAL (de la tabla de cuotas): la primera no pagada con
+// vencimiento >= hoy; si no hay futura, la última no pagada; si no, la última.
+function proximaCuotaReal(c) {
+  const cuotas = CUOTAS_CACHE
+    .filter(q => q.creditoId === c.id && q.vencimiento)
+    .sort((a,b) => (a.vencimiento < b.vencimiento ? -1 : a.vencimiento > b.vencimiento ? 1 : (a.nro||0)-(b.nro||0)));
+  if (!cuotas.length) return null;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  let cand = cuotas.find(q => q.estado !== 'Pagada' && new Date(q.vencimiento+'T00:00:00') >= hoy);
+  if (!cand) { const noPag = cuotas.filter(q => q.estado !== 'Pagada'); cand = noPag.length ? noPag[noPag.length-1] : cuotas[cuotas.length-1]; }
+  return cand;
+}
+
 function proximoVencimientoCuota(c) {
+  // 1) Preferir el vencimiento REAL de la próxima cuota (respeta ediciones)
+  const cuota = proximaCuotaReal(c);
+  if (cuota && cuota.vencimiento) {
+    const p = cuota.vencimiento.split('-');
+    return new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+  }
+  // 2) Fallback: recalcular desde la fecha de inicio (créditos sin cuotas cargadas)
   if (!c.fechaInicio) return null;
   const hoy = new Date();
   const partes = c.fechaInicio.split('-');
@@ -7738,11 +7778,23 @@ function proximoVencimientoCuota(c) {
   const cant = parseInt(c.cantCuotas) || 0;
   const meses = (hoy.getFullYear() - inicio.getFullYear()) * 12 + (hoy.getMonth() - inicio.getMonth());
   let cuotaActual = Math.min(Math.max(meses + 1, 1), cant);
-  // Si el vencimiento de la cuota actual ya pasó, avanzar a la siguiente
   const vencActual = new Date(parseInt(partes[0]), parseInt(partes[1])-1 + (cuotaActual - 1), parseInt(partes[2]));
   vencActual.setHours(0,0,0,0);
   if (hoy > vencActual && cuotaActual < cant) cuotaActual++;
   return new Date(parseInt(partes[0]), parseInt(partes[1])-1 + (cuotaActual - 1), parseInt(partes[2]));
+}
+
+function proximoNroCuota(c) {
+  const cuota = proximaCuotaReal(c);
+  if (cuota && cuota.nro) return cuota.nro;
+  // Fallback: por meses transcurridos desde la fecha de inicio
+  const cant = parseInt(c.cantCuotas) || 0;
+  if (!c.fechaInicio) return 1;
+  const p = c.fechaInicio.split('-');
+  const inicio = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+  const hoyN = new Date(); hoyN.setHours(0,0,0,0);
+  const meses = (hoyN.getFullYear() - inicio.getFullYear()) * 12 + (hoyN.getMonth() - inicio.getMonth());
+  return Math.min(Math.max(meses + 1, 1), cant||1);
 }
 
 // ══════════════════════════════════════════════
