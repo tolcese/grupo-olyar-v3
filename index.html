@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.83</title>
+<title>Grupo Olyar — Solicitudes v3.8.84</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.83';
+    var APP_VER='v3.8.84';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -767,6 +767,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
               <th class="segth">Vehículo</th>
               <th class="segth">Año</th>
               <th class="segth">GNC</th>
+              <th class="segth">Observaciones</th>
             </tr>
           </thead>
           <tbody id="seg-tbody"></tbody>
@@ -797,6 +798,10 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <div class="fc"><label>AÑO *</label><select id="seg-anio"><option value="">— Seleccioná —</option><option>2026</option><option>2025</option><option>2024</option><option>2023</option><option>2022</option><option>2021</option><option>2020</option><option>2019</option><option>2018</option><option>2017</option><option>2016</option><option>2015</option><option>2014</option><option>2013</option><option>2012</option><option>2011</option><option>2010</option><option>2009</option><option>2008</option><option>2007</option><option>2006</option><option>2005</option><option>2004</option><option>2003</option><option>2002</option><option>2001</option><option>2000</option><option>1999</option><option>1998</option><option>1997</option><option>1996</option><option>1995</option><option>1994</option><option>1993</option><option>1992</option><option>1991</option><option>1990</option><option>1989</option><option>1988</option><option>1987</option><option>1986</option><option>1985</option><option>1984</option><option>1983</option><option>1982</option><option>1981</option><option>1980</option></select></div>
           <div class="fc"><label>POSEE GNC *</label><select id="seg-gnc"><option value="">— Seleccioná —</option><option>SI</option><option>NO</option></select></div>
           <div class="fc"><label>ESTADO *</label><select id="seg-estado"><option>Pendiente</option><option>En cotización</option><option>Propuesta recibida</option><option>Enviada al cliente</option><option>Aceptada</option><option>No aceptada</option></select></div>
+        </div>
+        <div style="margin-top:16px">
+          <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px">Observaciones</label>
+          <textarea id="seg-obs" rows="3" placeholder="Notas internas de la cotización..." style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>
         </div>
         <div style="margin-top:24px;border-top:1.5px solid var(--line);padding-top:18px">
           <div style="font-weight:800;font-size:14px;margin-bottom:2px">📄 Propuestas del proveedor → membrete LUKAYA!</div>
@@ -7303,7 +7308,7 @@ async function loadSeguros() {
     SEGUROS_CACHE = (data || []).map(s => ({
       id: s.id, nombre: s.nombre, dni: s.dni, fnac: s.fecha_nacimiento,
       cp: s.codigo_postal, dominio: s.dominio, vehiculo: s.vehiculo,
-      anio: s.anio, gnc: s.posee_gnc, estado: s.estado || 'Pendiente', creado: s.created_at
+      anio: s.anio, gnc: s.posee_gnc, estado: s.estado || 'Pendiente', obs: s.observaciones || '', creado: s.created_at
     }));
     renderSeguros();
   } catch(e) { console.error('loadSeguros:', e); toast('Error al cargar cotizaciones','er'); }
@@ -7316,13 +7321,15 @@ function renderSeguros() {
   if (!tbody) return;
   const fmtD = v => v ? String(v).split('T')[0].split('-').reverse().join('/') : '—';
   const val  = v => (v!==null && v!==undefined && String(v).trim()!=='') ? v : '—';
+  const esc  = v => String(v==null?'':v).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const q = (document.getElementById('seg-srch')?.value || '').toLowerCase().trim();
   let data = SEGUROS_CACHE.slice();
   if (q) data = data.filter(s =>
     (s.nombre||'').toLowerCase().includes(q) ||
     (String(s.dni||'')).toLowerCase().includes(q) ||
     (s.dominio||'').toLowerCase().includes(q) ||
-    (s.vehiculo||'').toLowerCase().includes(q)
+    (s.vehiculo||'').toLowerCase().includes(q) ||
+    (s.obs||'').toLowerCase().includes(q)
   );
   const fe = document.getElementById('seg-fest')?.value || '';
   if (fe) data = data.filter(s => (s.estado||'Pendiente') === fe);
@@ -7355,6 +7362,7 @@ function renderSeguros() {
       <td style="padding:8px 12px">${val(s.vehiculo)}</td>
       <td style="padding:8px 12px">${val(s.anio)}</td>
       <td style="padding:8px 12px;font-weight:700;color:${s.gnc==='SI'?'var(--green)':'var(--muted)'}">${val(s.gnc)}</td>
+      <td style="padding:8px 12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)" title="${esc(s.obs)}">${s.obs ? esc(s.obs) : '—'}</td>
     </tr>`).join('');
 }
 
@@ -7363,6 +7371,7 @@ function resetCotizacion() {
   const a=document.getElementById('seg-anio'); if(a)a.value='';
   const g=document.getElementById('seg-gnc'); if(g)g.value='';
   const es=document.getElementById('seg-estado'); if(es)es.value='Pendiente';
+  const ob=document.getElementById('seg-obs'); if(ob)ob.value='';
   if(typeof segResetPdf==='function') segResetPdf();
 }
 
@@ -7387,6 +7396,7 @@ function editCotizacion(id) {
   document.getElementById('seg-anio').value      = s.anio || '';
   document.getElementById('seg-gnc').value       = s.gnc || '';
   document.getElementById('seg-estado').value    = s.estado || 'Pendiente';
+  document.getElementById('seg-obs').value        = s.obs || '';
   if(typeof segResetPdf==='function') segResetPdf();
   showV('seguros-nueva');
 }
@@ -7403,6 +7413,7 @@ async function guardarCotizacion() {
   const anio     = document.getElementById('seg-anio').value;
   const gnc      = document.getElementById('seg-gnc').value;
   const estado   = document.getElementById('seg-estado').value || 'Pendiente';
+  const obs      = document.getElementById('seg-obs').value.trim();
 
   if (!nombre) { toast('Ingresá apellido y nombre','er'); return; }
   if (!/^\d{7,8}$/.test(dni)) { toast('El DNI debe tener 7 u 8 dígitos','er'); return; }
@@ -7421,6 +7432,7 @@ async function guardarCotizacion() {
     anio: parseInt(anio,10),
     posee_gnc: gnc,
     estado,
+    observaciones: obs,
     updated_at: new Date().toISOString()
   };
 
@@ -7429,14 +7441,14 @@ async function guardarCotizacion() {
       const { error } = await SB.from('seguros_cotizaciones').update(upd).eq('id', id);
       if (error) throw error;
       const rec = SEGUROS_CACHE.find(x => x.id === id);
-      if (rec) Object.assign(rec, { nombre, dni, fnac, cp, dominio, vehiculo, anio: upd.anio, gnc, estado });
+      if (rec) Object.assign(rec, { nombre, dni, fnac, cp, dominio, vehiculo, anio: upd.anio, gnc, estado, obs });
       toast('Cotización actualizada ✓','ok');
     } else {
       const newId = Date.now().toString();
       const row = { id: newId, ...upd };
       const { error } = await SB.from('seguros_cotizaciones').insert(row);
       if (error) throw error;
-      SEGUROS_CACHE.unshift({ id: newId, nombre, dni, fnac, cp, dominio, vehiculo, anio: upd.anio, gnc, estado, creado: new Date().toISOString() });
+      SEGUROS_CACHE.unshift({ id: newId, nombre, dni, fnac, cp, dominio, vehiculo, anio: upd.anio, gnc, estado, obs, creado: new Date().toISOString() });
       toast('Cotización creada ✓','ok');
     }
     showV('seguros');
