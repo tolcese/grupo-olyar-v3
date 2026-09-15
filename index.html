@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.89</title>
+<title>Grupo Olyar — Solicitudes v3.8.90</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.89';
+    var APP_VER='v3.8.90';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -2261,25 +2261,41 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <span style="color:var(--muted)">🔍</span>
             <input id="pcr-srch" placeholder="Buscar cliente, banco, gestor..." oninput="renderPrendasCanceladas()">
           </div>
-          <select id="pcr-f-estado" onchange="renderPrendasCanceladas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Todos</option><option>Cancelado</option><option>Reversado</option></select>
+          <button class="btn btn-s" style="font-size:12px" onclick="exportarPCRExcel()">📊 Excel</button>
+          <button class="btn btn-s" style="font-size:12px" onclick="exportarPCRPDF()">📄 PDF</button>
         </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="pcr-f-estado" onchange="renderPrendasCanceladas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Estado</option><option>Cancelado</option><option>Reversado</option></select>
+        <select id="pcr-f-banco" onchange="renderPrendasCanceladas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Banco</option></select>
+        <select id="pcr-f-gestor" onchange="renderPrendasCanceladas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Gestor</option></select>
+        <select id="pcr-f-prov" onchange="renderPrendasCanceladas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Provincia</option></select>
+        <select id="pcr-f-conce" onchange="renderPrendasCanceladas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Concesionaria</option></select>
+        <select id="pcr-f-anio" onchange="renderPrendasCanceladas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Año</option></select>
+        <span style="font-size:12px;color:var(--muted)">Fecha estado:</span>
+        <input type="date" id="pcr-f-desde" onchange="renderPrendasCanceladas()" style="padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px" title="Desde">
+        <input type="date" id="pcr-f-hasta" onchange="renderPrendasCanceladas()" style="padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px" title="Hasta">
+        <button class="btn btn-s" style="font-size:12px" onclick="limpiarFiltrosPCR()">✕ Limpiar</button>
       </div>
     </div>
     <div class="pe-body">
-      <div class="pe-scroll-x">
+      <div class="pe-scroll-x" id="pcr-scroll">
         <table class="pe-table">
           <thead>
             <tr>
+              <th>Acciones</th>
               <th>#</th>
               <th>N° Trámite</th>
               <th>Estado</th>
               <th>Fecha estado</th>
               <th>Cliente</th>
               <th>Gestor asignado</th>
+              <th>PP/PI</th>
               <th>Banco</th>
               <th>Concesionaria</th>
               <th>Localidad</th>
               <th>Provincia</th>
+              <th>Año</th>
               <th>Descripción vehículo</th>
               <th>Observaciones</th>
             </tr>
@@ -2292,6 +2308,9 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         <h3>Sin prendas canceladas o reversadas</h3>
         <p>Aparecen acá las prendas cuyo estado de crédito es Cancelado o Reversado</p>
       </div>
+    </div>
+    <div class="pe-scroll-mirror" id="pcr-mirror">
+      <div class="pe-scroll-mirror-inner" id="pcr-mirror-inner"></div>
     </div>
   </div>
 </div>
@@ -6155,43 +6174,112 @@ function closePRPanel() {
 function openPrendasCanceladas() {
   showV('prendas-canceladas');
 }
+function closePrendasCanceladas() { /* vista full: sin modal que cerrar */ }
 function _pcrFecha(r){
   try { const m = r.creditoEstadoFechas ? JSON.parse(r.creditoEstadoFechas) : {}; return m[r.creditoEstado] || ''; } catch(e){ return ''; }
 }
 function getPCRData(){
   const q=(document.getElementById('pcr-srch')?.value||'').toLowerCase().trim();
-  const fe=document.getElementById('pcr-f-estado')?.value||'';
+  const fE=document.getElementById('pcr-f-estado')?.value||'', fB=document.getElementById('pcr-f-banco')?.value||'',
+        fG=document.getElementById('pcr-f-gestor')?.value||'', fP=document.getElementById('pcr-f-prov')?.value||'',
+        fC=document.getElementById('pcr-f-conce')?.value||'', fA=document.getElementById('pcr-f-anio')?.value||'',
+        fD=document.getElementById('pcr-f-desde')?.value||'', fH=document.getElementById('pcr-f-hasta')?.value||'';
   let data=RECORDS.filter(r => r.creditoEstado==='Cancelado' || r.creditoEstado==='Reversado');
-  if(fe) data=data.filter(r=>r.creditoEstado===fe);
   if(q) data=data.filter(r=>[r.nombrecliente,r.banco,r.concesionaria,r.provincia,r.localidad,r.descripcion,r.gestorAsignado,r.nroControl].some(v=>(v||'').toString().toLowerCase().includes(q)));
+  if(fE) data=data.filter(r=>r.creditoEstado===fE);
+  if(fB) data=data.filter(r=>(r.banco||'')===fB);
+  if(fG) data=data.filter(r=>(r.gestorAsignado||'')===fG);
+  if(fP) data=data.filter(r=>(r.provincia||'')===fP);
+  if(fC) data=data.filter(r=>(r.concesionaria||'')===fC);
+  if(fA) data=data.filter(r=>String(r.anio||'')===fA);
+  if(fD||fH) data=data.filter(r=>{ const f=_pcrFecha(r); if(!f) return false; if(fD&&f<fD) return false; if(fH&&f>fH) return false; return true; });
   data.sort((a,b)=>{ const fa=_pcrFecha(a), fb=_pcrFecha(b); return fa<fb?1:fa>fb?-1:0; });
   return data;
 }
+function poblarFiltrosPCR(){
+  const base=RECORDS.filter(r => r.creditoEstado==='Cancelado' || r.creditoEstado==='Reversado');
+  const fill=(id,label,vals)=>{const sel=document.getElementById(id);if(!sel)return;const cur=sel.value;const opts=[...new Set(vals.filter(v=>v&&String(v).trim()!==''))].sort();sel.innerHTML='<option value="">'+label+'</option>'+opts.map(v=>`<option>${v}</option>`).join('');if(opts.includes(cur))sel.value=cur;};
+  fill('pcr-f-banco','Banco',base.map(r=>r.banco));
+  fill('pcr-f-gestor','Gestor',base.map(r=>r.gestorAsignado));
+  fill('pcr-f-prov','Provincia',base.map(r=>r.provincia));
+  fill('pcr-f-conce','Concesionaria',base.map(r=>r.concesionaria));
+  fill('pcr-f-anio','Año',base.map(r=>String(r.anio||'')));
+}
+function limpiarFiltrosPCR(){
+  ['pcr-srch','pcr-f-estado','pcr-f-banco','pcr-f-gestor','pcr-f-prov','pcr-f-conce','pcr-f-anio','pcr-f-desde','pcr-f-hasta'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderPrendasCanceladas();
+}
 function renderPrendasCanceladas(){
-  const tb=document.getElementById('pcr-tbody'); if(!tb) return;
-  const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const fmtDMY=v=>v?String(v).split('T')[0].split('-').reverse().join('/'):'—';
-  const badge=e=>{ const col=(e==='Cancelado')?{bg:'#fee2e2',fg:'#dc2626'}:{bg:'#fdefe0',fg:'#c2691a'}; return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background:${col.bg};color:${col.fg};white-space:nowrap">${e||''}</span>`; };
+  const isAdmin = ME?.rol === 'admin';
+  poblarFiltrosPCR();
   const data=getPCRData();
-  const cnt=document.getElementById('pcr-count'); if(cnt) cnt.textContent=data.length+(data.length===1?' prenda':' prendas');
+  const tbody=document.getElementById('pcr-tbody'); if(!tbody) return;
   const empty=document.getElementById('pcr-empty');
-  if(!data.length){ tb.innerHTML=''; if(empty)empty.style.display=''; return; }
+  const count=document.getElementById('pcr-count');
+  const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const val=v=>v||'—';
+  const fmtDMY=v=>v?String(v).split('T')[0].split('-').reverse().join('/'):'—';
+  const badge=e=>{ const col=(e==='Cancelado')?{bg:'#fee2e2',fg:'#dc2626'}:{bg:'#fff3e0',fg:'#e8821a'}; return `<span style="display:inline-block;padding:1px 8px;border-radius:5px;font-weight:700;font-size:11px;background:${col.bg};color:${col.fg}">${e||''}</span>`; };
+  if(count) count.textContent = data.length + ' registro' + (data.length!==1?'s':'');
+  if(!data.length){ tbody.innerHTML=''; if(empty)empty.style.display=''; setTimeout(initPCRMirror,50); return; }
   if(empty) empty.style.display='none';
-  tb.innerHTML=data.map((r,i)=>`
+  tbody.innerHTML = data.map((r,i)=>`
     <tr style="cursor:pointer" onclick="openPrendasPanel('${r.id}','canceladas')">
-      <td>${i+1}</td>
-      <td style="font-family:monospace;font-weight:700;color:var(--blue);white-space:nowrap">${esc(r.nroControl)||'—'}</td>
+      <td style="position:sticky;left:0;background:#fff;z-index:1;box-shadow:2px 0 6px rgba(0,0,0,.04)" onclick="event.stopPropagation()">
+        <div class="abtns">
+          <button class="ibtn" onclick="editPrenda('${r.id}')" title="Editar">✏️</button>
+          ${isAdmin ? `<button class="ibtn del" onclick="delPrenda('${r.id}')" title="Eliminar">🗑️</button>` : ''}
+          ${isAdmin ? `<button class="ibtn" onclick="openHistorial('${r.id}')" title="Historial">🕐</button>` : ''}
+        </div>
+      </td>
+      <td style="color:var(--muted);font-size:11px">${i+1}</td>
+      <td style="font-family:monospace;font-weight:700;color:var(--blue);white-space:nowrap">${val(r.nroControl)}</td>
       <td>${badge(r.creditoEstado)}</td>
-      <td style="white-space:nowrap">${fmtDMY(_pcrFecha(r))}</td>
-      <td>${esc(r.nombrecliente)||'—'}</td>
-      <td>${esc(r.gestorAsignado)||'—'}</td>
-      <td>${esc(r.banco)||'—'}</td>
-      <td>${esc(r.concesionaria)||'—'}</td>
-      <td>${esc(r.localidad)||'—'}</td>
-      <td>${esc(r.provincia)||'—'}</td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.descripcion)}">${esc(r.descripcion)||'—'}</td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.obs)}">${esc(r.obs)||'—'}</td>
+      <td style="white-space:nowrap;font-weight:600">${fmtDMY(_pcrFecha(r))}</td>
+      <td style="font-weight:700;min-width:130px">${val(r.nombrecliente)}</td>
+      <td style="font-weight:700;color:var(--blue)">${val(r.gestorAsignado)}</td>
+      <td class="chk">${ r.prePrenda ? '<span style="display:inline-block;padding:1px 7px;border-radius:5px;background:#fff3e0;color:#e8821a;font-weight:700;font-size:11px">PP</span>' : (r.prendaInscripta ? '<span style="display:inline-block;padding:1px 7px;border-radius:5px;background:#e8f5e9;color:var(--green);font-weight:700;font-size:11px">PI</span>' : '<span style="color:var(--line)">—</span>') }</td>
+      <td style="font-weight:600">${colorBanco(r.banco)}</td>
+      <td>${val(r.concesionaria)}</td>
+      <td>${val(r.localidad)}</td>
+      <td>${val(r.provincia)}</td>
+      <td>${val(r.anio)}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.descripcion)}">${val(r.descripcion)}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.obs)}">${val(r.obs)}</td>
     </tr>`).join('');
+  setTimeout(initPCRMirror,50);
+}
+function _pcrExportRows(){
+  const fD=v=>v?String(v).split('T')[0].split('-').reverse().join('/'):'';
+  return getPCRData().map(r=>({'N° Trámite':r.nroControl||'','Estado':r.creditoEstado||'','Fecha estado':fD(_pcrFecha(r)),'Cliente':r.nombrecliente||'','Gestor':r.gestorAsignado||'','PP/PI':(r.prePrenda?'PP':(r.prendaInscripta?'PI':'')),'Banco':r.banco||'','Concesionaria':r.concesionaria||'','Localidad':r.localidad||'','Provincia':r.provincia||'','Año':r.anio||'','Descripción vehículo':r.descripcion||'','Observaciones':r.obs||''}));
+}
+async function exportarPCRExcel(){
+  const rows=_pcrExportRows(); if(!rows.length) return alert('No hay datos para exportar');
+  if(!window.XLSX){await new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});}
+  const wb=XLSX.utils.book_new(); const ws=XLSX.utils.json_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb,ws,'Canceladas-Reversadas'); XLSX.writeFile(wb,`Prendas_canceladas_reversadas_${hoyLocal()}.xlsx`);
+}
+async function exportarPCRPDF(){
+  const rows=_pcrExportRows(); if(!rows.length) return alert('No hay datos para exportar');
+  if(!window.jspdf){await new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});}
+  if(!window.jspdf?.jsPDF?.API?.autoTable){await new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});}
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  doc.setFontSize(13); doc.text('Prendas canceladas / reversadas',14,14);
+  doc.setFontSize(9); doc.setTextColor(120); doc.text(new Date().toLocaleDateString('es-AR')+' — '+rows.length+' registro'+(rows.length!==1?'s':''),14,20);
+  const cols=Object.keys(rows[0]);
+  doc.autoTable({head:[cols],body:rows.map(r=>cols.map(c=>r[c])),startY:25,styles:{fontSize:7,cellPadding:1.5},headStyles:{fillColor:[29,111,206],textColor:255,fontStyle:'bold'},alternateRowStyles:{fillColor:[245,247,250]}});
+  doc.save(`Prendas_canceladas_reversadas_${hoyLocal()}.pdf`);
+}
+function initPCRMirror(){
+  const scroll=document.getElementById('pcr-scroll');
+  const mirror=document.getElementById('pcr-mirror');
+  const inner=document.getElementById('pcr-mirror-inner');
+  if(!scroll||!mirror||!inner) return;
+  inner.style.width = scroll.scrollWidth + 'px';
+  mirror.style.display = scroll.scrollWidth > scroll.clientWidth + 2 ? 'block' : 'none';
+  let syncing=false;
+  scroll.onscroll=()=>{ if(syncing) return; syncing=true; mirror.scrollLeft=scroll.scrollLeft; syncing=false; };
+  mirror.onscroll=()=>{ if(syncing) return; syncing=true; scroll.scrollLeft=mirror.scrollLeft; syncing=false; };
 }
 
 function openPrendasEntregadas() {
@@ -11699,7 +11787,7 @@ function showV(v) {
   if (v==='prendas')  { poblarFiltrosPC(); renderPrendas(); setTimeout(initPrendasMirror, 150); }
   if (v==='prendas-finalizadas') { poblarFiltrosPF(); renderPrendasFinalizadas(); setTimeout(initPFMirror, 150); }
   if (v==='prendas-entregadas') { poblarFiltrosPE(); renderPrendasEntregadas(); setTimeout(initPEMirror, 150); }
-  if (v==='prendas-canceladas') { renderPrendasCanceladas(); }
+  if (v==='prendas-canceladas') { poblarFiltrosPCR(); renderPrendasCanceladas(); setTimeout(initPCRMirror, 150); }
   if (v==='nueva') {
     if (!window._isDuplicating && !window._isEditing) {
       editId = null;
