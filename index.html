@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.86</title>
+<title>Grupo Olyar — Solicitudes v3.8.87</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.86';
+    var APP_VER='v3.8.87';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -2929,6 +2929,17 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             </div>
           </div>
         </a>
+      </div>
+    </div>
+
+    <div id="v-codigopostal" style="display:none">
+      <div class="ph">
+        <div><div class="ph-t">📮 Código Postal</div><div class="ph-s">Buscá la localidad y copiá el CP · cobertura nacional</div></div>
+      </div>
+      <div style="max-width:640px">
+        <div class="fc"><input id="cp-q" placeholder="Escribí la localidad… (ej: Villa María)" oninput="renderCP()" autocomplete="off" spellcheck="false"></div>
+        <div id="cp-meta" style="font-size:12px;color:var(--muted);margin:6px 2px 12px;min-height:16px"></div>
+        <div id="cp-results" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
     </div>
 
@@ -11571,7 +11582,7 @@ function showV(v) {
       setTimeout(renderReportes, 50);
     }
   }
-  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','seguros','seguros-nueva','central-deudores','copas','prendas-finalizadas','prendas-entregadas'].forEach(id => {
+  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','codigopostal','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','seguros','seguros-nueva','central-deudores','copas','prendas-finalizadas','prendas-entregadas'].forEach(id => {
     const el = document.getElementById('v-'+id);
     if (el) el.style.display = id===v ? '' : 'none';
 
@@ -11619,6 +11630,7 @@ function showV(v) {
   if (v==='creditos') { showCredTab('creditos'); setTimeout(checkRecordatoriosCreditos, 300); }
   if (v==='contabilidad') { setTimeout(() => showContTab('liquidaciones'), 100); }
   if (v==='calculadores') { initCalcTabla(); }
+  if (v==='codigopostal') { initCP(); }
   if (v==='presupuestos') { loadPresupuestos(); }
   if (v==='historico-presup') { renderHistoricoPresup(); }
   // Cerrar panel lateral de créditos al salir
@@ -11857,6 +11869,64 @@ function agregarLocalidad(){
   if(!LISTS.localidad.some(x=>String(x).toUpperCase()===v)){ LISTS.localidad.push(v); LISTS.localidad.sort((a,b)=>String(a).localeCompare(String(b),'es')); }
   inp.value=v; closeAllDD(); toast('Localidad agregada','ok');
 }
+
+/* ===== Código Postal (sección aparte · búsqueda server-side) ===== */
+function cpNorm(x){ return (x||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim(); }
+let _cpTimer=null, _cpSeq=0;
+function initCP(){
+  const q=document.getElementById('cp-q');
+  const res=document.getElementById('cp-results');
+  const meta=document.getElementById('cp-meta');
+  if(res) res.innerHTML='';
+  if(meta) meta.textContent='Empezá a escribir una localidad.';
+  if(q){ q.value=''; setTimeout(()=>q.focus(),80); }
+}
+async function renderCP(){
+  const q=document.getElementById('cp-q');
+  const res=document.getElementById('cp-results');
+  const meta=document.getElementById('cp-meta');
+  if(!q||!res) return;
+  const term=cpNorm(q.value);
+  clearTimeout(_cpTimer);
+  if(term.length<2){ res.innerHTML=''; if(meta) meta.textContent='Escribí al menos 2 letras.'; return; }
+  if(meta) meta.textContent='Buscando…';
+  _cpTimer=setTimeout(async ()=>{
+    const seq=++_cpSeq;
+    try{
+      const { data, error } = await SB.from('cp_localidades')
+        .select('provincia,localidad,cp')
+        .ilike('busqueda','%'+term+'%')
+        .order('localidad')
+        .limit(60);
+      if(seq!==_cpSeq) return;
+      if(error) throw error;
+      const rows=data||[];
+      if(!rows.length){ res.innerHTML='<div style="color:var(--muted);font-size:14px;padding:24px 8px;text-align:center">No se encontró ninguna localidad con ese nombre.</div>'; if(meta) meta.textContent=''; return; }
+      if(meta) meta.textContent = rows.length>=60 ? 'Mostrando primeros 60 — afiná la búsqueda' : (rows.length+(rows.length===1?' resultado':' resultados'));
+      res.innerHTML = rows.map(r=>{
+        const cp=esc(String(r.cp||''));
+        return '<div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:0">'
+          + '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.localidad||'')+'</div>'
+          + '<div style="font-size:12px;color:var(--muted);margin-top:1px">'+esc(r.provincia||'')+'</div></div>'
+          + '<div style="font-variant-numeric:tabular-nums;font-weight:800;font-size:19px;letter-spacing:.02em">'+cp+'</div>'
+          + '<button class="btn btn-s" onclick="copiarCP(\''+cp+'\',this)">Copiar</button>'
+          + '</div>';
+      }).join('');
+    }catch(e){
+      if(seq!==_cpSeq) return;
+      console.warn('cp search:', e.message||e);
+      res.innerHTML='<div style="color:var(--muted);font-size:14px;padding:24px 8px;text-align:center">Error al buscar. Reintentá.</div>';
+      if(meta) meta.textContent='';
+    }
+  }, 220);
+}
+async function copiarCP(cp, btn){
+  try{ await navigator.clipboard.writeText(cp); }
+  catch(e){ const t=document.createElement('textarea'); t.value=cp; document.body.appendChild(t); t.select(); try{document.execCommand('copy');}catch(_){}; t.remove(); }
+  if(btn){ const old=btn.textContent; btn.textContent='✓ Copiado'; setTimeout(()=>{ btn.textContent=old; },1100); }
+  toast('CP '+cp+' copiado','ok');
+}
+
 
 function renderDD(k) {
   const dd = document.getElementById('dd-'+k);
@@ -16174,6 +16244,9 @@ function renderReportes() {
     </button>
     <button class="sb-item" onclick="closeSidebar();openValuaciones()">
       <span class="sb-icon">🚗</span> Valuación DNRPA
+    </button>
+    <button class="sb-item" id="sb-codigopostal" onclick="closeSidebar();showV('codigopostal')">
+      <span class="sb-icon">📮</span> Código Postal
     </button>
     <button class="sb-item" id="sb-contabilidad" onclick="closeSidebar();showV('contabilidad')" style="display:none">
       <span class="sb-icon">🧾</span> Contabilidad
