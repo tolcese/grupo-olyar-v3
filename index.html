@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.88</title>
+<title>Grupo Olyar — Solicitudes v3.8.89</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.88';
+    var APP_VER='v3.8.89';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -2248,6 +2248,54 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
     </div>
   </div>
 </div>
+    <div id="v-prendas-canceladas" style="display:none">
+  <div class="pe-modal" onclick="event.stopPropagation()">
+    <div class="pe-head" style="flex-direction:column;align-items:stretch;gap:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:17px;font-weight:800;color:var(--ink)">🚫 Prendas canceladas / reversadas</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px" id="pcr-count">—</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div class="searchbox" style="min-width:200px">
+            <span style="color:var(--muted)">🔍</span>
+            <input id="pcr-srch" placeholder="Buscar cliente, banco, gestor..." oninput="renderPrendasCanceladas()">
+          </div>
+          <select id="pcr-f-estado" onchange="renderPrendasCanceladas()" style="padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px"><option value="">Todos</option><option>Cancelado</option><option>Reversado</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="pe-body">
+      <div class="pe-scroll-x">
+        <table class="pe-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>N° Trámite</th>
+              <th>Estado</th>
+              <th>Fecha estado</th>
+              <th>Cliente</th>
+              <th>Gestor asignado</th>
+              <th>Banco</th>
+              <th>Concesionaria</th>
+              <th>Localidad</th>
+              <th>Provincia</th>
+              <th>Descripción vehículo</th>
+              <th>Observaciones</th>
+            </tr>
+          </thead>
+          <tbody id="pcr-tbody"></tbody>
+        </table>
+      </div>
+      <div id="pcr-empty" class="empty-state" style="display:none">
+        <div class="ei">🚫</div>
+        <h3>Sin prendas canceladas o reversadas</h3>
+        <p>Aparecen acá las prendas cuyo estado de crédito es Cancelado o Reversado</p>
+      </div>
+    </div>
+  </div>
+</div>
+
     <div id="v-prendas-entregadas" style="display:none">
   <div class="pe-modal" onclick="event.stopPropagation()">
     <div class="pe-head" style="flex-direction:column;align-items:stretch;gap:12px">
@@ -6102,6 +6150,48 @@ function closePRPanel() {
   document.getElementById('pr-panel-overlay').classList.remove('open');
   document.getElementById('pr-side-panel').classList.remove('open');
   openPrendasRechazadas();
+}
+
+function openPrendasCanceladas() {
+  showV('prendas-canceladas');
+}
+function _pcrFecha(r){
+  try { const m = r.creditoEstadoFechas ? JSON.parse(r.creditoEstadoFechas) : {}; return m[r.creditoEstado] || ''; } catch(e){ return ''; }
+}
+function getPCRData(){
+  const q=(document.getElementById('pcr-srch')?.value||'').toLowerCase().trim();
+  const fe=document.getElementById('pcr-f-estado')?.value||'';
+  let data=RECORDS.filter(r => r.creditoEstado==='Cancelado' || r.creditoEstado==='Reversado');
+  if(fe) data=data.filter(r=>r.creditoEstado===fe);
+  if(q) data=data.filter(r=>[r.nombrecliente,r.banco,r.concesionaria,r.provincia,r.localidad,r.descripcion,r.gestorAsignado,r.nroControl].some(v=>(v||'').toString().toLowerCase().includes(q)));
+  data.sort((a,b)=>{ const fa=_pcrFecha(a), fb=_pcrFecha(b); return fa<fb?1:fa>fb?-1:0; });
+  return data;
+}
+function renderPrendasCanceladas(){
+  const tb=document.getElementById('pcr-tbody'); if(!tb) return;
+  const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const fmtDMY=v=>v?String(v).split('T')[0].split('-').reverse().join('/'):'—';
+  const badge=e=>{ const col=(e==='Cancelado')?{bg:'#fee2e2',fg:'#dc2626'}:{bg:'#fdefe0',fg:'#c2691a'}; return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background:${col.bg};color:${col.fg};white-space:nowrap">${e||''}</span>`; };
+  const data=getPCRData();
+  const cnt=document.getElementById('pcr-count'); if(cnt) cnt.textContent=data.length+(data.length===1?' prenda':' prendas');
+  const empty=document.getElementById('pcr-empty');
+  if(!data.length){ tb.innerHTML=''; if(empty)empty.style.display=''; return; }
+  if(empty) empty.style.display='none';
+  tb.innerHTML=data.map((r,i)=>`
+    <tr style="cursor:pointer" onclick="openPrendasPanel('${r.id}','canceladas')">
+      <td>${i+1}</td>
+      <td style="font-family:monospace;font-weight:700;color:var(--blue);white-space:nowrap">${esc(r.nroControl)||'—'}</td>
+      <td>${badge(r.creditoEstado)}</td>
+      <td style="white-space:nowrap">${fmtDMY(_pcrFecha(r))}</td>
+      <td>${esc(r.nombrecliente)||'—'}</td>
+      <td>${esc(r.gestorAsignado)||'—'}</td>
+      <td>${esc(r.banco)||'—'}</td>
+      <td>${esc(r.concesionaria)||'—'}</td>
+      <td>${esc(r.localidad)||'—'}</td>
+      <td>${esc(r.provincia)||'—'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.descripcion)}">${esc(r.descripcion)||'—'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.obs)}">${esc(r.obs)||'—'}</td>
+    </tr>`).join('');
 }
 
 function openPrendasEntregadas() {
@@ -10838,7 +10928,7 @@ function getPCData() {
   const fB=document.getElementById('pc-f-banco')?.value||'', fG=document.getElementById('pc-f-gestor')?.value||'',
         fP=document.getElementById('pc-f-prov')?.value||'', fC=document.getElementById('pc-f-conce')?.value||'',
         fA=document.getElementById('pc-f-anio')?.value||'', fD=document.getElementById('pc-f-desde')?.value||'', fH=document.getElementById('pc-f-hasta')?.value||'';
-  let data = RECORDS.filter(r => r.gestorAsignado && r.gestorAsignado.trim() !== '' && (r.estado||'').toUpperCase() === 'AVANZA' && prendaEstadoNuevo(r) === 'en_curso');
+  let data = RECORDS.filter(r => r.gestorAsignado && r.gestorAsignado.trim() !== '' && (r.estado||'').toUpperCase() === 'AVANZA' && prendaEstadoNuevo(r) === 'en_curso' && r.creditoEstado !== 'Cancelado' && r.creditoEstado !== 'Reversado');
   if (q) data = data.filter(r => [r.nombrecliente, r.banco, r.concesionaria, r.provincia, r.localidad, r.marca, r.gestorAsignado].some(v => (v||'').toLowerCase().includes(q)));
   if (fB) data = data.filter(r => (r.banco||'')===fB);
   if (fG) data = data.filter(r => (r.gestorAsignado||'')===fG);
@@ -10849,7 +10939,7 @@ function getPCData() {
   return data;
 }
 function poblarFiltrosPC() {
-  const base = RECORDS.filter(r => r.gestorAsignado && r.gestorAsignado.trim() !== '' && (r.estado||'').toUpperCase() === 'AVANZA' && prendaEstadoNuevo(r) === 'en_curso');
+  const base = RECORDS.filter(r => r.gestorAsignado && r.gestorAsignado.trim() !== '' && (r.estado||'').toUpperCase() === 'AVANZA' && prendaEstadoNuevo(r) === 'en_curso' && r.creditoEstado !== 'Cancelado' && r.creditoEstado !== 'Reversado');
   const fill=(id,label,vals)=>{const sel=document.getElementById(id);if(!sel)return;const cur=sel.value;const opts=[...new Set(vals.filter(v=>v&&String(v).trim()!==''))].sort();sel.innerHTML='<option value="">'+label+'</option>'+opts.map(v=>`<option>${v}</option>`).join('');if(opts.includes(cur))sel.value=cur;};
   fill('pc-f-banco','Banco',base.map(r=>r.banco));
   fill('pc-f-gestor','Gestor',base.map(r=>r.gestorAsignado));
@@ -11582,7 +11672,7 @@ function showV(v) {
       setTimeout(renderReportes, 50);
     }
   }
-  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','codigopostal','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','seguros','seguros-nueva','central-deudores','copas','prendas-finalizadas','prendas-entregadas'].forEach(id => {
+  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','codigopostal','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','seguros','seguros-nueva','central-deudores','copas','prendas-finalizadas','prendas-entregadas','prendas-canceladas'].forEach(id => {
     const el = document.getElementById('v-'+id);
     if (el) el.style.display = id===v ? '' : 'none';
 
@@ -11609,6 +11699,7 @@ function showV(v) {
   if (v==='prendas')  { poblarFiltrosPC(); renderPrendas(); setTimeout(initPrendasMirror, 150); }
   if (v==='prendas-finalizadas') { poblarFiltrosPF(); renderPrendasFinalizadas(); setTimeout(initPFMirror, 150); }
   if (v==='prendas-entregadas') { poblarFiltrosPE(); renderPrendasEntregadas(); setTimeout(initPEMirror, 150); }
+  if (v==='prendas-canceladas') { renderPrendasCanceladas(); }
   if (v==='nueva') {
     if (!window._isDuplicating && !window._isEditing) {
       editId = null;
@@ -16231,6 +16322,9 @@ function renderReportes() {
     </button>
     <button class="sb-item" onclick="closeSidebar();openPrendasEntregadas()">
       <span class="sb-icon">✅</span> Prendas entregadas
+    </button>
+    <button class="sb-item" onclick="closeSidebar();openPrendasCanceladas()">
+      <span class="sb-icon">🚫</span> Prendas canceladas/reversadas
     </button>
     <button class="sb-item" onclick="closeSidebar();openPrendasRechazadas()" style="position:relative">
       <span class="sb-icon">⛔</span> Prendas rechazadas
