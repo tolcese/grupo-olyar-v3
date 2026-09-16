@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.91</title>
+<title>Grupo Olyar — Solicitudes v3.8.92</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.91';
+    var APP_VER='v3.8.92';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -7017,7 +7017,7 @@ function renderCreditos() {
   const empty = document.getElementById('cred-empty');
   const isAdmin = ME?.rol === 'admin';
 
-  let data = CREDITOS_CACHE;
+  let data = CREDITOS_CACHE.filter(c => c.estado !== 'Cancelado');
   if (q) data = data.filter(c => [(c.cliente||''), (c.dni||''), (c.banco||'')].some(v => v.toLowerCase().includes(q)));
 
   count.textContent = data.length + ' crédito' + (data.length !== 1 ? 's' : '');
@@ -7065,7 +7065,7 @@ function renderCuotas() {
   const count = document.getElementById('cuota-count');
   const hoy   = new Date();
 
-  let data = CREDITOS_CACHE;
+  let data = CREDITOS_CACHE.filter(c => c.estado !== 'Cancelado');
   if (q) data = data.filter(c => [(c.cliente||''), (c.dni||'')].some(v => v.toLowerCase().includes(q)));
 
   count.textContent = data.length + ' crédito' + (data.length !== 1 ? 's' : '');
@@ -7197,6 +7197,25 @@ function calcCuotaMonto() {
 // Alta automática de crédito desde el editor de prenda.
 // Requiere las 3 condiciones: cantidad de cuotas + vencimiento + valor de cuota.
 // Anti-duplicado: si ese DNI ya tiene crédito, NO crea (solo crea si no existe).
+async function syncCreditoCancelacion(r) {
+  try {
+    if (!r || !r.dni) return;
+    const estPrenda = (document.getElementById('pe-cre-estado')?.value || r.creditoEstado || '').trim();
+    const anular = (estPrenda === 'Cancelado' || estPrenda === 'Reversado');
+    const { data: creds, error } = await SB.from('creditos').select('id,estado').eq('dni', String(r.dni).trim());
+    if (error || !creds || !creds.length) return;
+    for (const c of creds) {
+      if (anular && c.estado !== 'Cancelado') {
+        await SB.from('creditos').update({ estado: 'Cancelado' }).eq('id', c.id);
+        const cc = CREDITOS_CACHE.find(x => x.id === c.id); if (cc) cc.estado = 'Cancelado';
+      } else if (!anular && c.estado === 'Cancelado') {
+        await SB.from('creditos').update({ estado: 'Activo' }).eq('id', c.id);
+        const cc = CREDITOS_CACHE.find(x => x.id === c.id); if (cc) cc.estado = 'Activo';
+      }
+    }
+  } catch(e) { console.error('syncCreditoCancelacion', e); }
+}
+
 async function autoAltaCreditoDesdePrenda(r, venc, valorCuota, cantStr) {
   const cant = parseInt(cantStr) || 0;
   if (!cant || cant < 1) return;            // falta cantidad de cuotas
@@ -11384,6 +11403,7 @@ async function savePrenda() {
     registrarHistorial('prenda', id, cambiosPrenda);
     toast('Prenda actualizada ✓', 'ok');
     if (r) await autoAltaCreditoDesdePrenda(r, creVenc, creValorCuota, creCantCuotas);
+    if (r) await syncCreditoCancelacion(r);
     refreshAllPrendaViews();
   } catch(e) { toast('Error: ' + e.message, 'er'); }
 }
