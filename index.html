@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.92</title>
+<title>Grupo Olyar — Solicitudes v3.8.93</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.92';
+    var APP_VER='v3.8.93';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -4956,6 +4956,7 @@ function renderGestoria() {
     const estado = (r.estado||'').toUpperCase();
     if (estado !== 'AVANZA') return false;
     if (r.entregada || prendaEstadoNuevo(r) === 'entregada') return false; // ocultar entregadas (finalizadas)
+    if (r.creditoEstado === 'Cancelado' || r.creditoEstado === 'Reversado') return false; // ocultar canceladas/reversadas
     return true;
   });
   if (q) data = data.filter(r =>
