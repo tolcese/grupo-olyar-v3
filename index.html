@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.94</title>
+<title>Grupo Olyar — Solicitudes v3.8.95</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.94';
+    var APP_VER='v3.8.95';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -16062,52 +16062,61 @@ function renderSolicitudesAyer() {
   }
   if (fechaEl) fechaEl.textContent = (desde === hasta) ? dmy(desde) : (dmy(desde) + ' → ' + dmy(hasta));
 
-  // Aprobada = estado global APROBADO, o cualquier banco APROBADO
-  const esAprobada = r => (r.estado||'').toUpperCase() === 'APROBADO' || getBancos(r).some(b => (b.estado||'').toUpperCase() === 'APROBADO');
   const enRango = r => [r.fechaReg, r.fecha].filter(Boolean).map(x => String(x).slice(0,10)).some(d => d >= desde && d <= hasta);
 
-  const base = RECORDS.filter(r => esAprobada(r) && enRango(r));
-
-  // Poblar selects de filtro (bancos aprobados + concesionarias) desde el set base
-  const bancosSet = new Set();
-  base.forEach(r => {
-    getBancos(r).forEach(b => { if ((b.estado||'').toUpperCase()==='APROBADO' && b.banco) bancosSet.add(b.banco); });
-    if ((r.estado||'').toUpperCase()==='APROBADO' && r.banco) bancosSet.add(r.banco);
+  // Una fila por cada BANCO APROBADO de cada solicitud en rango (si hay varios aprobados, van todos)
+  const filas = [];
+  RECORDS.forEach(r => {
+    if (!enRango(r)) return;
+    const aprob = getBancos(r).filter(b => (b.estado||'').toUpperCase() === 'APROBADO');
+    if (aprob.length) {
+      aprob.forEach(b => filas.push({ r, banco: b.banco || r.banco || '', importe: (b.importe!=null && b.importe!=='') ? b.importe : r.importe }));
+    } else if ((r.estado||'').toUpperCase() === 'APROBADO') {
+      filas.push({ r, banco: r.banco || '', importe: r.importe });
+    }
   });
-  const concSet = new Set(base.map(r => r.concesionaria).filter(Boolean));
+
+  // Poblar selects de filtro desde el set base
+  const bancosSet = new Set(filas.map(f => f.banco).filter(Boolean));
+  const concSet   = new Set(filas.map(f => f.r.concesionaria).filter(Boolean));
   const fillSel = (id, label, set, cur) => { const s=document.getElementById(id); if(!s) return; const opts=[...set].sort(); s.innerHTML='<option value="">'+label+'</option>'+opts.map(v=>`<option>${v}</option>`).join(''); if(opts.includes(cur)) s.value=cur; };
   const fB = document.getElementById('rep-ayer-banco')?.value || '';
   const fC = document.getElementById('rep-ayer-conce')?.value || '';
   fillSel('rep-ayer-banco','Todos los bancos', bancosSet, fB);
   fillSel('rep-ayer-conce','Todas las concesionarias', concSet, fC);
 
-  let data = base.slice();
-  if (fB) data = data.filter(r => (r.banco||'')===fB || getBancos(r).some(b => (b.banco||'')===fB && (b.estado||'').toUpperCase()==='APROBADO'));
-  if (fC) data = data.filter(r => (r.concesionaria||'')===fC);
+  let data = filas.slice();
+  if (fB) data = data.filter(f => f.banco === fB);
+  if (fC) data = data.filter(f => (f.r.concesionaria||'') === fC);
 
-  if (countEl) countEl.textContent = data.length + ' solicitud' + (data.length !== 1 ? 'es' : '');
+  if (countEl) countEl.textContent = data.length + ' aprobaci' + (data.length !== 1 ? 'ones' : 'ón');
 
   const btnsDiv = document.getElementById('rep-ayer-wa-btns');
   if (!data.length) { tbody.innerHTML=''; empty.style.display=''; if(btnsDiv) btnsDiv.innerHTML=''; return; }
   empty.style.display = 'none';
 
-  const mon = v => v ? '$' + Number(String(v).replace(/[$,]/g,'')).toLocaleString('es-AR') : '—';
+  const mon = v => (v!=null && v!=='') ? '$' + Number(String(v).replace(/[$,]/g,'')).toLocaleString('es-AR') : '—';
   const val = v => v || '—';
 
-  const porConc = {};
-  data.forEach(r => { const conc = r.concesionaria || 'Sin concesionaria'; (porConc[conc] = porConc[conc] || []).push(r); });
+  // Agrupar por concesionaria (solicitudes únicas) para los botones de WhatsApp
+  const porConc = {}; const vistos = {};
+  data.forEach(f => {
+    const conc = f.r.concesionaria || 'Sin concesionaria';
+    porConc[conc] = porConc[conc] || [];
+    const k = conc + '|' + f.r.id;
+    if (!vistos[k]) { porConc[conc].push(f.r); vistos[k] = 1; }
+  });
 
-  tbody.innerHTML = data.map((r, i) => `
+  tbody.innerHTML = data.map((f, i) => { const r = f.r; return `
     <tr style="border-bottom:1px solid var(--line)" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background=''">
       <td style="padding:9px 12px;color:var(--muted);font-size:11px">${i+1}</td>
       <td style="padding:9px 12px;font-weight:700">${val(r.nombrecliente)}</td>
       <td style="padding:9px 12px;font-family:monospace">${val(r.dni)}</td>
-      <td style="padding:9px 12px;font-weight:600">${colorBanco(r.banco)}</td>
+      <td style="padding:9px 12px;font-weight:600">${colorBanco(f.banco)}</td>
       <td style="padding:9px 12px">${val(r.concesionaria)}</td>
-      <td style="padding:9px 12px;font-family:monospace">${mon(r.importe)}</td>
+      <td style="padding:9px 12px;font-family:monospace">${mon(f.importe)}</td>
       <td style="padding:9px 12px;color:var(--muted)">${val(r.usuario)}</td>
-    </tr>
-  `).join('');
+    </tr>`; }).join('');
 
   if (btnsDiv) {
     window._waData = {};
