@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.93</title>
+<title>Grupo Olyar — Solicitudes v3.8.94</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.93';
+    var APP_VER='v3.8.94';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -1818,6 +1818,15 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <div class="card-s" id="rep-ayer-fecha">—</div>
           </div>
           <span id="rep-ayer-count" style="font-size:12px;font-weight:700;color:var(--muted)">—</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)">
+          <span style="font-size:12px;color:var(--muted)">Desde:</span>
+          <input type="date" id="rep-ayer-desde" onchange="renderSolicitudesAyer()" style="font-size:12px;padding:6px 10px;border:1.5px solid var(--line);border-radius:8px">
+          <span style="font-size:12px;color:var(--muted)">Hasta:</span>
+          <input type="date" id="rep-ayer-hasta" onchange="renderSolicitudesAyer()" style="font-size:12px;padding:6px 10px;border:1.5px solid var(--line);border-radius:8px">
+          <select id="rep-ayer-banco" onchange="renderSolicitudesAyer()" style="font-size:12px;padding:6px 10px;border:1.5px solid var(--line);border-radius:8px"><option value="">Todos los bancos</option></select>
+          <select id="rep-ayer-conce" onchange="renderSolicitudesAyer()" style="font-size:12px;padding:6px 10px;border:1.5px solid var(--line);border-radius:8px"><option value="">Todas las concesionarias</option></select>
+          <button class="btn btn-s" style="font-size:12px;padding:6px 12px" onclick="resetFiltrosAyer()">↺ Día anterior</button>
         </div>
         <div style="overflow-x:auto">
           <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px">
@@ -16028,43 +16037,65 @@ async function copiarMensajeWA() {
 }
 
 function renderSolicitudesAyer() {
-  const tbody  = document.getElementById('rep-ayer-tbody');
-  const empty  = document.getElementById('rep-ayer-empty');
+  const tbody   = document.getElementById('rep-ayer-tbody');
+  const empty   = document.getElementById('rep-ayer-empty');
   const countEl = document.getElementById('rep-ayer-count');
   const fechaEl = document.getElementById('rep-ayer-fecha');
   if (!tbody) return;
 
-  const ayer = new Date();
-  ayer.setDate(ayer.getDate() - 1);
-  const ayerStr = ayer.toISOString().slice(0, 10);
-  const fmtAyer = ayerStr.split('-').reverse().join('/');
-  if (fechaEl) fechaEl.textContent = fmtAyer;
+  const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const dmy = s => s ? s.split('-').reverse().join('/') : '—';
 
-  // Solo solicitudes APROBADAS del día anterior
-  const data = RECORDS.filter(r =>
-    (r.fechaReg === ayerStr || r.fecha === ayerStr) &&
-    (r.estado || '').toUpperCase() === 'APROBADO'
-  );
+  // Rango: por defecto desde el día hábil anterior hasta ayer (el lunes agarra viernes/sábado/domingo)
+  let desde = document.getElementById('rep-ayer-desde')?.value || '';
+  let hasta = document.getElementById('rep-ayer-hasta')?.value || '';
+  if (!desde && !hasta) {
+    const ayer = new Date(); ayer.setDate(ayer.getDate() - 1);
+    const pb   = new Date(); pb.setDate(pb.getDate() - 1);
+    while (pb.getDay() === 0 || pb.getDay() === 6) pb.setDate(pb.getDate() - 1);
+    desde = ymd(pb); hasta = ymd(ayer);
+    const dEl = document.getElementById('rep-ayer-desde'); if (dEl) dEl.value = desde;
+    const hEl = document.getElementById('rep-ayer-hasta'); if (hEl) hEl.value = hasta;
+  } else {
+    desde = desde || hasta; hasta = hasta || desde;
+    if (desde > hasta) { const t = desde; desde = hasta; hasta = t; }
+  }
+  if (fechaEl) fechaEl.textContent = (desde === hasta) ? dmy(desde) : (dmy(desde) + ' → ' + dmy(hasta));
+
+  // Aprobada = estado global APROBADO, o cualquier banco APROBADO
+  const esAprobada = r => (r.estado||'').toUpperCase() === 'APROBADO' || getBancos(r).some(b => (b.estado||'').toUpperCase() === 'APROBADO');
+  const enRango = r => [r.fechaReg, r.fecha].filter(Boolean).map(x => String(x).slice(0,10)).some(d => d >= desde && d <= hasta);
+
+  const base = RECORDS.filter(r => esAprobada(r) && enRango(r));
+
+  // Poblar selects de filtro (bancos aprobados + concesionarias) desde el set base
+  const bancosSet = new Set();
+  base.forEach(r => {
+    getBancos(r).forEach(b => { if ((b.estado||'').toUpperCase()==='APROBADO' && b.banco) bancosSet.add(b.banco); });
+    if ((r.estado||'').toUpperCase()==='APROBADO' && r.banco) bancosSet.add(r.banco);
+  });
+  const concSet = new Set(base.map(r => r.concesionaria).filter(Boolean));
+  const fillSel = (id, label, set, cur) => { const s=document.getElementById(id); if(!s) return; const opts=[...set].sort(); s.innerHTML='<option value="">'+label+'</option>'+opts.map(v=>`<option>${v}</option>`).join(''); if(opts.includes(cur)) s.value=cur; };
+  const fB = document.getElementById('rep-ayer-banco')?.value || '';
+  const fC = document.getElementById('rep-ayer-conce')?.value || '';
+  fillSel('rep-ayer-banco','Todos los bancos', bancosSet, fB);
+  fillSel('rep-ayer-conce','Todas las concesionarias', concSet, fC);
+
+  let data = base.slice();
+  if (fB) data = data.filter(r => (r.banco||'')===fB || getBancos(r).some(b => (b.banco||'')===fB && (b.estado||'').toUpperCase()==='APROBADO'));
+  if (fC) data = data.filter(r => (r.concesionaria||'')===fC);
 
   if (countEl) countEl.textContent = data.length + ' solicitud' + (data.length !== 1 ? 'es' : '');
 
-  if (!data.length) {
-    tbody.innerHTML = '';
-    empty.style.display = '';
-    return;
-  }
+  const btnsDiv = document.getElementById('rep-ayer-wa-btns');
+  if (!data.length) { tbody.innerHTML=''; empty.style.display=''; if(btnsDiv) btnsDiv.innerHTML=''; return; }
   empty.style.display = 'none';
 
   const mon = v => v ? '$' + Number(String(v).replace(/[$,]/g,'')).toLocaleString('es-AR') : '—';
   const val = v => v || '—';
 
-  // Agrupar por concesionaria para el botón WhatsApp
   const porConc = {};
-  data.forEach(r => {
-    const conc = r.concesionaria || 'Sin concesionaria';
-    if (!porConc[conc]) porConc[conc] = [];
-    porConc[conc].push(r);
-  });
+  data.forEach(r => { const conc = r.concesionaria || 'Sin concesionaria'; (porConc[conc] = porConc[conc] || []).push(r); });
 
   tbody.innerHTML = data.map((r, i) => `
     <tr style="border-bottom:1px solid var(--line)" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background=''">
@@ -16078,19 +16109,22 @@ function renderSolicitudesAyer() {
     </tr>
   `).join('');
 
-  // Botones WhatsApp por concesionaria
-  const btnsDiv = document.getElementById('rep-ayer-wa-btns');
   if (btnsDiv) {
     window._waData = {};
     btnsDiv.innerHTML = Object.entries(porConc).map(([conc, regs], idx) => {
       const concData = CONC_CACHE.find(c => c.nombre === conc);
       const tel = concData?.telefono || '';
-      const apellidos = [...new Set(regs.map(r => { const partes = (r.nombrecliente||'').trim().split(' '); return partes[0]; }))].join(', ');
+      const apellidos = [...new Set(regs.map(r => (r.nombrecliente||'').trim().split(' ')[0]))].join(', ');
       const msg = 'Hola! Te escribo por la propuestas de los créditos de ' + apellidos + ' Queríamos saber si le resultó interesante el monto o si le falta mas dinero para llegar?';
       window._waData[idx] = { conc, tel, msg };
       return '<button class="btn btn-s" style="background:#25d366;color:#fff;border-color:#25d366;font-size:12px" onclick="abrirModalWAIdx(' + idx + ')">📱 WhatsApp ' + conc + '</button>';
     }).join('');
   }
+}
+
+function resetFiltrosAyer() {
+  ['rep-ayer-desde','rep-ayer-hasta','rep-ayer-banco','rep-ayer-conce'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderSolicitudesAyer();
 }
 
 function renderSolicitudesHoy() {
