@@ -915,6 +915,16 @@
     if (_cyEl && _cyFields && _cyFields.style.display !== 'none' && _cyEl.value.trim() && !/^\d{7,8}$/.test(_cyEl.value.trim())) {
       _cyEl.classList.add('invalid'); ok = false;
     } else if (_cyEl) { _cyEl.classList.remove('invalid'); }
+    // Co-titular / condominio: si está tildado, el Tipo es obligatorio; DNI válido si se completó
+    const _coChk = document.getElementById('cotitular_check');
+    if (_coChk && _coChk.checked) {
+      const _coTipo = document.getElementById('cotitular_tipo');
+      if (_coTipo && !_coTipo.value) { _coTipo.classList.add('invalid'); ok = false; }
+      else if (_coTipo) { _coTipo.classList.remove('invalid'); }
+      const _coDni = document.getElementById('cotitular_dni');
+      if (_coDni && _coDni.value.trim() && !/^\d{7,8}$/.test(_coDni.value.trim())) { _coDni.classList.add('invalid'); ok = false; }
+      else if (_coDni) { _coDni.classList.remove('invalid'); }
+    }
     if (selectedFiles.length < 1) {
       dropZone.classList.add('invalid-file');
       ok = false;
