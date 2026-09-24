@@ -468,6 +468,60 @@
           </select>
         </div>
 
+        <!-- CO-TITULAR / CONDOMINIO -->
+        <div class="field col-span-2" style="margin-top:8px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600">
+            <input type="checkbox" id="cotitular_check" style="width:auto;margin:0"> ¿Tiene co-titular o condominio?
+          </label>
+        </div>
+        <div id="cotitular-fields" class="field col-span-2" style="display:none">
+          <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--blue);border-bottom:1.5px solid var(--blue-light);padding-bottom:6px;margin-bottom:8px">👥 Datos del Co-titular / Condominio</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="field">
+              <label>Tipo</label>
+              <select id="cotitular_tipo">
+                <option value="">Seleccioná...</option>
+                <option>Co-titular</option>
+                <option>Condominio</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Nombre y Apellido</label>
+              <input type="text" id="cotitular_nombre" placeholder="Nombre completo">
+            </div>
+            <div class="field">
+              <label>Número de DNI</label>
+              <input type="text" id="cotitular_dni" placeholder="7 u 8 dígitos, sin puntos ni espacios" inputmode="numeric" maxlength="8" pattern="\d{7,8}">
+            </div>
+            <div class="field">
+              <label>Género</label>
+              <select id="cotitular_genero">
+                <option value="">Seleccioná...</option>
+                <option>Masculino</option>
+                <option>Femenino</option>
+                <option>No binario</option>
+                <option>Prefiero no decir</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Nacionalidad</label>
+              <input type="text" id="cotitular_nacionalidad" placeholder="Ej: Argentina">
+            </div>
+            <div class="field">
+              <label>Fecha de Nacimiento</label>
+              <input type="date" id="cotitular_fecha_nacimiento">
+            </div>
+            <div class="field">
+              <label>Parentesco o relación con el titular</label>
+              <input type="text" id="cotitular_relacion" placeholder="Ej: Padre, Hermano/a, Cónyuge...">
+            </div>
+            <div class="field">
+              <label>Teléfono</label>
+              <input type="tel" id="cotitular_telefono" placeholder="Ej: 3512345678" inputmode="numeric">
+            </div>
+          </div>
+        </div>
+
         <!-- DATOS DEL CÓNYUGE -->
         <div class="field col-span-2" style="margin-top:8px" id="conyuge-section" style="display:none">
           <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--blue);border-bottom:1.5px solid var(--blue-light);padding-bottom:6px">💍 Datos del Cónyuge (en caso de ser casado/a)</div>
@@ -836,6 +890,16 @@
     if (this.value !== v) this.value = v;
   });
 
+  // Co-titular / condominio: mostrar/ocultar al tildar + filtro DNI
+  document.getElementById('cotitular_check')?.addEventListener('change', function() {
+    document.getElementById('cotitular-fields').style.display = this.checked ? '' : 'none';
+    if (!this.checked) ['cotitular_tipo','cotitular_nombre','cotitular_dni','cotitular_genero','cotitular_nacionalidad','cotitular_fecha_nacimiento','cotitular_relacion','cotitular_telefono'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  });
+  document.getElementById('cotitular_dni')?.addEventListener('input', function() {
+    const v = this.value.replace(/\D/g, '').slice(0, 8);
+    if (this.value !== v) this.value = v;
+  });
+
   // ── Validation ─────────────────────────────────────────────────
   function validate() {
     let ok = true;
@@ -990,6 +1054,14 @@
         conyuge_fecha_nacimiento: document.getElementById('conyuge_fecha_nacimiento').value || null,
         conyuge_actividad:    getVal('conyuge_actividad') || null,
         conyuge_telefono:     getVal('conyuge_telefono') || null,
+        cotitular_tipo:            getVal('cotitular_tipo') || null,
+        cotitular_nombre:          getVal('cotitular_nombre') || null,
+        cotitular_dni:             getVal('cotitular_dni') || null,
+        cotitular_genero:          getVal('cotitular_genero') || null,
+        cotitular_nacionalidad:    getVal('cotitular_nacionalidad') || null,
+        cotitular_fecha_nacimiento: document.getElementById('cotitular_fecha_nacimiento').value || null,
+        cotitular_relacion:        getVal('cotitular_relacion') || null,
+        cotitular_telefono:        getVal('cotitular_telefono') || null,
         archivos_dni:         archivoUrls,
         conyuge_dni_urls:     conugeUrls.length ? conugeUrls : null,
         fecha_ingreso:        getVal('fecha_ingreso'),
