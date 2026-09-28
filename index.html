@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.97</title>
+<title>Grupo Olyar — Solicitudes v3.8.98</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.97';
+    var APP_VER='v3.8.98';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -3722,7 +3722,21 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
 // ══════════════════════════════════════════════
 const SUPABASE_URL  = 'https://zohniclbfhvqmurtrhka.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvaG5pY2xiZmh2cW11cnRyaGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MjIzNjIsImV4cCI6MjA5MDM5ODM2Mn0.1RTJAiwftxFFGrOFr3hV9W8DIjkESHBdV_PZnwKxOjQ';
-const SB = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+// v3.8.98: toda escritura OK en solicitudes/presupuestos dispara un aviso Broadcast
+// a los demás usuarios (reemplaza Realtime postgres_changes, que consumía Disk IO).
+async function _olyarFetch(input, init) {
+  const res = await fetch(input, init);
+  try {
+    const m = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+    if (res.ok && m !== 'GET' && m !== 'HEAD') {
+      const u = String(typeof input === 'string' ? input : (input && input.url) || '');
+      if (/\/rest\/v1\/solicitudes(\?|$)/.test(u)) _olyarNotify('sol');
+      else if (/\/rest\/v1\/presupuestos(\?|$)/.test(u)) _olyarNotify('presup');
+    }
+  } catch(e) {}
+  return res;
+}
+const SB = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { global: { fetch: _olyarFetch } });
 function colorBanco(banco) {
   const b = (banco || '').toUpperCase();
   const color = b.includes('COLUMBIA') ? '#1d6fce' : b.includes('GALICIA') ? '#e8821a' : b.includes('SANTANDER') ? '#ec0000' : b.includes('SUPERVIELLE') ? '#682489' : b.includes('BANCOR') ? '#005f5b' : b.includes('ICBC') ? '#c8102e' : 'var(--ink)';
@@ -5345,13 +5359,21 @@ async function loadPresupuestos() {
   }
 }
 
-// Realtime sync solicitudes — refleja al instante cambios de otros usuarios
-// (paso de prenda: en curso -> no entregada -> entregada, y demás ediciones)
-let _solRealtimeChannel = null, _solRtTimer = null;
-function initSolRealtime() {
-  if (_solRealtimeChannel) return;
-  _solRealtimeChannel = SB.channel('solicitudes-sync')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'solicitudes' }, () => {
+// Sync en vivo entre usuarios vía Broadcast (v3.8.98)
+// Al guardar, _olyarFetch avisa por el canal; los demás recargan y refrescan vistas.
+// (paso de prenda: en curso -> no entregada -> entregada, y demás ediciones — pedido v3.8.44)
+let _solRtTimer = null, _presupRtTimer = null;
+const _olyarSendTimers = {};
+function _olyarNotify(ev) {
+  clearTimeout(_olyarSendTimers[ev]);
+  _olyarSendTimers[ev] = setTimeout(() => {
+    try { if (window._olyarSync) window._olyarSync.send({ type: 'broadcast', event: ev, payload: { t: Date.now(), by: (typeof ME !== 'undefined' && ME) ? ME.usr : '' } }); } catch(e) {}
+  }, 300);
+}
+function _olyarSyncInit() {
+  if (window._olyarSync) return;
+  window._olyarSync = SB.channel('olyar-sync', { config: { broadcast: { self: false } } })
+    .on('broadcast', { event: 'sol' }, () => {
       clearTimeout(_solRtTimer);
       _solRtTimer = setTimeout(() => {
         loadRecords().then(() => {
@@ -5360,25 +5382,24 @@ function initSolRealtime() {
         }).catch(() => {});
       }, 400);
     })
-    .subscribe();
-}
-
-// Realtime sync presupuestos — actualiza automáticamente cuando otro usuario modifica
-let _presupRealtimeChannel = null;
-function initPresupRealtime() {
-  if (_presupRealtimeChannel) return;
-  _presupRealtimeChannel = SB.channel('presupuestos-sync')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'presupuestos' }, () => {
-      const vEl = document.getElementById('v-presupuestos');
-      if (vEl && vEl.style.display !== 'none') {
-        loadPresupuestos();
-      } else {
-        SB.from('presupuestos').select('*').order('created_at', { ascending: false })
-          .then(({ data }) => { if (data) PRESUP_CACHE = data; });
-      }
+    .on('broadcast', { event: 'presup' }, () => {
+      clearTimeout(_presupRtTimer);
+      _presupRtTimer = setTimeout(() => {
+        const vEl = document.getElementById('v-presupuestos');
+        const fEl = document.getElementById('v-presupuesto-form');
+        const formAbierto = fEl && fEl.style.display !== 'none';
+        if (vEl && vEl.style.display !== 'none' && !formAbierto) {
+          loadPresupuestos();
+        } else {
+          SB.from('presupuestos').select('*').order('created_at', { ascending: false })
+            .then(({ data }) => { if (data) PRESUP_CACHE = data; });
+        }
+      }, 400);
     })
     .subscribe();
 }
+function initSolRealtime() { _olyarSyncInit(); }
+function initPresupRealtime() { _olyarSyncInit(); }
 
 function renderPresupuestos() {
   const tbody = document.getElementById('presup-tbody');
@@ -14943,13 +14964,18 @@ window.addEventListener('scroll', () => { _lastScroll = Date.now(); }, { passive
 document.addEventListener('visibilitychange', () => { _appVisible = !document.hidden; });
 
 const _refreshInterval = window.innerWidth <= 768 ? 60000 : 30000;
+let _lastHeartbeat = 0;
 setInterval(() => {
   if (!ME) return;
   if (!_appVisible) return; // no refrescar si la app está en background
   // En móvil, no refrescar si el usuario scrolleó en los últimos 3 segundos
   if (window.innerWidth <= 768 && Date.now() - _lastScroll < 3000) return;
 
-  SB.from('usuarios').update({ last_seen: new Date().toISOString() }).eq('usr', ME.usr).then(()=>{}).catch(()=>{});
+  // Heartbeat last_seen cada 2 min (umbral "en línea" = 5 min)
+  if (Date.now() - _lastHeartbeat >= 120000) {
+    _lastHeartbeat = Date.now();
+    SB.from('usuarios').update({ last_seen: new Date().toISOString() }).eq('usr', ME.usr).then(()=>{}).catch(()=>{});
+  }
   checkMantenimiento();
   checkDateroNuevos();
 
@@ -14978,16 +15004,21 @@ setInterval(() => {
   if (document.getElementById('cont-overlay')?.classList.contains('open')) {
     if (typeof recargarLiquidaciones === 'function') recargarLiquidaciones();
   }
-  const _vp = document.getElementById('v-prendas');
-  if (_vp && _vp.style.display !== 'none') {
-    if (typeof renderPrendas === 'function') renderPrendas();
+  // Vistas de prendas (full-view): recargar datos y refrescar todas
+  const _prendaVisible = ['v-prendas','v-prendas-entregadas','v-prendas-finalizadas','v-prendas-canceladas']
+    .some(id => { const el = document.getElementById(id); return el && el.style.display !== 'none'; });
+  if (_prendaVisible && activeSection !== 'sol' && activeSection !== 'nueva' && activeSection !== 'reportes') {
+    loadRecords().then(() => { try { refreshAllPrendaViews(); } catch(e) {} }).catch(() => {});
+  }
+  // Presupuestos
+  const _vpr = document.getElementById('v-presupuestos');
+  if (_vpr && _vpr.style.display !== 'none' && typeof loadPresupuestos === 'function') {
+    const _pf = document.getElementById('v-presupuesto-form');
+    if (!_pf || _pf.style.display === 'none') loadPresupuestos();
   }
 }, _refreshInterval);
 
-// Heartbeat cada 30 segundos
-setInterval(() => {
-  if (ME) SB.from('usuarios').update({ last_seen: new Date().toISOString() }).eq('usr', ME.usr).then(()=>{}).catch(()=>{});
-}, 30000);
+// v3.8.98: heartbeat duplicado eliminado (ahora va dentro del polling, cada 2 min)
 </script>
 
 <!-- SLIDE PANEL GESTORES -->
