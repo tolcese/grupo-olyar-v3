@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.98</title>
+<title>Grupo Olyar — Solicitudes v3.8.99</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.98';
+    var APP_VER='v3.8.99';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -2460,8 +2460,8 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
               <div class="pe-f"><label>Teléfono</label><input class="pe-in" type="text" inputmode="numeric" id="pe-cli-telefono"></div>
               <div class="pe-f"><label>Mail</label><input class="pe-in" type="text" inputmode="email" id="pe-cli-mail"></div>
               <div class="pe-f"><label>Concesionario</label><div class="pe-ro" id="pe-cli-conces">—</div></div>
-              <div class="pe-f"><label>Provincia</label><div class="pe-ro" id="pe-cli-prov">—</div></div>
-              <div class="pe-f"><label>Localidad</label><div class="pe-ro" id="pe-cli-loc">—</div></div>
+              <div class="pe-f"><label>Provincia</label><input class="pe-in" type="text" id="pe-cli-prov" list="pe-cli-prov-list" style="text-transform:uppercase" autocomplete="off"><datalist id="pe-cli-prov-list"></datalist></div>
+              <div class="pe-f"><label>Localidad</label><input class="pe-in" type="text" id="pe-cli-loc"></div>
             </div>
           </div>
         </div>
@@ -11252,8 +11252,13 @@ function editPrenda(id) {
   document.getElementById('pe-cli-nombre').textContent = r.nombrecliente || '—';
   document.getElementById('pe-cli-dni').textContent    = r.dni || '—';
   document.getElementById('pe-cli-conces').textContent = r.concesionaria || '—';
-  document.getElementById('pe-cli-prov').textContent   = r.provincia || '—';
-  document.getElementById('pe-cli-loc').textContent    = r.localidad || '—';
+  // Provincia/Localidad editables: se guardan en la tabla clientes (v3.8.99).
+  // Precarga: ficha de clientes; si no tiene, lo de la solicitud.
+  var _cliPrev = (r.dni && typeof CLIENTES_DATA !== 'undefined' && CLIENTES_DATA[r.dni]) || {};
+  var _dlProv = document.getElementById('pe-cli-prov-list');
+  if (_dlProv && !_dlProv.options.length && typeof PROVINCIAS_AR !== 'undefined') _dlProv.innerHTML = PROVINCIAS_AR.map(function(p){ return '<option value="'+p+'">'; }).join('');
+  document.getElementById('pe-cli-prov').value = _cliPrev.provincia || r.provincia || '';
+  document.getElementById('pe-cli-loc').value  = _cliPrev.localidad || r.localidad || '';
   document.getElementById('pe-cli-ejemplardni').value  = r.ejemplarDni || '';
   document.getElementById('pe-cli-fnac').value         = r.fechaNacimiento || '';
   document.getElementById('pe-cli-lnac').value         = r.lugarNacimiento || '';
@@ -11343,6 +11348,8 @@ async function savePrenda() {
   const cliCp          = document.getElementById('pe-cli-cp').value.trim();
   const cliTelefono    = document.getElementById('pe-cli-telefono').value.trim();
   const cliMail        = document.getElementById('pe-cli-mail').value.trim();
+  const cliProv        = document.getElementById('pe-cli-prov').value.trim().toUpperCase();
+  const cliLoc         = document.getElementById('pe-cli-loc').value.trim();
   const vehDominio     = document.getElementById('pe-veh-dominio').value.trim().toUpperCase();
   const vehTipo        = document.getElementById('pe-veh-tipo').value.trim();
   const vehMarcaChasis = document.getElementById('pe-veh-marcachasis').value.trim();
@@ -11418,8 +11425,8 @@ async function savePrenda() {
           dni: r.dni,
           nombre:    (r.nombrecliente || _prev.nombre || ''),
           direccion: cliDireccion || _prev.direccion || '',
-          localidad: (r.localidad || _prev.localidad || ''),
-          provincia: (r.provincia || _prev.provincia || ''),
+          localidad: cliLoc  || _prev.localidad || r.localidad || '',
+          provincia: cliProv || _prev.provincia || r.provincia || '',
           telefono:  cliTelefono || _prev.telefono || '',
           email:     cliMail || _prev.email || ''
         };
