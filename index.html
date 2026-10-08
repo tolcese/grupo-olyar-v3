@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.8.99</title>
+<title>Grupo Olyar — Solicitudes v3.9.00</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.8.99';
+    var APP_VER='v3.9.00';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -1826,6 +1826,9 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <input type="date" id="rep-ayer-hasta" onchange="renderSolicitudesAyer()" style="font-size:12px;padding:6px 10px;border:1.5px solid var(--line);border-radius:8px">
           <select id="rep-ayer-banco" onchange="renderSolicitudesAyer()" style="font-size:12px;padding:6px 10px;border:1.5px solid var(--line);border-radius:8px"><option value="">Todos los bancos</option></select>
           <select id="rep-ayer-conce" onchange="renderSolicitudesAyer()" style="font-size:12px;padding:6px 10px;border:1.5px solid var(--line);border-radius:8px"><option value="">Todas las concesionarias</option></select>
+          <span style="font-size:12px;color:var(--muted)">Importe:</span>
+          <input type="text" inputmode="decimal" id="rep-ayer-imp-min" placeholder="$ mínimo" oninput="renderSolicitudesAyer()" onblur="fmtCampoMoneda(this)" style="font-size:12px;padding:6px 10px;border:1.5px solid var(--line);border-radius:8px;width:110px">
+          <input type="text" inputmode="decimal" id="rep-ayer-imp-max" placeholder="$ máximo" oninput="renderSolicitudesAyer()" onblur="fmtCampoMoneda(this)" style="font-size:12px;padding:6px 10px;border:1.5px solid var(--line);border-radius:8px;width:110px">
           <button class="btn btn-s" style="font-size:12px;padding:6px 12px" onclick="resetFiltrosAyer()">↺ Día anterior</button>
         </div>
         <div style="overflow-x:auto">
@@ -16133,6 +16136,15 @@ function renderSolicitudesAyer() {
   let data = filas.slice();
   if (fB) data = data.filter(f => f.banco === fB);
   if (fC) data = data.filter(f => (f.r.concesionaria||'') === fC);
+  // Filtro por importe (v3.9.00): mínimo / máximo sobre el importe del banco aprobado
+  const _iMin = parseMoneda(document.getElementById('rep-ayer-imp-min')?.value || '');
+  const _iMax = parseMoneda(document.getElementById('rep-ayer-imp-max')?.value || '');
+  if (_iMin || _iMax) data = data.filter(f => {
+    const v = parseFloat(String(f.importe||0).replace(/[$,]/g,'')) || 0;
+    if (_iMin && v < _iMin) return false;
+    if (_iMax && v > _iMax) return false;
+    return true;
+  });
 
   if (countEl) countEl.textContent = data.length + ' aprobaci' + (data.length !== 1 ? 'ones' : 'ón');
 
@@ -16177,7 +16189,7 @@ function renderSolicitudesAyer() {
 }
 
 function resetFiltrosAyer() {
-  ['rep-ayer-desde','rep-ayer-hasta','rep-ayer-banco','rep-ayer-conce'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['rep-ayer-desde','rep-ayer-hasta','rep-ayer-banco','rep-ayer-conce','rep-ayer-imp-min','rep-ayer-imp-max'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   renderSolicitudesAyer();
 }
 
