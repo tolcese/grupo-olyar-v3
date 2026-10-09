@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.01</title>
+<title>Grupo Olyar — Solicitudes v3.9.02</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.01';
+    var APP_VER='v3.9.02';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -1051,6 +1051,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         <div><div class="ph-t">📦 Stock de prendas</div><div class="ph-s">Registro de prendas enviadas a gestores</div></div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-s" onclick="abrirModalCargaStock()">＋ Cargar stock</button>
+          <button class="btn btn-s" onclick="abrirModalTransferencia()" style="border-color:var(--blue);color:var(--blue)">⇄ Transferir</button>
           <button class="btn btn-p" onclick="abrirModalEnvioGestor()">＋ Registrar envío</button>
         </div>
       </div>
@@ -1068,6 +1069,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
                 <th style="padding:9px 12px;text-align:left;font-weight:700">Gestor</th>
                 <th style="padding:9px 12px;text-align:left;font-weight:700">Banco</th>
                 <th style="padding:9px 12px;text-align:right;font-weight:700">Prendas disponibles</th>
+                <th style="padding:9px 12px;text-align:center;font-weight:700;width:60px"></th>
               </tr>
             </thead>
             <tbody id="stock-gestor-tbody"></tbody>
@@ -13761,6 +13763,7 @@ async function descontarStockPrenda(banco, tipo, solicitudId, nota, gestor) {
 }
 
 let ENVIOS_DATA = [];
+let STOCK_GESTOR_DATA = [];
 
 async function loadEnviosGestor() {
   // Cargar stock general
@@ -13771,11 +13774,12 @@ async function loadEnviosGestor() {
 
   // Cargar stock por gestor
   const { data: stockGestor } = await SB.from('stock_prendas_gestor').select('*').order('gestor').order('banco');
-  renderStockGestor(stockGestor || []);
+  STOCK_GESTOR_DATA = stockGestor || [];
+  renderStockGestor(STOCK_GESTOR_DATA);
 
   // Cargar movimientos de envíos
   const { data } = await SB.from('stock_prendas_movimientos')
-    .select('*').eq('tipo','salida_gestor')
+    .select('*').in('tipo', ['salida_gestor','transferencia_gestor','devolucion_gestor'])
     .order('fecha', { ascending: false }).limit(300);
   ENVIOS_DATA = data || [];
   renderEnviosGestor();
@@ -13787,13 +13791,15 @@ function renderStockGestor(data) {
   if (!tbody) return;
   const COLORES = { Columbia:'#1d6fce', Galicia:'#e8821a', Santander:'#ec0000', ICBC:'#c8102e' };
   const activos = data.filter(d => d.cantidad > 0);
+  window._stockGestorActivos = activos;
   if (!activos.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
-  tbody.innerHTML = activos.map(d => `
+  tbody.innerHTML = activos.map((d, _i) => `
     <tr style="border-bottom:1px solid var(--line)" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background=''">
       <td style="padding:8px 12px;font-weight:600">${d.gestor}</td>
       <td style="padding:8px 12px;font-weight:700;color:${COLORES[d.banco]||'var(--ink)'}">${d.banco}</td>
       <td style="padding:8px 12px;text-align:right;font-weight:700;font-size:15px">${d.cantidad}</td>
+      <td style="padding:8px 12px;text-align:center"><button class="ibtn" title="Transferir a otro gestor" onclick="abrirModalTransferencia(window._stockGestorActivos[${_i}].gestor, window._stockGestorActivos[${_i}].banco)">⇄</button></td>
     </tr>
   `).join('');
 }
@@ -13845,14 +13851,24 @@ function renderEnviosGestor() {
     const fecha = m.fecha ? new Date(m.fecha).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
     const color = COLORES[m.banco] || 'var(--ink)';
     // Extraer gestor de la nota
-    const gestorMatch = (m.nota||'').match(/^Gestor: ([^|—]+)/);
-    const gestor = gestorMatch ? gestorMatch[1].trim() : (m.nota || '—');
-    const notaExtra = (m.nota||'').includes('—') ? m.nota.split('—').slice(1).join('—').trim() : '';
+    let gestor, notaExtra, cantHtml;
+    if (m.tipo === 'transferencia_gestor' || m.tipo === 'devolucion_gestor') {
+      const _mt = (m.nota||'').match(/^(?:Transferencia|Devolución): ([^—]+)/);
+      const _esDev = m.tipo === 'devolucion_gestor';
+      gestor = `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-right:6px;background:${_esDev?'#ecfdf5':'#eff6ff'};color:${_esDev?'#059669':'var(--blue)'}">${_esDev?'↩ DEVOLUCIÓN':'⇄ TRANSFERENCIA'}</span>${_hx(_mt ? _mt[1].trim() : (m.nota||'—'))}`;
+      notaExtra = (m.nota||'').includes('—') ? _hx(m.nota.split('—').slice(1).join('—').trim()) : '';
+      cantHtml = `<span style="color:${_esDev?'#059669':'var(--blue)'}">${_esDev?'+':'⇄'}${m.cantidad}</span>`;
+    } else {
+      const gestorMatch = (m.nota||'').match(/^Gestor: ([^|—]+)/);
+      gestor = gestorMatch ? gestorMatch[1].trim() : (m.nota || '—');
+      notaExtra = (m.nota||'').includes('—') ? m.nota.split('—').slice(1).join('—').trim() : '';
+      cantHtml = `<span style="color:#dc2626">−${m.cantidad}</span>`;
+    }
     return `<tr style="border-bottom:1px solid var(--line)" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background=''">
       <td style="padding:8px 12px;font-size:12px;color:var(--ink2)">${fecha}</td>
       <td style="padding:8px 12px;font-weight:700;color:${color}">${m.banco||'—'}</td>
       <td style="padding:8px 12px;font-weight:600">${gestor}</td>
-      <td style="padding:8px 12px;text-align:right;font-weight:700;color:#dc2626">−${m.cantidad}</td>
+      <td style="padding:8px 12px;text-align:right;font-weight:700">${cantHtml}</td>
       <td style="padding:8px 12px;font-size:12px;color:var(--ink2)">${notaExtra || '—'}</td>
       <td style="padding:8px 12px;font-size:12px;color:var(--muted)">${m.usuario||'—'}</td>
     </tr>`;
@@ -13943,6 +13959,133 @@ async function guardarEnvioGestor() {
   cerrarModalEnvioGestor();
   toast(`✅ Envío registrado: ${cantidad} prendas ${banco} → ${gestor}`);
   if (document.getElementById('v-envios-gestor')?.style.display !== 'none') loadEnviosGestor();
+}
+
+// ═══════════════════════════════════════════
+// TRANSFERENCIA DE PRENDAS ENTRE GESTORES (v3.9.02)
+// Origen gestor → otro gestor, o → stock general del banco (devolución)
+// ═══════════════════════════════════════════
+let _transfGestores = [];
+const _hx = v => String(v==null?'':v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function abrirModalTransferencia(gestorPre, bancoPre) {
+  // Datos frescos de stock por gestor y lista de gestores
+  const { data: sgd } = await SB.from('stock_prendas_gestor').select('*').order('gestor').order('banco');
+  STOCK_GESTOR_DATA = sgd || [];
+  if (!_transfGestores.length) {
+    const { data: g } = await SB.from('gestores').select('nombre').order('nombre');
+    _transfGestores = (g || []).map(x => x.nombre).filter(Boolean);
+  }
+  const origenes = [...new Set(STOCK_GESTOR_DATA.filter(d => d.cantidad > 0).map(d => d.gestor))].sort();
+  const selO = document.getElementById('transf-origen');
+  selO.innerHTML = '<option value="">Seleccioná un gestor</option>' + origenes.map(g => `<option value="${_hx(g)}">${_hx(g)}</option>`).join('');
+  if (!origenes.length) { toast('Ningún gestor tiene stock para transferir', 'warn'); return; }
+  document.getElementById('transf-cantidad').value = '';
+  document.getElementById('transf-nota').value = '';
+  selO.value = (gestorPre && origenes.includes(gestorPre)) ? gestorPre : '';
+  transfOnOrigenChange(bancoPre);
+  document.getElementById('transf-gestor-overlay').classList.add('open');
+}
+
+function cerrarModalTransferencia() {
+  document.getElementById('transf-gestor-overlay').classList.remove('open');
+}
+
+function transfOnOrigenChange(bancoPre) {
+  const origen = document.getElementById('transf-origen').value;
+  const selB = document.getElementById('transf-banco');
+  const selD = document.getElementById('transf-destino');
+  if (!origen) {
+    selB.innerHTML = '<option value="">Primero elegí el gestor origen</option>';
+  } else {
+    const filas = STOCK_GESTOR_DATA.filter(d => d.gestor === origen && d.cantidad > 0);
+    selB.innerHTML = (filas.length > 1 ? '<option value="">Seleccioná un banco</option>' : '') +
+      filas.map(d => `<option value="${_hx(d.banco)}">${_hx(d.banco)} (${d.cantidad} disponibles)</option>`).join('');
+    if (typeof bancoPre === 'string' && filas.some(d => d.banco === bancoPre)) selB.value = bancoPre;
+  }
+  const destinos = _transfGestores.filter(g => g !== origen);
+  selD.innerHTML = '<option value="">Seleccioná el destino</option>' +
+    destinos.map(g => `<option value="${_hx(g)}">${_hx(g)}</option>`).join('') +
+    '<option value="__GENERAL__">↩ Devolver al stock general</option>';
+  transfActualizarInfo();
+}
+
+function transfActualizarInfo() {
+  const origen  = document.getElementById('transf-origen').value;
+  const banco   = document.getElementById('transf-banco').value;
+  const destino = document.getElementById('transf-destino').value;
+  const cant    = parseInt(document.getElementById('transf-cantidad').value) || 0;
+  const info    = document.getElementById('transf-info');
+  if (!origen || !banco) { info.style.display = 'none'; return; }
+  const disp = (STOCK_GESTOR_DATA.find(d => d.gestor === origen && d.banco === banco) || {}).cantidad || 0;
+  const destTxt = destino === '__GENERAL__' ? 'stock general' : (destino || '…');
+  info.style.display = '';
+  info.innerHTML = `<b>${_hx(origen)}</b> tiene <b>${disp}</b> prendas ${_hx(banco)}.` +
+    (cant ? (cant > disp
+      ? ` <span style="color:#dc2626;font-weight:700">No alcanza para ${cant}.</span>`
+      : `<br>Queda: ${_hx(origen)} <b>${disp - cant}</b> → ${_hx(destTxt)} <b>+${cant}</b>`) : '');
+}
+
+async function guardarTransferencia() {
+  const origen  = document.getElementById('transf-origen').value;
+  const banco   = document.getElementById('transf-banco').value;
+  const destino = document.getElementById('transf-destino').value;
+  const cant    = parseInt(document.getElementById('transf-cantidad').value) || 0;
+  const nota    = document.getElementById('transf-nota').value.trim();
+  if (!origen)  { toast('Seleccioná el gestor origen', 'warn'); return; }
+  if (!banco)   { toast('Seleccioná el banco', 'warn'); return; }
+  if (cant < 1) { toast('La cantidad debe ser mayor a 0', 'warn'); return; }
+  if (!destino) { toast('Seleccioná el destino', 'warn'); return; }
+  if (destino === origen) { toast('El destino tiene que ser otro gestor', 'warn'); return; }
+
+  const btn = document.getElementById('transf-btn');
+  btn.disabled = true;
+  try {
+    // Releer stock del origen (por si otro usuario lo cambió)
+    const { data: so, error: eo } = await SB.from('stock_prendas_gestor')
+      .select('cantidad').eq('gestor', origen).eq('banco', banco).maybeSingle();
+    if (eo) throw eo;
+    const dispOrigen = so?.cantidad || 0;
+    if (cant > dispOrigen) { toast(`${origen} tiene solo ${dispOrigen} prendas ${banco}`, 'warn'); return; }
+
+    // 1) Restar al origen
+    const { error: e1 } = await SB.from('stock_prendas_gestor')
+      .update({ cantidad: dispOrigen - cant, updated_at: new Date().toISOString() })
+      .eq('gestor', origen).eq('banco', banco);
+    if (e1) throw e1;
+
+    // 2) Sumar al destino (si falla, devolver al origen)
+    let e2 = null;
+    if (destino === '__GENERAL__') {
+      const { data: sg } = await SB.from('stock_prendas').select('cantidad').eq('banco', banco).maybeSingle();
+      ({ error: e2 } = await SB.from('stock_prendas').upsert(
+        { banco, cantidad: (sg?.cantidad || 0) + cant, updated_at: new Date().toISOString() }, { onConflict: 'banco' }));
+    } else {
+      const { data: sd } = await SB.from('stock_prendas_gestor').select('cantidad').eq('gestor', destino).eq('banco', banco).maybeSingle();
+      ({ error: e2 } = await SB.from('stock_prendas_gestor').upsert(
+        { gestor: destino, banco, cantidad: (sd?.cantidad || 0) + cant, updated_at: new Date().toISOString() }, { onConflict: 'gestor,banco' }));
+    }
+    if (e2) {
+      await SB.from('stock_prendas_gestor').update({ cantidad: dispOrigen, updated_at: new Date().toISOString() }).eq('gestor', origen).eq('banco', banco);
+      throw e2;
+    }
+
+    // 3) Movimiento en el historial
+    const esDev = destino === '__GENERAL__';
+    await SB.from('stock_prendas_movimientos').insert({
+      banco, tipo: esDev ? 'devolucion_gestor' : 'transferencia_gestor', cantidad: cant,
+      nota: `${esDev ? 'Devolución' : 'Transferencia'}: ${origen} → ${esDev ? 'Stock general' : destino}${nota ? ' — ' + nota : ''}`,
+      usuario: ME?.usr || null
+    });
+
+    cerrarModalTransferencia();
+    toast(esDev ? `↩ ${cant} prendas ${banco} de ${origen} volvieron al stock general` : `⇄ ${cant} prendas ${banco}: ${origen} → ${destino}`, 'ok');
+    await loadEnviosGestor();
+  } catch(e) {
+    toast('Error en la transferencia: ' + (e.message || e), 'er');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -16797,6 +16940,46 @@ function renderReportes() {
       </div>
       <div id="envio-gestor-stock-info" style="font-size:12px;color:var(--muted);padding:8px 12px;background:var(--surface);border-radius:8px;display:none"></div>
       <button class="btn btn-p" onclick="guardarEnvioGestor()">💾 Registrar envío</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TRANSFERENCIA ENTRE GESTORES (v3.9.02) -->
+<div class="overlay" id="transf-gestor-overlay" onclick="if(event.target===this)cerrarModalTransferencia()" style="z-index:800">
+  <div class="modal" style="max-width:420px">
+    <div class="mh">
+      <div class="mt">⇄ Transferir prendas</div>
+      <button class="mc" onclick="cerrarModalTransferencia()">✕</button>
+    </div>
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px">
+      <div class="fc">
+        <label>Gestor origen (tiene las prendas)</label>
+        <select id="transf-origen" class="fsel" style="font-size:16px" onchange="transfOnOrigenChange()">
+          <option value="">Seleccioná un gestor</option>
+        </select>
+      </div>
+      <div class="fc">
+        <label>Banco</label>
+        <select id="transf-banco" class="fsel" style="font-size:16px" onchange="transfActualizarInfo()">
+          <option value="">Primero elegí el gestor origen</option>
+        </select>
+      </div>
+      <div class="fc">
+        <label>Cantidad de prendas</label>
+        <input type="number" id="transf-cantidad" min="1" placeholder="Ej: 3" style="font-size:16px" oninput="transfActualizarInfo()">
+      </div>
+      <div class="fc">
+        <label>Destino</label>
+        <select id="transf-destino" class="fsel" style="font-size:16px" onchange="transfActualizarInfo()">
+          <option value="">Seleccioná el destino</option>
+        </select>
+      </div>
+      <div class="fc">
+        <label>Nota (opcional)</label>
+        <input type="text" id="transf-nota" placeholder="Ej: no las usó en 3 meses">
+      </div>
+      <div id="transf-info" style="font-size:12px;color:var(--muted);padding:8px 12px;background:var(--surface);border-radius:8px;display:none"></div>
+      <button class="btn btn-p" id="transf-btn" onclick="guardarTransferencia()">⇄ Transferir</button>
     </div>
   </div>
 </div>
