@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.00</title>
+<title>Grupo Olyar — Solicitudes v3.9.01</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.00';
+    var APP_VER='v3.9.01';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -1082,6 +1082,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <option value="Columbia">Columbia</option>
             <option value="Galicia">Galicia</option>
             <option value="Santander">Santander</option>
+            <option value="ICBC">ICBC</option>
           </select>
           <input type="date" id="envios-list-desde" class="fsel" onchange="renderEnviosGestor()" style="font-size:12px">
           <input type="date" id="envios-list-hasta" class="fsel" onchange="renderEnviosGestor()" style="font-size:12px">
@@ -13611,8 +13612,8 @@ async function loadStockPrendas() {
 function renderStockCards() {
   const cont = document.getElementById('stock-cards');
   if (!cont) return;
-  const bancos = ['Columbia','Galicia','Santander'];
-  const COLORES = { Columbia:'#1d6fce', Galicia:'#e8821a', Santander:'#ec0000', Supervielle:'#682489', Bancor:'#005f5b' };
+  const bancos = ['Columbia','Galicia','Santander','ICBC'];
+  const COLORES = { Columbia:'#1d6fce', Galicia:'#e8821a', Santander:'#ec0000', Supervielle:'#682489', Bancor:'#005f5b', ICBC:'#c8102e' };
   cont.innerHTML = bancos.map(banco => {
     const s = STOCK_DATA[banco];
     const cant = s ? s.cantidad : 0;
@@ -13661,7 +13662,7 @@ function renderMovimientos() {
   if (!tbody) return;
   const fBanco = document.getElementById('stock-mov-banco')?.value || '';
   const fTipo  = document.getElementById('stock-mov-tipo')?.value  || '';
-  const COLORES = { Columbia:'#1d6fce', Galicia:'#e8821a', Santander:'#ec0000', Supervielle:'#682489', Bancor:'#005f5b' };
+  const COLORES = { Columbia:'#1d6fce', Galicia:'#e8821a', Santander:'#ec0000', Supervielle:'#682489', Bancor:'#005f5b', ICBC:'#c8102e' };
   const TIPO_LABELS = { entrada:'✅ Entrada', salida_avanza:'🔽 Salida AVANZA', salida_gestor:'🔽 Salida gestor' };
 
   let data = [...MOV_DATA];
@@ -13706,7 +13707,8 @@ async function guardarCargaStock() {
 
   // Upsert stock
   const actual = STOCK_DATA[banco]?.cantidad || 0;
-  await SB.from('stock_prendas').upsert({ banco, cantidad: actual + cantidad, updated_at: new Date().toISOString() }, { onConflict: 'banco' });
+  const { error: _stErr } = await SB.from('stock_prendas').upsert({ banco, cantidad: actual + cantidad, updated_at: new Date().toISOString() }, { onConflict: 'banco' });
+  if (_stErr) { toast('Error al cargar stock: ' + _stErr.message, 'er'); return; }
 
   // Registrar movimiento
   await SB.from('stock_prendas_movimientos').insert({
@@ -13722,7 +13724,8 @@ async function guardarCargaStock() {
 async function descontarStockPrenda(banco, tipo, solicitudId, nota, gestor) {
   if (!banco) { console.warn('descontarStock: banco vacío'); return; }
 
-  const bancoNorm = banco.charAt(0).toUpperCase() + banco.slice(1).toLowerCase();
+  let bancoNorm = banco.charAt(0).toUpperCase() + banco.slice(1).toLowerCase();
+  if (bancoNorm.toUpperCase() === 'ICBC') bancoNorm = 'ICBC'; // sigla: no pasar a "Icbc"
 
   try {
     if (tipo === 'salida_avanza' && gestor) {
@@ -13782,7 +13785,7 @@ function renderStockGestor(data) {
   const tbody = document.getElementById('stock-gestor-tbody');
   const empty = document.getElementById('stock-gestor-empty');
   if (!tbody) return;
-  const COLORES = { Columbia:'#1d6fce', Galicia:'#e8821a', Santander:'#ec0000' };
+  const COLORES = { Columbia:'#1d6fce', Galicia:'#e8821a', Santander:'#ec0000', ICBC:'#c8102e' };
   const activos = data.filter(d => d.cantidad > 0);
   if (!activos.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
@@ -13798,8 +13801,8 @@ function renderStockGestor(data) {
 function renderStockCardsEnvios() {
   const cont = document.getElementById('envios-stock-cards');
   if (!cont) return;
-  const bancos = ['Columbia','Galicia','Santander'];
-  const COLORES = { Columbia:'#1d6fce', Galicia:'#e8821a', Santander:'#ec0000', Supervielle:'#682489', Bancor:'#005f5b' };
+  const bancos = ['Columbia','Galicia','Santander','ICBC'];
+  const COLORES = { Columbia:'#1d6fce', Galicia:'#e8821a', Santander:'#ec0000', Supervielle:'#682489', Bancor:'#005f5b', ICBC:'#c8102e' };
   cont.innerHTML = bancos.map(banco => {
     const s = STOCK_DATA[banco];
     const cant = s ? s.cantidad : 0;
@@ -13826,7 +13829,7 @@ function renderEnviosGestor() {
   const fBanco = document.getElementById('envios-list-banco')?.value || '';
   const fDesde = document.getElementById('envios-list-desde')?.value || '';
   const fHasta = document.getElementById('envios-list-hasta')?.value || '';
-  const COLORES = { Columbia:'#1d6fce', Galicia:'#e8821a', Santander:'#ec0000', Supervielle:'#682489', Bancor:'#005f5b' };
+  const COLORES = { Columbia:'#1d6fce', Galicia:'#e8821a', Santander:'#ec0000', Supervielle:'#682489', Bancor:'#005f5b', ICBC:'#c8102e' };
 
   let data = [...ENVIOS_DATA];
   if (fBanco) data = data.filter(m => m.banco === fBanco);
@@ -16740,6 +16743,7 @@ function renderReportes() {
           <option value="Columbia">Columbia</option>
           <option value="Galicia">Galicia</option>
           <option value="Santander">Santander</option>
+          <option value="ICBC">ICBC</option>
         </select>
       </div>
       <div class="fc">
@@ -16776,6 +16780,7 @@ function renderReportes() {
           <option value="Columbia">Columbia</option>
           <option value="Galicia">Galicia</option>
           <option value="Santander">Santander</option>
+          <option value="ICBC">ICBC</option>
         </select>
       </div>
       <div class="fc">
