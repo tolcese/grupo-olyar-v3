@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.02</title>
+<title>Grupo Olyar — Solicitudes v3.9.03</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.02';
+    var APP_VER='v3.9.03';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -12428,9 +12428,13 @@ async function saveRecord() {
       const cambios = diffObjetos(viejo, rec, campos);
       registrarHistorial('solicitud', editId, cambios);
     } else {
-      rec = { id:'S'+Date.now(), ...d, usuario:ME.nom, fechaReg:hoyLocal() };
+      // Relevamiento automático (v3.9.03), solo en alta: se tilda si no hay bancos
+      // o si TODOS los bancos están RECHAZADO. Con al menos uno APROBADO/AVANZA, no.
+      const _bRel = (Array.isArray(d.bancos) ? d.bancos : []).filter(b => (b.banco||'').trim() || (b.estado||'').trim());
+      const _autoRel = !_bRel.length || _bRel.every(b => String(b.estado||'').trim().toUpperCase() === 'RECHAZADO');
+      rec = { id:'S'+Date.now(), ...d, usuario:ME.nom, fechaReg:hoyLocal(), relevamiento: _autoRel };
       RECORDS.push(rec);
-      const { error } = await SB.from('solicitudes').insert(toDb(rec));
+      const { error } = await SB.from('solicitudes').insert({ ...toDb(rec), relevamiento: _autoRel });
       if (error) throw error;
     }
     syncUI('ok');
