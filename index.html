@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.03</title>
+<title>Grupo Olyar — Solicitudes v3.9.04</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.03';
+    var APP_VER='v3.9.04';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -6900,7 +6900,7 @@ async function renderRecordatoriosWA() {
     if (c.estado !== 'Activo') return false;
     const venc = proximoVencimientoCuota(c);
     if (!venc) return false;
-    const recordatorio = diasHabilesAtras(venc, 7);
+    const recordatorio = diasHabilesAtras(venc, DIAS_RECORDATORIO);
     recordatorio.setHours(0,0,0,0);
     const enRango = recordatorio <= hoy && hoy <= venc;
     const vencMes = `${venc.getFullYear()}-${String(venc.getMonth()+1).padStart(2,'0')}`;
@@ -6994,7 +6994,7 @@ async function renderRecordatoriosWA() {
 
 async function checkCuotasVencimientoPopup() {
   try {
-    const { data: creditos } = await SB.from('creditos').select('id,cliente,cant_cuotas,fecha_inicio,dia_vencimiento');
+    const { data: creditos } = await SB.from('creditos').select('id,cliente,cant_cuotas,fecha_inicio,dia_vencimiento,estado');
     const { data: enviados } = await SB.from('recordatorios_enviados').select('credito_id,mes');
     if (!creditos || !creditos.length) return;
 
@@ -7004,9 +7004,13 @@ async function checkCuotasVencimientoPopup() {
 
     const pendientes = creditos.filter(c => {
       if (!c.fecha_inicio || !c.cant_cuotas) return false;
+      if (c.estado && c.estado !== 'Activo') return false;
       const dia = parseInt(c.dia_vencimiento) || 5;
       const venc = new Date(hoy.getFullYear(), hoy.getMonth(), dia);
       if (venc < hoy) return false;
+      // Misma regla que la pestaña Recordatorios: desde DIAS_RECORDATORIO hábiles antes (v3.9.04)
+      const _desde = diasHabilesAtras(venc, DIAS_RECORDATORIO); _desde.setHours(0,0,0,0);
+      if (hoy < _desde) return false;
       return !yaEnviados.has(`${c.id}_${mesActual}`);
     });
 
@@ -7921,7 +7925,7 @@ function openCredPanel(id) {
       <button class="btn btn-p" style="width:100%;background:#25D366;border-color:#25D366;font-size:13px;padding:10px" onclick="enviarRecordatorioWA('${id}')">
         💬 Enviar recordatorio por WhatsApp
       </button>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center">Se calcula la fecha 7 días antes del próximo vencimiento</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center">Se avisa desde 5 días hábiles antes del próximo vencimiento</div>
     </div>
     <div class="panel-section">
       <div class="panel-section-t">Cuotas</div>
@@ -7983,6 +7987,8 @@ function editCredito(id) {
 // ══════════════════════════════════════════════
 // RECORDATORIOS DE CRÉDITOS
 // ══════════════════════════════════════════════
+// Días hábiles (lun-vie) antes del vencimiento en que arranca el recordatorio de cuota (v3.9.04)
+const DIAS_RECORDATORIO = 5;
 function diasHabilesAtras(fecha, dias) {
   // Resta N días hábiles (sin sábado ni domingo) desde una fecha
   let d = new Date(fecha);
@@ -8161,7 +8167,7 @@ async function checkRecordatoriosCreditos() {
     if (c.estado !== 'Activo') return false;
     const venc = proximoVencimientoCuota(c);
     if (!venc) return false;
-    const recordatorio = diasHabilesAtras(venc, 7);
+    const recordatorio = diasHabilesAtras(venc, DIAS_RECORDATORIO);
     recordatorio.setHours(0,0,0,0);
     const enRango = recordatorio <= hoy && hoy <= venc;
     const vencMes = `${venc.getFullYear()}-${String(venc.getMonth()+1).padStart(2,'0')}`;
