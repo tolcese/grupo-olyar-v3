@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.04</title>
+<title>Grupo Olyar — Solicitudes v3.9.05</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.04';
+    var APP_VER='v3.9.05';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -16053,6 +16053,29 @@ function initCalcTabla() {
 }
 
 // ── CENTRAL DE DEUDORES BCRA ────────────────────────────
+// v3.9.05: consulta vía Supabase Edge Function "bcra-deudores" (el navegador no puede
+// llamar directo a la API del BCRA: CORS/certificado). Si la función no existe, intenta directo.
+async function _bcraConsultar(cuit) {
+  const directo = `https://api.bcra.gob.ar/centraldedeudores/v1.0/Deudas/${cuit}`;
+  let errEdge = '';
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/bcra-deudores?cuit=${cuit}`, {
+      headers: { apikey: SUPABASE_ANON, Authorization: 'Bearer ' + SUPABASE_ANON }
+    });
+    const j = await r.json().catch(() => null);
+    const noExiste = r.status === 404 && j && j.code === 'NOT_FOUND' && /function/i.test(j.message || '');
+    if (j && !noExiste) return { ok: r.ok, status: r.status, json: j };
+    errEdge = noExiste ? 'función no publicada' : ('respuesta ' + r.status);
+  } catch(e) { errEdge = e.message; }
+  try {
+    const r = await fetch(directo);
+    const j = await r.json();
+    return { ok: r.ok, status: r.status, json: j };
+  } catch(e) {
+    throw new Error('Edge: ' + errEdge + ' · Directo: ' + e.message);
+  }
+}
+
 async function consultarCentralDeudores() {
   const cuit = document.getElementById('cd-cuit').value.trim().replace(/\D/g,'');
   const loading = document.getElementById('cd-loading');
@@ -16073,8 +16096,8 @@ async function consultarCentralDeudores() {
   btn.disabled = true;
 
   try {
-    const res = await fetch(`https://api.bcra.gob.ar/centraldedeudores/v1.0/Deudas/${cuit}`);
-    const json = await res.json();
+    const res = await _bcraConsultar(cuit);
+    const json = res.json || {};
 
     if (!res.ok || !json.results) {
       error.textContent = json.errorMessages?.[0] || 'No se encontraron datos para ese CUIT';
@@ -16122,7 +16145,7 @@ async function consultarCentralDeudores() {
       ${htmlPeriodos || '<div style="color:var(--muted);font-size:13px">Sin deudas registradas</div>'}`;
     result.style.display = '';
   } catch(e) {
-    error.textContent = 'Error al conectar con la API del BCRA. Intentá nuevamente.';
+    error.textContent = 'Error al conectar con la API del BCRA. Intentá nuevamente. (' + (e.message || e) + ')';
     error.style.display = '';
   }
   loading.style.display = 'none';
