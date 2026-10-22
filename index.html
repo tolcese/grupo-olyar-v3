@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.05</title>
+<title>Grupo Olyar — Solicitudes v3.9.06</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.05';
+    var APP_VER='v3.9.06';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -2183,7 +2183,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <table class="prendas-table">
             <thead>
               <tr>
-                <th>Acciones</th><th>#</th><th>N° Trámite</th><th>Fecha actual</th><th>Fecha solicitud</th><th>Cliente</th><th>Gestor asignado</th><th>PP/PI</th><th>Banco</th><th>Concesionaria</th><th>Localidad</th><th>Provincia</th><th>Año</th><th>Marca</th><th>Descripción vehículo</th><th>Tipo CTA</th><th>Dominio</th><th>Tasa</th><th>Imp. Solicitado</th><th>Observaciones</th>
+                <th>Acciones</th><th>#</th><th>Estado crédito</th><th>Fecha actual</th><th>Fecha solicitud</th><th>Cliente</th><th>Gestor asignado</th><th>PP/PI</th><th>Banco</th><th>Concesionaria</th><th>Localidad</th><th>Provincia</th><th>Año</th><th>Marca</th><th>Descripción vehículo</th><th>Tipo CTA</th><th>Dominio</th><th>Tasa</th><th>Imp. Solicitado</th><th>N° Trámite</th><th>Observaciones</th>
               </tr>
             </thead>
             <tbody id="prendas-tbody"></tbody>
@@ -11103,7 +11103,7 @@ function limpiarFiltrosPC() {
 }
 function _pcExportRows() {
   const fD=v=>v?String(v).split('-').reverse().join('/'):'';
-  return getPCData().map(r=>({'N° Trámite':r.nroControl||'','Fecha solicitud':fD(r.fecha),'Cliente':r.nombrecliente||'','Gestor':r.gestorAsignado||'','PP/PI':(r.prePrenda?'PP':(r.prendaInscripta?'PI':'')),'Banco':r.banco||'','Concesionaria':r.concesionaria||'','Localidad':r.localidad||'','Provincia':r.provincia||'','Año':r.anio||'','Marca':r.marca||'','Descripción vehículo':r.descripcion||'','Tipo CTA':r.tipocta||''}));
+  return getPCData().map(r=>({'Estado crédito':r.creditoEstado||'','Fecha solicitud':fD(r.fecha),'Cliente':r.nombrecliente||'','Gestor':r.gestorAsignado||'','PP/PI':(r.prePrenda?'PP':(r.prendaInscripta?'PI':'')),'Banco':r.banco||'','Concesionaria':r.concesionaria||'','Localidad':r.localidad||'','Provincia':r.provincia||'','Año':r.anio||'','Marca':r.marca||'','Descripción vehículo':r.descripcion||'','Tipo CTA':r.tipocta||'','N° Trámite':r.nroControl||''}));
 }
 async function exportarPCExcel() {
   const rows=_pcExportRows(); if(!rows.length) return alert('No hay datos para exportar');
@@ -11122,6 +11122,24 @@ async function exportarPCPDF() {
   doc.autoTable({head:[cols],body:rows.map(r=>cols.map(c=>r[c])),startY:25,styles:{fontSize:7,cellPadding:1.5},headStyles:{fillColor:[29,111,206],textColor:255,fontStyle:'bold'},alternateRowStyles:{fillColor:[245,247,250]}});
   doc.save(`Prendas_en_curso_${hoyLocal()}.pdf`);
 }
+// Badge del estado del crédito de la prenda (v3.9.06)
+function _pcEstadoCreditoBadge(est) {
+  if (!est) return '<span style="color:var(--muted)">—</span>';
+  const C = {
+    'No solicitado':            ['#f1f5f9','#64748b'],
+    'Solicitado':               ['#eff6ff','#1d6fce'],
+    'Carga documentación':      ['#fff7ed','#c2410c'],
+    'Pendiente seguro':         ['#fefce8','#a16207'],
+    'En proceso de liquidación':['#f5f3ff','#6d28d9'],
+    'Liquidado':                ['#ecfdf5','#059669'],
+    'Reversado':                ['#fef2f2','#dc2626'],
+    'Cancelado':                ['#fef2f2','#991b1b']
+  };
+  const c = C[est] || ['#f1f5f9','#334155'];
+  const t = String(est).replace(/[&<>"]/g, x => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x]));
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:6px;background:${c[0]};color:${c[1]};font-weight:700;font-size:11px">${t}</span>`;
+}
+
 function renderPrendas() {
   poblarFiltrosPC();
   let data = getPCData();
@@ -11159,7 +11177,7 @@ function renderPrendas() {
         </div>
       </td>
       <td style="color:var(--muted);font-size:11px">${i+1}</td>
-      <td style="font-family:monospace;font-weight:700;color:var(--blue);white-space:nowrap">${val(r.nroControl)}</td>
+      <td style="white-space:nowrap">${_pcEstadoCreditoBadge(r.creditoEstado)}</td>
       <td style="white-space:nowrap">${hoy}</td>
       <td style="white-space:nowrap">${r.fecha ? r.fecha.split('-').reverse().join('/') : '—'}</td>
       <td style="font-weight:700;min-width:130px">${val(r.nombrecliente)}</td>
@@ -11176,6 +11194,7 @@ function renderPrendas() {
       <td style="font-family:monospace">${val(r.dominio)}</td>
       <td>${val(r.tasa)}</td>
       <td style="font-family:monospace">${r.importe ? '$'+Number(String(r.importe).replace(/[$,]/g,'')).toLocaleString('es-AR') : '—'}</td>
+      <td style="font-family:monospace;font-weight:700;color:var(--blue);white-space:nowrap">${val(r.nroControl)}</td>
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis" title="${r.obs||''}">${val(r.obs)}</td>
     </tr>`;
   }).join('');
