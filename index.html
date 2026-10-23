@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.06</title>
+<title>Grupo Olyar — Solicitudes v3.9.08</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.06';
+    var APP_VER='v3.9.08';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -3743,6 +3743,20 @@ async function _olyarFetch(input, init) {
   return res;
 }
 const SB = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { global: { fetch: _olyarFetch } });
+
+// v3.9.07: trae TODAS las filas de a 1000 (Supabase corta en 1000 por consulta).
+// build = () => SB.from(...).select(...).order(...)  — con un orden único para no saltear filas.
+async function _sbAll(build, batch = 1000) {
+  let all = [], from = 0;
+  while (true) {
+    const { data, error } = await build().range(from, from + batch - 1);
+    if (error) return { data: all, error };
+    all = all.concat(data || []);
+    if (!data || data.length < batch) break;
+    from += batch;
+  }
+  return { data: all, error: null };
+}
 function colorBanco(banco) {
   const b = (banco || '').toUpperCase();
   const color = b.includes('COLUMBIA') ? '#1d6fce' : b.includes('GALICIA') ? '#e8821a' : b.includes('SANTANDER') ? '#ec0000' : b.includes('SUPERVIELLE') ? '#682489' : b.includes('BANCOR') ? '#005f5b' : b.includes('ICBC') ? '#c8102e' : 'var(--ink)';
@@ -6582,7 +6596,10 @@ function closeClientes() {
 }
 
 function renderClientes() {
-  const q = (document.getElementById('clientes-srch')?.value || '').toLowerCase();
+  // Búsqueda sin acentos, sin importar mayúsculas, espacios ni orden de las palabras (v3.9.07)
+  const _norm = v => String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9ñ ]/g,' ').replace(/\s+/g,' ').trim();
+  const q = _norm(document.getElementById('clientes-srch')?.value || '');
+  const _qWords = q ? q.split(' ') : [];
   const isAdmin = ME?.rol === 'admin';
 
   // Fuente: tabla clientes (base propia). Fallback de nombre a solicitudes si faltara.
@@ -6595,9 +6612,10 @@ function renderClientes() {
     telefono: c.telefono, email: c.email
   }));
   data.sort((a,b) => (a.nombrecliente||'').localeCompare(b.nombrecliente||'', 'es'));
-  if (q) data = data.filter(r =>
-    [(r.nombrecliente||''), (r.dni||'')].some(v => v.toLowerCase().includes(q))
-  );
+  if (_qWords.length) data = data.filter(r => {
+    const hay = _norm((r.nombrecliente||'') + ' ' + (r.dni||''));
+    return _qWords.every(w => hay.includes(w));
+  });
 
   const tbody  = document.getElementById('clientes-tbody');
   const empty  = document.getElementById('clientes-empty');
@@ -6893,7 +6911,7 @@ async function renderRecordatoriosWA() {
   hoy.setHours(0,0,0,0);
 
   // Cargar recordatorios ya enviados
-  const { data: enviados } = await SB.from('recordatorios_enviados').select('credito_id,mes');
+  const { data: enviados } = await _sbAll(() => SB.from('recordatorios_enviados').select('credito_id,mes').order('credito_id').order('mes'));
   const yaEnviados = new Set((enviados||[]).map(e => `${e.credito_id}_${e.mes}`));
 
   const pendientes = CREDITOS_CACHE.filter(c => {
@@ -6995,7 +7013,7 @@ async function renderRecordatoriosWA() {
 async function checkCuotasVencimientoPopup() {
   try {
     const { data: creditos } = await SB.from('creditos').select('id,cliente,cant_cuotas,fecha_inicio,dia_vencimiento,estado');
-    const { data: enviados } = await SB.from('recordatorios_enviados').select('credito_id,mes');
+    const { data: enviados } = await _sbAll(() => SB.from('recordatorios_enviados').select('credito_id,mes').order('credito_id').order('mes'));
     if (!creditos || !creditos.length) return;
 
     const hoy = new Date(); hoy.setHours(0,0,0,0);
@@ -7035,8 +7053,8 @@ function cerrarPopupCuotas() {
 async function loadCreditos() {
   try {
     const [{ data: credData }, { data: cuotaData }] = await Promise.all([
-      SB.from('creditos').select('*').order('created_at', { ascending: false }),
-      SB.from('cuotas').select('*').order('nro')
+      _sbAll(() => SB.from('creditos').select('*').order('created_at', { ascending: false }).order('id')),
+      _sbAll(() => SB.from('cuotas').select('*').order('nro').order('id'))
     ]);
     CREDITOS_CACHE = (credData || []).map(c => ({
       id: c.id, solicitudId: c.solicitud_id, cliente: c.cliente, dni: c.dni,
@@ -8160,7 +8178,7 @@ async function checkRecordatoriosCreditos() {
   const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
 
   // Cargar recordatorios ya enviados este mes
-  const { data: enviados } = await SB.from('recordatorios_enviados').select('credito_id,mes');
+  const { data: enviados } = await _sbAll(() => SB.from('recordatorios_enviados').select('credito_id,mes').order('credito_id').order('mes'));
   const yaEnviados = new Set((enviados||[]).map(e => `${e.credito_id}_${e.mes}`));
 
   const pendientes = CREDITOS_CACHE.filter(c => {
@@ -12041,7 +12059,7 @@ async function autoCalcContabilidad() {
 
 async function loadLists() {
   try {
-    const { data, error } = await SB.from('listas').select('campo, valor').order('campo');
+    const { data, error } = await _sbAll(() => SB.from('listas').select('id, campo, valor').order('campo').order('id'));
     if (error) throw error;
     (data || []).forEach(row => {
       const k = row.campo;
@@ -12059,12 +12077,21 @@ async function loadLists() {
 }
 
 async function loadClientes() {
+  // v3.9.07: paginado de a 1000 (Supabase corta en 1000 filas por consulta;
+  // antes los clientes que pasaban ese límite no aparecían en Clientes ni en los recordatorios)
   try {
-    const { data, error } = await SB.from('clientes').select('*');
-    if (error) throw error;
+    let all = [], from = 0;
+    const batch = 1000;
+    while (true) {
+      const { data, error } = await SB.from('clientes').select('*').order('dni', { ascending: true }).range(from, from + batch - 1);
+      if (error) throw error;
+      all = all.concat(data || []);
+      if (!data || data.length < batch) break;
+      from += batch;
+    }
     CLIENTES_DATA = {};
-    (data || []).forEach(c => { CLIENTES_DATA[c.dni] = c; });
-  } catch(e) {}
+    all.forEach(c => { CLIENTES_DATA[c.dni] = c; });
+  } catch(e) { console.warn('loadClientes:', e); }
 }
 
 // ══════════════════════════════════════════════
