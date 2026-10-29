@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.08</title>
+<title>Grupo Olyar — Solicitudes v3.9.09</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.08';
+    var APP_VER='v3.9.09';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -2533,6 +2533,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
               <div class="pe-f" style="margin:-2px 0 2px;padding-left:2px"><label>Observaciones — Presentado</label><textarea class="pe-in" id="pe-et-obs-presentado" rows="4" style="resize:vertical"></textarea></div>
               <div class="pe-et-row"><span class="pe-et-label">Retirado</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-retirado" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-retirado" onchange="etRecompute()"></div>
               <div class="pe-et-row"><span class="pe-et-label">Subida</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-subida" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-subida" onchange="etRecompute()"></div>
+              <div class="pe-et-row"><span class="pe-et-label">Envío póliza</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-envio_poliza" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-envio_poliza" onchange="etRecompute()"></div>
               <div class="pe-et-row"><span class="pe-et-label">Pendiente física</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-pendiente_fisica" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-pendiente_fisica" onchange="etRecompute()"></div>
               <div class="pe-et-row"><span class="pe-et-label">Prenda enviada a casa central</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-enviada_casa_central" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-enviada_casa_central" onchange="etRecompute()"></div>
               <div class="pe-et-row"><span class="pe-et-label">Prenda entregada</span><input class="pe-in pe-et-date" type="date" id="pe-et-f-prenda_entregada" onchange="etRecompute()"><input type="checkbox" id="pe-et-t-prenda_entregada" onchange="etRecompute()"></div>
@@ -11074,10 +11075,10 @@ function etFechaPaso(r,key){
   return (p && p.tilde && p.fecha) ? p.fecha : '';
 }
 function prendaEstadoNuevo(r){
-  var u=etUltimoPaso(r);
-  if(u>=8) return 'entregada';       // prenda_entregada completado
-  if(u===7) return 'no_entregada';   // enviada_casa_central completado, prenda_entregada no
-  return 'en_curso';                 // hasta pendiente_fisica (idx<=6) o sin pasos
+  // v3.9.09: por clave del paso (no por posición), así agregar pasos no rompe nada
+  if(etFechaPaso(r,'prenda_entregada')) return 'entregada';
+  if(etFechaPaso(r,'enviada_casa_central')) return 'no_entregada';
+  return 'en_curso';
 }
 function onPrendaPresentadaChange(){
   const ep=document.getElementById('prenda-en-proceso');
@@ -11220,15 +11221,21 @@ function renderPrendas() {
   setTimeout(initPrendasMirror, 50);
 }
 
-var ET_PASOS=[['pendiente_firma','Pendiente firma'],['firmado','Firmado'],['escribania','Escribanía'],['presentado','Presentado'],['retirado','Retirado'],['subida','Subida'],['pendiente_fisica','Pendiente física'],['enviada_casa_central','Prenda enviada a casa central'],['prenda_entregada','Prenda entregada']];
+var ET_PASOS=[['pendiente_firma','Pendiente firma'],['firmado','Firmado'],['escribania','Escribanía'],['presentado','Presentado'],['retirado','Retirado'],['subida','Subida'],['envio_poliza','Envío póliza'],['pendiente_fisica','Pendiente física'],['enviada_casa_central','Prenda enviada a casa central'],['prenda_entregada','Prenda entregada']];
 function etRecompute(){
   var prevComplete=true;
-  ET_PASOS.forEach(function(p){
+  // v3.9.09: si un paso posterior ya está completo, los anteriores no se bloquean ni se destildan
+  var _comp=ET_PASOS.map(function(p){
+    var d=document.getElementById('pe-et-f-'+p[0]), c=document.getElementById('pe-et-t-'+p[0]);
+    return !!(d&&c&&c.checked&&d.value);
+  });
+  ET_PASOS.forEach(function(p,_i){
     var key=p[0];
     var d=document.getElementById('pe-et-f-'+key);
     var c=document.getElementById('pe-et-t-'+key);
     if(!d||!c) return;
-    var enabled=prevComplete;
+    var _laterDone=_comp.slice(_i+1).some(Boolean);
+    var enabled=prevComplete||_laterDone;
     d.disabled=!enabled; c.disabled=!enabled;
     var o=document.getElementById('pe-et-obs-'+key); if(o) o.disabled=!enabled;
     var row=c.closest('.pe-et-row'); if(row) row.classList.toggle('pe-et-locked',!enabled);
