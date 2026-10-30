@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.09</title>
+<title>Grupo Olyar — Solicitudes v3.9.10</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.09';
+    var APP_VER='v3.9.10';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -3834,15 +3834,28 @@ function calcPrestamoBanco(banco, tipocta, anioStr, vehiculo){
 
 // ── Form: bloques de banco dinámicos ──
 let _bankIdx = 0;
+// v3.9.10: Punto de Venta por banco, solo para Galicia (distinto del Punto de Venta de Liquidaciones a Terceros)
+const GALICIA_PUNTOS_VENTA = ['Sergio (Fuerza de venta)', 'Francisco (Centro Prendario)'];
+function _esBancoGalicia(b){ return String(b||'').toUpperCase().includes('GALICIA'); }
+function toggleGaliciaPV(block){
+  if(!block) return;
+  const w=block.querySelector('.bb-pv-wrap'); if(!w) return;
+  const es=_esBancoGalicia((block.querySelector('.bb-banco')||{}).value);
+  w.style.display=es?'':'none';
+  if(!es){ const s=w.querySelector('.bb-pv'); if(s) s.value=''; }
+}
 function bankBlockHTML(i, d){
   d=d||{};
   const opts='<option value="">— Seleccioná —</option>'+(LISTS.banco||[]).map(b=>`<option${(d.banco||'')===b?' selected':''}>${b}</option>`).join('')+'<option value="__add__">＋ Agregar banco...</option>';
   const est=(d.estado||'').toUpperCase(); const se=v=>est===v?' selected':'';
   const tc=(d.tipocta||''); const stc=v=>tc===v?' selected':'';
+  const _esGal=_esBancoGalicia(d.banco); const _pv=d.puntoVenta||''; const spv=v=>_pv===v?' selected':'';
   return `<div class="bank-block" data-bi="${i}" style="border:1.5px solid var(--line);border-left:4px solid ${bancoColorHex(d.banco)};border-radius:12px;padding:18px;margin-bottom:14px;background:#f8faff">
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;gap:12px;flex-wrap:wrap">
       <div class="fc" style="flex:1;min-width:220px;max-width:320px;margin:0"><label>BANCO *</label>
         <select class="bb-banco" onchange="onBancoChange(this)">${opts}</select></div>
+      <div class="fc bb-pv-wrap" style="flex:1;min-width:220px;max-width:320px;margin:0;${_esGal?'':'display:none'}"><label>PUNTO DE VENTA *</label>
+        <select class="bb-pv"><option value="">— Seleccioná —</option>${GALICIA_PUNTOS_VENTA.map(o=>`<option${spv(o)}>${o}</option>`).join('')}</select></div>
       <button type="button" class="btn btn-s bb-del" onclick="removeBankBlock(${i})" title="Quitar banco">🗑 Quitar</button>
     </div>
     <div class="fg bb-fields">
@@ -3907,6 +3920,7 @@ function onBancoChange(sel){
       refreshBancoSelects(); sel.value=nm; if(typeof initBanco==='function') initBanco();
     } else { sel.value=''; }
   }
+  toggleGaliciaPV(sel.closest('.bank-block'));
   calcBloqueBanco(sel);
 }
 function refreshBancoSelects(){
@@ -3924,7 +3938,8 @@ function collectBancos(){
     const gm=cls=>{ const v=parseMoneda(g(cls)); return v?String(v):''; };
     const banco=g('.bb-banco'); const estado=g('.bb-estado');
     if(!banco && !estado && !g('.bb-importe')) return;
-    out.push({banco, estado, tipocta:g('.bb-tipocta'), importe:gm('.bb-importe'), agencia:gm('.bb-agencia'), vehiculo:vehShared, comision:gm('.bb-comision'), tasa:g('.bb-tasa'), obs:g('.bb-obs')});
+    const _pvB=_esBancoGalicia(banco)?g('.bb-pv'):'';
+    out.push({banco, estado, ...(_pvB?{puntoVenta:_pvB}:{}), tipocta:g('.bb-tipocta'), importe:gm('.bb-importe'), agencia:gm('.bb-agencia'), vehiculo:vehShared, comision:gm('.bb-comision'), tasa:g('.bb-tasa'), obs:g('.bb-obs')});
   });
   return out;
 }
@@ -12441,6 +12456,7 @@ async function saveRecord() {
   if (!d.bancos || !d.bancos.length) { toast('Agregá al menos un banco','er'); return; }
   const _bIncompleto = d.bancos.find(b => !b.banco || !b.estado);
   if (_bIncompleto) { toast('Cada banco necesita entidad y estado','er'); return; }
+  if (d.bancos.some(b => _esBancoGalicia(b.banco) && !b.puntoVenta)) { toast('Elegí el Punto de Venta del banco Galicia','er'); return; }
 
   const btn = document.getElementById('save-btn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Guardando...';
@@ -15078,6 +15094,7 @@ function openPanel(id) {
       const prest=calcPrestamoBanco(b.banco,b.tipocta,r.anio,b.vehiculo);
       return `<div class="panel-section" style="border-left:3px solid ${bancoColorHex(b.banco)};padding-left:12px">
         <div class="panel-section-t" style="display:flex;justify-content:space-between;align-items:center;gap:8px">${colorBanco(b.banco)} ${badge}</div>
+        ${_esBancoGalicia(b.banco)?`<div class="prow"><span class="pl">Punto de Venta</span><span class="pv bold" style="color:var(--blue)">${val(b.puntoVenta)}</span></div>`:''}
         <div class="prow"><span class="pl">Tipo de tasa</span><span class="pv">${val(b.tipocta)}</span></div>
         <div class="prow"><span class="pl">% de comisión</span><span class="pv">${val(b.tasa)}</span></div>
         <div class="prow"><span class="pl">Importe solicitado</span><span class="pv mono bold">${mon(b.importe)}</span></div>
