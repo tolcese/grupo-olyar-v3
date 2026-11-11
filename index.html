@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.13</title>
+<title>Grupo Olyar — Solicitudes v3.9.14</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.13';
+    var APP_VER='v3.9.14';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -229,7 +229,7 @@ tbody tr:hover td{background:#f8faff;}
 .b-rechazado{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5;} .b-rechazado .bd{background:#dc2626;}
 .b-avanza{background:var(--purple-soft);color:#4c1d95;} .b-avanza .bd{background:var(--purple);}
 .mstat{display:inline-block;font-weight:800;font-size:16px;line-height:1;cursor:default}
-.mstat.ap{color:#059669}.mstat.re{color:#dc2626}.mstat.av{color:#d97706}
+.mstat.ap{color:#059669}.mstat.re{color:#dc2626}.mstat.av{color:#d97706}.mstat.ca{font-size:14px}
 td.mcell{text-align:center}
 .mcell-empty{color:#d0d7e2}
 .bank-block .fc label{font-size:11px}
@@ -843,7 +843,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         </div>
         <select class="fsel" id="f-est" onchange="renderTable()">
           <option value="">Todos los estados</option>
-          <option>APROBADO</option><option>RECHAZADO</option><option>AVANZA</option>
+          <option>APROBADO</option><option>RECHAZADO</option><option>AVANZA</option><option>CARGADO</option>
         </select>
         <select class="fsel" id="f-ban" onchange="renderTable()">
           <option value="">Todos los bancos</option>
@@ -3786,7 +3786,7 @@ function getBancos(r){
 function bancoRepresentativo(bancos){
   if(!bancos||!bancos.length) return null;
   const up=e=>(e.estado||'').toUpperCase();
-  return bancos.find(b=>up(b)==='AVANZA')||bancos.find(b=>up(b)==='APROBADO')||bancos.find(b=>up(b)==='RECHAZADO')||bancos[0];
+  return bancos.find(b=>up(b)==='AVANZA')||bancos.find(b=>up(b)==='APROBADO')||bancos.find(b=>up(b)==='CARGADO')||bancos.find(b=>up(b)==='RECHAZADO')||bancos[0];
 }
 function bancosMatrizCols(){
   // Orden fijo de columnas de bancos en la vista general; los no listados van al final
@@ -3807,6 +3807,7 @@ function iconoEstadoBanco(b){
   if(est==='APROBADO') return `<span class="mstat ap" title="${tip}">✓</span>`;
   if(est==='RECHAZADO')return `<span class="mstat re" title="${tip}">✗</span>`;
   if(est==='AVANZA')   return `<span class="mstat av" title="${tip}" style="font-size:12px;letter-spacing:.5px">OK</span>`;
+  if(est==='CARGADO')  return `<span class="mstat ca" title="Cargado · ${tip}">🕐</span>`;
   return `<span class="mstat" title="${tip}">•</span>`;
 }
 function celdaBancoMatriz(r, bancoName){
@@ -3865,7 +3866,7 @@ function bankBlockHTML(i, d){
       <div class="fc"><label>% PRESTADO POR EL BANCO</label><div class="bb-pct" style="padding:9px 11px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;font-weight:700;color:var(--muted);background:#fff">—</div></div>
       <div class="fc"><label>COMISIÓN ($)</label><div class="cur"><span class="cur-s">$</span><input type="text" inputmode="decimal" class="bb-comision" value="${d.comision||''}" placeholder="0" style="background:#f0fdf4" onblur="fmtCampoMoneda(this)"></div></div>
       <div class="fc"><label>% DE COMISIÓN</label><input class="bb-tasa" value="${d.tasa||''}" placeholder="Ej. 3.2" oninput="calcBloqueBanco(this)"></div>
-      <div class="fc"><label>ESTADO *</label><select class="bb-estado" onchange="pintarBloqueBanco(this)"><option value="">— Seleccioná —</option><option${se('APROBADO')}>APROBADO</option><option${se('RECHAZADO')}>RECHAZADO</option><option${se('AVANZA')}>AVANZA</option></select></div>
+      <div class="fc"><label>ESTADO *</label><select class="bb-estado" onchange="pintarBloqueBanco(this)"><option value="">— Seleccioná —</option><option${se('APROBADO')}>APROBADO</option><option${se('RECHAZADO')}>RECHAZADO</option><option${se('AVANZA')}>AVANZA</option><option${se('CARGADO')}>CARGADO</option></select></div>
       <div class="fc span3"><label>OBSERVACIÓN</label><textarea class="bb-obs" placeholder="Notas de este banco...">${d.obs||''}</textarea></div>
     </div>
   </div>`;
