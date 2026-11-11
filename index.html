@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.15</title>
+<title>Grupo Olyar — Solicitudes v3.9.17</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.15';
+    var APP_VER='v3.9.17';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -2503,7 +2503,8 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
               <div class="pe-f"><label>Cantidad de Cuotas</label><input class="pe-in" type="text" inputmode="numeric" id="pe-cre-cantcuotas"></div>
               <div class="pe-f"><label>Estado</label><select class="pe-in" id="pe-cre-estado" onchange="creEstadoOnEstadoChange()"><option>No solicitado</option><option>Solicitado</option><option>Carga documentación</option><option>Pendiente seguro</option><option>En proceso de liquidación</option><option>Liquidado</option><option>Reversado</option><option>Cancelado</option></select></div>
               <div class="pe-f"><label id="pe-cre-fecha-label">Fecha del estado</label><input class="pe-in" type="date" id="pe-cre-estadofecha" onchange="creEstadoOnFechaChange()"></div>
-              <div class="pe-f"><label>&nbsp;</label><button type="button" class="btn btn-s" onclick="showV('creditos')" style="border-color:var(--blue);color:var(--blue)">💳 Sistema de créditos</button></div>
+              <div class="pe-f"><label>&nbsp;</label><button type="button" class="btn btn-s" onclick="showV('creditos')" style="border-color:var(--blue);color:var(--blue)">💳 Sistema de créditos</button>
+                <button type="button" class="btn btn-s" onclick="abrirConformidad()" style="border-color:var(--orange,#e8821a);color:var(--orange,#e8821a);margin-top:8px;width:100%">🧾 Conformidad de comisión</button></div>
               <div class="pe-f pe-f-full"><label>Fechas por estado</label><div id="pe-cre-fechas-resumen" style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;align-items:center;min-height:20px"></div></div>
             </div>
           </div>
@@ -8180,6 +8181,121 @@ function imprimirAcuse() {
   win.document.close();
   win.focus();
   setTimeout(() => { win.print(); }, 300);
+}
+
+// ═══ CONFORMIDAD DE COMISIÓN Y AUTORIZACIÓN DE TRANSFERENCIAS (v3.9.16) ═══
+function _confNum(v){ return parseFloat(String(v||0).replace(/[$,]/g,'')) || 0; }
+async function abrirConformidad() {
+  const id = document.getElementById('prenda-id')?.value;
+  const r = RECORDS.find(x => x.id === id);
+  if (!r) { toast('Abrí una prenda primero', 'warn'); return; }
+  const _bs = getBancos(r);
+  // Banco de la operación: el que está en AVANZA (de ahí sale la comisión)
+  const b = _bs.find(x => String(x.estado||'').toUpperCase() === 'AVANZA') || bancoRepresentativo(_bs) || {};
+  // Monto del crédito: desde Sistema de créditos (tabla creditos), por solicitud o por DNI
+  let montoCred = 0, sinCredito = false;
+  try {
+    const dni = String(r.dni||'').trim();
+    const { data: cr } = await SB.from('creditos').select('importe, solicitud_id, dni').or(`solicitud_id.eq.${r.id},dni.eq.${dni || '__'}`);
+    const c = (cr||[]).find(x => x.solicitud_id === r.id) || (cr||[])[0];
+    if (c) montoCred = _confNum(c.importe); else sinCredito = true;
+  } catch(e) { sinCredito = true; }
+  const hoy = new Date();
+  const fecha = String(hoy.getDate()).padStart(2,'0') + '/' + String(hoy.getMonth()+1).padStart(2,'0') + '/' + hoy.getFullYear();
+  const set = (k, v) => { const el = document.getElementById(k); if (el) el.value = v; };
+  set('conf-lugar', 'Córdoba Capital, ' + fecha);
+  set('conf-cliente', document.getElementById('pe-cli-nombre')?.textContent?.replace(/^—$/,'') || r.nombrecliente || '');
+  set('conf-dni', r.dni || '');
+  set('conf-entidad', b.banco || r.banco || '');
+  const comis = _confNum(b.comision);
+  set('conf-monto', montoCred ? fmtMonedaAR(montoCred) : '');
+  set('conf-comision', comis ? fmtMonedaAR(comis) : '');
+  set('conf-neto', '');
+  confCalcNeto();
+  if (sinCredito) toast('Esta prenda todavía no tiene crédito en Sistema de créditos: completá el monto a mano', 'warn');
+  const ov = document.getElementById('conf-overlay');
+  if (ov.parentElement !== document.body) document.body.appendChild(ov);
+  ov.classList.add('open');
+}
+function cerrarConformidad() { document.getElementById('conf-overlay').classList.remove('open'); }
+function confCalcNeto() {
+  const m = parseMoneda(document.getElementById('conf-monto').value);
+  const c = parseMoneda(document.getElementById('conf-comision').value);
+  if (m && c) document.getElementById('conf-neto').value = fmtMonedaAR(m - c);
+}
+function imprimirConformidad() {
+  const g = k => (document.getElementById(k)?.value || '').trim();
+  const e = v => String(v).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const fld = (label, val, extra='') => `<div class="f" ${extra}><div class="l">${label}</div><div class="v">${val ? e(val) : '&nbsp;'}</div></div>`;
+  const mon = v => v ? '$ ' + v : '';
+  const destinos = [1,2,3].map(i => `
+    <div class="row">
+      <div class="num">0${i}</div>
+      ${fld('Titular de la cuenta', '', 'style="flex:2.2"')}
+      ${fld('CUIT / CUIL del titular', '', 'style="flex:1.1"')}
+    </div>
+    <div class="row">
+      ${fld('CBU / CVU o alias', '', 'style="flex:1.7"')}
+      ${fld('Banco / billetera', '', 'style="flex:.85"')}
+      ${fld('Importe ($)', '', 'style="flex:.7"')}
+    </div>`).join('');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Conformidad de comisión - ${e(g('conf-cliente'))}</title>
+  <style>
+    @page { size: A4; margin: 14mm 16mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Helvetica, Arial, sans-serif; color: #1f2937; margin: 0; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .logo { font-size: 34px; font-weight: 800; letter-spacing: 1px; color: #1f2937; line-height: 1; }
+    .logo span { color: #e8821a; margin-left: 4px; }
+    .sub { font-size: 9px; font-weight: 700; color: #6b7280; letter-spacing: .5px; margin-top: 6px; }
+    .bar { height: 2.5px; background: #e8821a; margin: 12px 0 14px; }
+    h1 { font-size: 18px; margin: 0 0 14px; line-height: 1.3; font-weight: 800; color: #1f2937; }
+    .row { display: flex; gap: 22px; align-items: flex-end; margin-bottom: 10px; }
+    .f { flex: 1; }
+    .l { font-size: 9.5px; font-weight: 700; color: #6b7280; margin-bottom: 4px; }
+    .v { border-bottom: 1px solid #c4c9d0; min-height: 22px; font-size: 12px; padding: 4px 0 3px; color: #111827; }
+    .box { background: #f3f4f6; border-radius: 8px; padding: 12px 14px 14px; margin: 4px 0 6px; }
+    .box .row { margin: 0; }
+    .nota { font-size: 9px; color: #6b7280; margin-bottom: 8px; }
+    .txt { font-size: 11.5px; line-height: 1.55; margin: 6px 0 12px; color: #111827; }
+    .h2 { font-size: 12px; font-weight: 800; margin: 4px 0 2px; color: #1f2937; }
+    .num { font-size: 15px; font-weight: 800; color: #e8821a; width: 22px; align-self: flex-start; padding-top: 0; margin-right: -10px; }
+    .firmas { display: flex; gap: 40px; margin-top: 34px; }
+    .firmas > div { flex: 1; }
+    .fl { border-top: 1px solid #9ca3af; padding-top: 6px; font-size: 10.5px; font-weight: 700; color: #6b7280; margin-bottom: 12px; }
+    .ad { display: flex; gap: 6px; align-items: flex-end; font-size: 10.5px; font-weight: 700; color: #6b7280; margin-bottom: 10px; }
+    .ad div { flex: 1; border-bottom: 1px solid #c4c9d0; height: 14px; }
+    .pie { border-top: 1px solid #d1d5db; margin-top: 12px; padding-top: 8px; font-size: 9px; font-weight: 700; color: #6b7280; }
+  </style></head><body>
+    <div class="logo">LUKAYA<span>!</span></div>
+    <div class="sub">GESTIÓN DE CRÉDITOS</div>
+    <div class="bar"></div>
+    <h1>CONFORMIDAD DE COMISIÓN<br>Y AUTORIZACIÓN DE TRANSFERENCIAS</h1>
+    <div class="row">${fld('Lugar y fecha', g('conf-lugar'))}</div>
+    <div class="row">${fld('Nombre y apellido del cliente', g('conf-cliente'), 'style="flex:2.6"')}${fld('DNI / CUIL', g('conf-dni'))}</div>
+    <div class="row">${fld('Entidad otorgante del crédito', g('conf-entidad'))}</div>
+    <div class="box"><div class="row">
+      ${fld('Monto del crédito ($)', mon(g('conf-monto')))}
+      ${fld('Comisión de Lukaya ($)', mon(g('conf-comision')))}
+      ${fld('Neto a transferir ($)', mon(g('conf-neto')))}
+    </div></div>
+    <div class="nota">Importes en pesos argentinos. Neto = monto del crédito menos comisión.</div>
+    <div class="txt">Acepto la comisión indicada y autorizo su descuento del monto del crédito. Solicito que<br>el importe neto se transfiera a las cuentas que detallo a continuación.</div>
+    <div class="h2">DESTINOS DE TRANSFERENCIA</div>
+    <div class="nota">Completar hasta 3 destinos. La suma de los importes debe coincidir con el neto.</div>
+    ${destinos}
+    <div class="txt" style="margin-top:12px">Confirmo los datos de las cuentas indicadas y autorizo las transferencias a sus titulares.<br>Mi firma deja constancia de la aceptación de la comisión y de estas instrucciones de pago.</div>
+    <div class="firmas">
+      <div><div class="fl">Firma del cliente</div><div class="ad">Aclaración:<div></div></div><div class="ad">DNI:<div></div></div></div>
+      <div><div class="fl">Firma de la agencia</div><div class="ad">Aclaración:<div></div></div><div class="ad">DNI:<div></div></div></div>
+    </div>
+    <div class="pie">LUKAYA &nbsp;|&nbsp; Córdoba Capital</div>
+  </body></html>`;
+  const win = window.open('', '_blank', 'width=820,height=1000');
+  if (!win) { toast('El navegador bloqueó la ventana de impresión. Permití las ventanas emergentes.', 'warn'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 350);
 }
 
 function cerrarRecordatorioCreditos() {
@@ -17819,6 +17935,31 @@ function renderReportes() {
 </div>
 
 <!-- MODAL ACUSE -->
+<!-- CONFORMIDAD DE COMISIÓN Y AUTORIZACIÓN DE TRANSFERENCIAS (v3.9.16) -->
+<div class="overlay" id="conf-overlay" style="z-index:950;align-items:center;justify-content:center" onclick="if(event.target===this)cerrarConformidad()">
+  <div style="background:#fff;border-radius:14px;max-width:720px;width:95%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.18)">
+    <div style="padding:18px 24px;border-bottom:1.5px solid var(--line);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="font-size:15px;font-weight:700;color:var(--ink)">🧾 Conformidad de comisión y autorización de transferencias</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-p" onclick="imprimirConformidad()">🖨️ Imprimir</button>
+        <button class="xbtn" onclick="cerrarConformidad()">×</button>
+      </div>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:20px 24px">
+      <div class="fg" style="gap:12px">
+        <div class="fc span2"><label>Lugar y fecha</label><input type="text" id="conf-lugar"></div>
+        <div class="fc"><label>Nombre y apellido del cliente</label><input type="text" id="conf-cliente"></div>
+        <div class="fc"><label>DNI / CUIL</label><input type="text" id="conf-dni"></div>
+        <div class="fc span2"><label>Entidad otorgante del crédito</label><input type="text" id="conf-entidad"></div>
+        <div class="fc"><label>Monto del crédito ($)</label><input type="text" inputmode="decimal" id="conf-monto" oninput="confCalcNeto()" onblur="fmtCampoMoneda(this);confCalcNeto()"></div>
+        <div class="fc"><label>Comisión de Lukaya ($)</label><input type="text" inputmode="decimal" id="conf-comision" oninput="confCalcNeto()" onblur="fmtCampoMoneda(this);confCalcNeto()"></div>
+        <div class="fc"><label>Neto a transferir ($)</label><input type="text" inputmode="decimal" id="conf-neto" onblur="fmtCampoMoneda(this)"></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:14px">Los destinos de transferencia se imprimen en blanco para completar a mano.</div>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="acuse-overlay" style="z-index:900;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:14px;max-width:620px;width:95%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.18)">
     <!-- Header -->
