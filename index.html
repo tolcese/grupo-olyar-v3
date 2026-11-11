@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.14</title>
+<title>Grupo Olyar — Solicitudes v3.9.15</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.14';
+    var APP_VER='v3.9.15';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -2493,6 +2493,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <div class="pe-acc-body" id="pe-body-credito" style="display:none">
             <div class="pe-fields">
               <div class="pe-f"><label>Banco</label><div class="pe-ro" id="pe-cre-banco">—</div></div>
+              <div class="pe-f"><label>Punto de Venta</label><div class="pe-ro" id="pe-cre-pv">—</div></div>
               <div class="pe-f"><label>Tipo de Tasa</label><div class="pe-ro" id="pe-cre-tipotasa">—</div></div>
               <div class="pe-f"><label>Importe Solicitud</label><div class="pe-ro" id="pe-cre-importe">—</div></div>
               <div class="pe-f" id="pe-f-agencia"><label>Monto para Agencia</label><div class="pe-ro" id="pe-cre-agencia">—</div></div>
@@ -11355,6 +11356,9 @@ function editPrenda(id) {
   var _repr = bancoRepresentativo(getBancos(r)) || {};
   var _monRO = function(v){ return v ? '$'+Number(String(v).replace(/[$,]/g,'')).toLocaleString('es-AR') : '—'; };
   document.getElementById('pe-cre-banco').textContent    = _repr.banco || r.banco || '—';
+  // v3.9.15: Punto de Venta cargado en la solicitud (bloque del banco; hoy solo Galicia)
+  var _pvCre = _repr.puntoVenta === 'Sergio (Fuerza de venta)' ? 'Sergio (Fuerza de ventas)' : (_repr.puntoVenta || '');
+  document.getElementById('pe-cre-pv').textContent       = _pvCre || '—';
   document.getElementById('pe-cre-tipotasa').textContent = _repr.tipocta || '—';
   document.getElementById('pe-cre-importe').textContent  = _monRO(_repr.importe);
   document.getElementById('pe-cre-agencia').textContent  = _monRO(_repr.agencia);
