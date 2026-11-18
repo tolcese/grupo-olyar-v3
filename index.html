@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.18</title>
+<title>Grupo Olyar — Solicitudes v3.9.19</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.18';
+    var APP_VER='v3.9.19';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -8164,13 +8164,14 @@ function imprimirAcuse() {
       <div class="datos"><b>DNI:</b> ${dni}</div>
       <div class="subtitulo">DOCUMENTACIÓN ENTREGADA</div>
       <div class="item">☐ &nbsp;TITULO</div>
-      <div class="item">☐ &nbsp;SELLADO</div>
       <div class="item">☐ &nbsp;PRENDA</div>
-      <div class="item">☐ &nbsp;FIANZA</div>
-      <div class="item">☐ &nbsp;F051 - SOLICITUD DE CRÉDITO</div>
-      <div class="item">☐ &nbsp;F044 - REGISTRO DE FIRMAS</div>
-      <div class="item">☐ &nbsp;F050 - CARTA DE PREAPROBACIÓN</div>
-      <div class="item">☐ &nbsp;ALTA DE CLIENTE</div>
+      <div class="item">☐ &nbsp;SELLADO</div>
+      <div class="item">☐ &nbsp;F044 - REGISTRO DE FIRMA</div>
+      <div class="item">☐ &nbsp;F050 - CARTA APROBACION</div>
+      <div class="item">☐ &nbsp;F051 - SOLICITUD DE CREDITO</div>
+      <div class="item">☐ &nbsp;F081 - CAJA DE AHORRO</div>
+      <div class="item">☐ &nbsp;FCLIIH01 - ALTA CLIENTE</div>
+      <div class="item">☐ &nbsp;DNI</div>
       ${document.getElementById('acuse-extra-1')?.value.trim() ? `<div class="item">☐ &nbsp;${document.getElementById('acuse-extra-1').value.trim()}</div>` : ''}
       ${document.getElementById('acuse-extra-2')?.value.trim() ? `<div class="item">☐ &nbsp;${document.getElementById('acuse-extra-2').value.trim()}</div>` : ''}
       <div class="firma-linea">Firma del que recibe</div>
@@ -17982,13 +17983,14 @@ function renderReportes() {
           <div style="font-size:13px;font-weight:700;text-decoration:underline;margin-bottom:12px">DOCUMENTACIÓN ENTREGADA</div>
           <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;margin-bottom:48px">
             <div>☐ &nbsp;TITULO</div>
-            <div>☐ &nbsp;SELLADO</div>
             <div>☐ &nbsp;PRENDA</div>
-            <div>☐ &nbsp;FIANZA</div>
-            <div>☐ &nbsp;F051 - SOLICITUD DE CRÉDITO</div>
-            <div>☐ &nbsp;F044 - REGISTRO DE FIRMAS</div>
-            <div>☐ &nbsp;F050 - CARTA DE PREAPROBACIÓN</div>
-            <div>☐ &nbsp;ALTA DE CLIENTE</div>
+            <div>☐ &nbsp;SELLADO</div>
+            <div>☐ &nbsp;F044 - REGISTRO DE FIRMA</div>
+            <div>☐ &nbsp;F050 - CARTA APROBACION</div>
+            <div>☐ &nbsp;F051 - SOLICITUD DE CREDITO</div>
+            <div>☐ &nbsp;F081 - CAJA DE AHORRO</div>
+            <div>☐ &nbsp;FCLIIH01 - ALTA CLIENTE</div>
+            <div>☐ &nbsp;DNI</div>
             <div id="acuse-extra-1-view" style="display:none"></div>
             <div id="acuse-extra-2-view" style="display:none"></div>
           </div>
