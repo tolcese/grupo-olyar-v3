@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.29</title>
+<title>Grupo Olyar — Solicitudes v3.9.30</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.29';
+    var APP_VER='v3.9.30';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -1714,7 +1714,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       <!-- TAB 2: REGISTROS POR MES -->
       <div id="rep-barras" class="card" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
-          <div class="card-s" style="margin:0">Aprobados, rechazados y avanza por mes</div>
+          <div class="card-s" style="margin:0">Aprobados, rechazados y avanza por mes <span style="font-weight:400;font-size:11px;color:var(--muted)">(Avanza: mes en que pasó a AVANZA)</span></div>
           <div style="display:flex;align-items:center;gap:8px">
             <label style="font-size:12px;color:var(--muted)">Banco:</label>
             <select id="rep-barras-banco" class="fsel" onchange="renderReportes()" style="font-size:12px;padding:6px 10px"><option value="">Todos</option></select>
@@ -11996,6 +11996,7 @@ function showV(v) {
   if (v === 'contabilidad' && !(ME?.rol === 'admin' || ['claudionieva','golcese','tolcese','Invitado'].includes(ME?.usr))) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
   if (v === 'administracion' && ['abarco','yohanavarro'].includes(ME?.usr)) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
   if (v === 'reportes') {
+    if (!_avanzaFechasCargando) _avanzaFechas = null; // v3.9.30: recargar fechas de paso a AVANZA al entrar
     const isAdmin = ME?.rol === 'admin';
     // Tabs solo para admin
     ['tab-torta','tab-barras','tab-comisiones'].forEach(id => {
@@ -16694,8 +16695,42 @@ function renderPrendasPendientes() {
     </tr>`).join('');
 }
 
+// v3.9.30: fecha en que cada solicitud pasó a AVANZA (de historial_cambios). Se usa la ÚLTIMA vez.
+// Si no hay historial (se cargó directo en AVANZA o es anterior al historial) se usa la fecha de solicitud.
+var _avanzaFechas = null, _avanzaFechasCargando = false;
+async function _cargarFechasAvanza() {
+  if (_avanzaFechasCargando) return;
+  _avanzaFechasCargando = true;
+  try {
+    const { data, error } = await _sbAll(() => SB.from('historial_cambios')
+      .select('entidad_id,valor_nuevo,created_at')
+      .eq('entidad', 'solicitud').eq('campo', 'estado').ilike('valor_nuevo', 'avanza')
+      .order('created_at').order('entidad_id'));
+    if (error) console.error('Historial AVANZA:', error);
+    const m = {};
+    (data || []).forEach(x => {
+      if (String(x.valor_nuevo || '').toUpperCase().trim() !== 'AVANZA' || !x.created_at) return;
+      const id = String(x.entidad_id);
+      if (!m[id] || x.created_at > m[id]) m[id] = x.created_at;
+    });
+    _avanzaFechas = m;
+  } catch (e) { console.error('Historial AVANZA:', e); _avanzaFechas = {}; }
+  _avanzaFechasCargando = false;
+  try { renderReportes(); } catch (e) {}
+}
+// Mes (yyyy-mm, hora Argentina) en que la solicitud pasó a AVANZA; si no hay dato, mes de la solicitud
+function _mesAvanza(r) {
+  const iso = _avanzaFechas && _avanzaFechas[String(r.id)];
+  if (iso) {
+    const d = new Date(iso);
+    if (!isNaN(d)) return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  return (r.fecha || '').slice(0, 7);
+}
+
 function renderReportes() {
   if (!RECORDS.length) return;
+  if (_avanzaFechas === null) _cargarFechasAvanza();
 
   // ── TORTA: total por estado ──
   const estados = {APROBADO:0, RECHAZADO:0, AVANZA:0};
@@ -16735,17 +16770,20 @@ function renderReportes() {
   const meses = {};
   RECORDS.forEach(r => {
     if (!r.fecha) return;
-    const mes = r.fecha.slice(0,7); // yyyy-mm
-    if (!meses[mes]) meses[mes] = {APROBADO:0, RECHAZADO:0, AVANZA:0};
+    let e;
     if (bancoSel) {
       const b = getBancos(r).find(x => (x.banco||'').toUpperCase().trim() === bancoSel);
       if (!b) return;
-      const e = (b.estado||'').toUpperCase();
-      if (meses[mes][e] !== undefined) meses[mes][e]++;
+      e = (b.estado||'').toUpperCase();
     } else {
-      const e = (r.estado||'').toUpperCase();
-      if (meses[mes][e] !== undefined) meses[mes][e]++;
+      e = (r.estado||'').toUpperCase();
     }
+    if (!['APROBADO','RECHAZADO','AVANZA'].includes(e)) return;
+    // v3.9.30: AVANZA va al mes en que pasó a AVANZA; aprobados/rechazados al mes de la solicitud
+    const mes = e === 'AVANZA' ? _mesAvanza(r) : r.fecha.slice(0,7); // yyyy-mm
+    if (!mes) return;
+    if (!meses[mes]) meses[mes] = {APROBADO:0, RECHAZADO:0, AVANZA:0};
+    meses[mes][e]++;
   });
 
   // ── TABLA resumen por banco (totales, contando banco por banco) ──
