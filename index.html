@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.23</title>
+<title>Grupo Olyar — Solicitudes v3.9.27</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.23';
+    var APP_VER='v3.9.27';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -2504,7 +2504,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
               <div class="pe-f"><label>Estado</label><select class="pe-in" id="pe-cre-estado" onchange="creEstadoOnEstadoChange()"><option>No solicitado</option><option>Solicitado</option><option>Carga documentación</option><option>Pendiente seguro</option><option>En proceso de liquidación</option><option>Liquidado</option><option>Reversado</option><option>Cancelado</option></select></div>
               <div class="pe-f"><label id="pe-cre-fecha-label">Fecha del estado</label><input class="pe-in" type="date" id="pe-cre-estadofecha" onchange="creEstadoOnFechaChange()"></div>
               <div class="pe-f"><label>&nbsp;</label><button type="button" class="btn btn-s" onclick="showV('creditos')" style="border-color:var(--blue);color:var(--blue)">💳 Sistema de créditos</button>
-                <button type="button" class="btn btn-s" onclick="abrirConformidad()" style="border-color:var(--orange,#e8821a);color:var(--orange,#e8821a);margin-top:8px;width:100%">🧾 Orden de Pago/Transferencia</button></div>
+                <button type="button" id="btn-orden-pago" class="btn btn-s" onclick="abrirConformidad()" style="display:none;border-color:var(--orange,#e8821a);color:var(--orange,#e8821a);margin-top:8px;width:100%">🧾 Orden de Pago/Transferencia</button></div>
               <div class="pe-f pe-f-full"><label>Fechas por estado</label><div id="pe-cre-fechas-resumen" style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px;align-items:center;min-height:20px"></div></div>
             </div>
           </div>
@@ -4380,6 +4380,7 @@ async function enterApp() {
   document.getElementById('tn-pf').style.display = ME.rol !== 'invitado' ? '' : 'none';
   if (ME.rol === 'admin') document.body.classList.add('is-admin');
   else document.body.classList.remove('is-admin');
+  { const _bop=document.getElementById('btn-orden-pago'); if (_bop) _bop.style.display = _puedeOrdenPago() ? '' : 'none'; }
   if (ME.rol === 'invitado') document.body.classList.add('is-invitado');
   else document.body.classList.remove('is-invitado');
   document.getElementById('btn-datero').style.display = ME.rol === 'admin' ? 'none' : '';
@@ -4703,6 +4704,7 @@ function openSidebar() {
   document.getElementById('sb-presupuestos').style.display = (ME?.rol === 'admin' || ME?.rol === 'presupuestos' || ME?.rol === 'usuario_presupuestos') ? '' : 'none';
   document.getElementById('sb-genpdf').style.display = ME?.rol === 'user' ? '' : 'none';
   document.getElementById('sb-calc-galicia-mail').style.display = ME?.usr === 'claudionieva' ? '' : 'none';
+  { const _bop=document.getElementById('btn-orden-pago'); if (_bop) _bop.style.display = _puedeOrdenPago() ? '' : 'none'; }
   document.getElementById('sb-soc-presupuestos').style.display = ME?.rol === 'admin' ? '' : 'none';
   document.getElementById('soc-presup-inline-btn').style.display = ME?.rol === 'admin' ? '' : 'none';
 
@@ -8186,7 +8188,16 @@ function imprimirAcuse() {
 
 // ═══ CONFORMIDAD DE COMISIÓN Y AUTORIZACIÓN DE TRANSFERENCIAS (v3.9.16) ═══
 function _confNum(v){ return parseFloat(String(v||0).replace(/[$,]/g,'')) || 0; }
+function _puedeOrdenPago(){
+  // Orden de Pago/Transferencia: solo estos usuarios (o rol admin que no esté bloqueado)
+  const SI = ['admin','claudionieva'];
+  const NO = ['abarco','golcese','Invitado','malvarez','rrodriguez','yohanavarro'];
+  const u = String(ME?.usr||'');
+  if (NO.some(x => x.toLowerCase() === u.toLowerCase())) return false;
+  return SI.includes(u.toLowerCase()) || ME?.rol === 'admin';
+}
 async function abrirConformidad() {
+  if (!_puedeOrdenPago()) { toast('No tenés permisos para esta acción', 'warn'); return; }
   const id = document.getElementById('prenda-id')?.value;
   const r = RECORDS.find(x => x.id === id);
   if (!r) { toast('Abrí una prenda primero', 'warn'); return; }
@@ -11898,6 +11909,7 @@ function aplicarModoSidebar(modo) {
     const inlinePresupBtnC = document.getElementById('soc-presup-inline-btn');
     if (inlinePresupBtnC) inlinePresupBtnC.style.display = 'none';
     document.getElementById('sb-calc-galicia-mail').style.display = ME?.usr === 'claudionieva' ? '' : 'none';
+    { const _bop=document.getElementById('btn-orden-pago'); if (_bop) _bop.style.display = _puedeOrdenPago() ? '' : 'none'; }
     document.getElementById('sb-genpdf').style.display = ME?.rol === 'user' ? '' : 'none';
     document.getElementById('sb-contabilidad').style.display = ['claudionieva','golcese','tolcese','Invitado'].includes(ME?.usr) ? '' : 'none';
     document.getElementById('sb-administracion').style.display = (['administracion','usuario_administracion'].includes(ME?.rol) && !['abarco','yohanavarro','rrodriguez'].includes(ME?.usr)) ? '' : 'none';
