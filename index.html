@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.28</title>
+<title>Grupo Olyar — Solicitudes v3.9.29</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.28';
+    var APP_VER='v3.9.29';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -180,7 +180,7 @@ body.pp-bg .main{background:linear-gradient(145deg,#0f172a 0%,#1e3a8a 60%,#1d4ed
 .ph-s{font-size:12.5px;color:var(--muted);margin-top:3px;}
 
 /* STATS */
-.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px;}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;}
 .sc{background:#fff;border-radius:var(--r);padding:16px 18px;border:1.5px solid var(--line);position:relative;overflow:hidden;}
 .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r) var(--r) 0 0;}
 .sc.c-bl::before{background:var(--blue);}
@@ -834,7 +834,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
         <div class="sc c-gr" style="cursor:pointer" onclick="openStatModal('APROBADO')"><div class="sl">Aprobados</div><div class="sv" id="st-apr">—</div></div>
         <div class="sc c-re" style="cursor:pointer" onclick="openStatModal('RECHAZADO')"><div class="sl">Rechazados</div><div class="sv" id="st-rec">—</div></div>
         <div class="sc c-pu" style="cursor:pointer" onclick="openStatModal('AVANZA')"><div class="sl">Avanza</div><div class="sv" id="st-ava">—</div></div>
-        <div class="sc c-am" id="sc-imp" style="cursor:pointer" onclick="openStatModal('importe')"><div class="sl">Total Importe</div><div class="sv" id="st-imp" style="font-size:16px">—</div></div>
+        <div class="sc c-am" id="sc-imp" style="display:none;cursor:pointer" onclick="openStatModal('importe')"><div class="sl">Total Importe</div><div class="sv" id="st-imp" style="font-size:16px">—</div></div>
       </div>
       <div class="toolbar">
         <div class="searchbox">
@@ -4372,7 +4372,7 @@ async function enterApp() {
   const isUser  = ME.rol === 'user';
   document.getElementById('sb-envios-gestor').style.display = (isAdmin || isUser || ME?.rol === 'usuario_presupuestos') ? '' : 'none';
   document.getElementById('script-pre').textContent = SCRIPT_CODE;
-  document.getElementById('sc-imp').style.display = ME.rol === 'admin' ? '' : 'none';
+  document.getElementById('sc-imp').style.display = 'none'; // v3.9.29: Total Importe oculto para todos
   document.getElementById('f-usu').style.display = ME.rol === 'admin' ? '' : 'none';
   document.getElementById('tn-reportes').style.display = '';
   document.getElementById('tn-central-deudores').style.display = '';
@@ -11896,7 +11896,7 @@ function aplicarModoSidebar(modo) {
     const isAdmin = ME.rol === 'admin';
     const isUser  = ME.rol === 'user';
     document.getElementById('sb-envios-gestor').style.display = (isAdmin || isUser || ME?.rol === 'usuario_presupuestos') ? '' : 'none';
-    document.getElementById('sc-imp').style.display = ME.rol === 'admin' ? '' : 'none';
+    document.getElementById('sc-imp').style.display = 'none'; // v3.9.29: Total Importe oculto para todos
     document.getElementById('f-usu').style.display = ME.rol === 'admin' ? '' : 'none';
     if (document.getElementById('sb-usuarios')) document.getElementById('sb-usuarios').style.display = isAdmin ? '' : 'none';
     document.getElementById('sb-nueva').style.display = canEdit() ? '' : 'none';
@@ -12963,7 +12963,7 @@ function renderTablePage() {
 }
 
 function renderStats(data) {
-  document.getElementById('sc-imp').style.display = ME && ME.rol === 'admin' ? '' : 'none';
+  document.getElementById('sc-imp').style.display = 'none'; // v3.9.29: Total Importe oculto para todos
   const d = data || RECORDS;
   document.getElementById('st-tot').textContent=RECORDS.length;
   document.getElementById('st-apr').textContent=RECORDS.filter(r=>(r.estado||'').toUpperCase()==='APROBADO').length;
