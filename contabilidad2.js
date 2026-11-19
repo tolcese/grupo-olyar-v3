@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapa 1 (v3.9.33)
+// CONTABILIDAD 2 — Etapa 1 (v3.9.34)
 // Solo LECTURA: no escribe nada en Supabase.
 //  - Liquidación por operación (lista + detalle)
 //  - Parámetros (porcentajes actuales; se editan en Contabilidad → Cambio de coeficientes)
@@ -76,9 +76,20 @@
     const e = C2.coefBanco.find(c => String(c.banco || '').toUpperCase().trim() === banco);
     return e ? (num(e.com_lukaya) ?? C2.coef.comLukaya) : C2.coef.comLukaya;
   }
+  function fechasCredito(r) {
+    try { return r.creditoEstadoFechas ? JSON.parse(r.creditoEstadoFechas) || {} : {}; } catch (e) { return {}; }
+  }
   function fechaLiquidado(r) {
-    try { const m = r.creditoEstadoFechas ? JSON.parse(r.creditoEstadoFechas) : {}; if (m.Liquidado) return m.Liquidado; } catch (e) {}
+    const m = fechasCredito(r);
+    if (m.Liquidado) return m.Liquidado;
     if (r.creditoEstado === 'Liquidado' && r.creditoEstadoFecha) return r.creditoEstadoFecha;
+    return '';
+  }
+  // v3.9.34: si está Pagado sin fecha de Liquidado, se usa la de Pagado como estimada (se paga después de liquidar)
+  function fechaPagadoCredito(r) {
+    const m = fechasCredito(r);
+    if (m.Pagado) return m.Pagado;
+    if (r.creditoEstado === 'Pagado' && r.creditoEstadoFecha) return r.creditoEstadoFecha;
     return '';
   }
 
@@ -114,10 +125,12 @@
     const ganancia = it.comLuk.valor + it.retrib.valor - it.gest.valor - comCom - extras;
     const retribCobrada = !!(c && c.fecha_pago_banco);
     const gananciaCobrada = ganancia - (retribCobrada ? 0 : it.retrib.valor);
-    const fLiq = fechaLiquidado(r) || (c && c.fecha_liq) || '';
+    let fLiq = fechaLiquidado(r) || (c && c.fecha_liq) || '';
+    let fLiqEstimada = false;
+    if (!fLiq && r.creditoEstado === 'Pagado') { fLiq = fechaPagadoCredito(r); fLiqEstimada = !!fLiq; }
     return {
       r, c, I, banco, p, it, gestoria, comCom, extras, bruta, aLiquidar, ganancia, gananciaCobrada,
-      fechaLiq: fLiq,
+      fechaLiq: fLiq, fLiqEstimada,
       agenciaPagada: !!(c && c.pagado), fechaAgencia: c && c.fecha_pagado,
       gestorPagado: !!(c && c.pago_gest), fechaGestor: c && c.fecha_pago_gest,
       retribCobrada, fechaRetrib: c && c.fecha_pago_banco,
@@ -263,7 +276,7 @@
       const [et, col] = estadoOp(x);
       const aj = Object.values(x.it).some(i => i.ajuste);
       return `<tr class="click" onclick="C2.ir('liquidacion','${esc(x.r.id)}')">
-        <td>${fD(x.fechaLiq)}</td>
+        <td style="white-space:nowrap">${fD(x.fechaLiq)}${x.fLiqEstimada ? ' <span class="c2-aj" title="No tiene fecha de Liquidado: se usa la de Pagado">estimada</span>' : ''}</td>
         <td style="font-weight:700">${esc(x.r.nombrecliente || '—')}</td>
         <td>${colorBanco(x.banco)}</td>
         <td>${esc(x.r.concesionaria || '—')}</td>
@@ -366,7 +379,7 @@
         <div class="c2-card">
           <h3>Recorrido del dinero</h3>
           <ul class="c2-tl">
-            ${paso(!!x.fechaLiq, 'Liquidada por el banco', x.fechaLiq ? fD(x.fechaLiq) : 'Sin fecha de Liquidado', !x.fechaLiq)}
+            ${paso(!!x.fechaLiq, 'Liquidada por el banco', x.fechaLiq ? fD(x.fechaLiq) + (x.fLiqEstimada ? ' (estimada: fecha de Pagado)' : '') : 'Sin fecha de Liquidado', !x.fechaLiq)}
             ${paso(x.agenciaPagada, 'Agencia pagada · ' + esc(r.concesionaria || '—'), x.agenciaPagada ? fD(x.fechaAgencia) : 'Pendiente · ' + $(x.aLiquidar), !x.agenciaPagada)}
             ${paso(x.retribCobrada, 'Retribución del banco', x.retribCobrada ? 'Cobrada ' + fD(x.fechaRetrib) : 'Pendiente' + (dRet !== null ? ' hace ' + dRet + ' días' : '') + ' · ' + $(x.it.retrib.valor), !x.retribCobrada)}
             ${paso(x.gestorPagado, 'Comisión y gastos al gestor · ' + esc(r.gestorAsignado || '—'), x.gestorPagado ? fD(x.fechaGestor) : 'Pendiente · ' + $(x.it.gest.valor + x.gestoria), !x.gestorPagado)}
@@ -413,7 +426,8 @@
       if (!liq && !av) return;
       const x = C2.calc(r);
       const probs = [];
-      if (liq && !x.fechaLiq) probs.push(['re', 'Liquidado sin fecha de liquidación']);
+      if (liq && !x.fechaLiq) probs.push(['re', 'Sin fecha de Liquidado ni de Pagado']);
+      if (x.fLiqEstimada) probs.push(['bl', 'Sin fecha de Liquidado: se usa la de Pagado (' + fD(x.fechaLiq) + ')']);
       if (liq && !x.c) probs.push(['am', 'Sin fila en Contabilidad']);
       if (!x.I) probs.push(['re', 'Sin importe']);
       const nombres = { imp: 'Impuesto al crédito', comLuk: 'Comisión LUKAYA', retrib: 'Retribución banco', gest: 'Comisión gestor' };
