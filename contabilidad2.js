@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapa 1 (v3.9.32)
+// CONTABILIDAD 2 — Etapa 1 (v3.9.33)
 // Solo LECTURA: no escribe nada en Supabase.
 //  - Liquidación por operación (lista + detalle)
 //  - Parámetros (porcentajes actuales; se editan en Contabilidad → Cambio de coeficientes)
@@ -36,7 +36,7 @@
   const pct = v => String(v).replace('.', ',') + ' %';
   const dias = f => { if (!f) return null; const d = new Date(String(f).slice(0, 10) + 'T00:00:00'); if (isNaN(d)) return null; const h = new Date(); h.setHours(0, 0, 0, 0); return Math.floor((h - d) / 86400000); };
 
-  C2.puede = () => (typeof canEdit !== 'function' || canEdit()) &&
+  C2.puede = () => (typeof _bloqContab !== 'function' || !_bloqContab()) && (typeof canEdit !== 'function' || canEdit()) &&
     (ME?.rol === 'admin' || ['claudionieva', 'golcese', 'tolcese', 'Invitado'].includes(ME?.usr));
 
   // ── carga de datos (solo lectura) ──

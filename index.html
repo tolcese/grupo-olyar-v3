@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.32</title>
+<title>Grupo Olyar — Solicitudes v3.9.33</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.32';
+    var APP_VER='v3.9.33';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -4524,6 +4524,7 @@ async function enterApp() {
     showV('panel-principal');
   }
   { const _c2 = document.getElementById('pp-card-contabilidad2'); if (_c2) _c2.style.display = _puedeContabilidad2() ? '' : 'none'; }
+  if (_bloqContab()) { const _c1 = document.getElementById('pp-card-contabilidad'); if (_c1) _c1.style.display = 'none'; }
   // AutoCalc después de que la UI está estable para evitar titileo
   { const _salir=document.querySelector('.sb-item[onclick*="doLogout"]'); if(_salir) _salir.style.display=''; }
   setTimeout(() => autoCalcContabilidad(), 1500);
@@ -4707,7 +4708,7 @@ function openSidebar() {
     document.querySelectorAll('.invitado-hidden').forEach(btn => btn.style.display = 'none');
   }
   document.getElementById('sb-usuarios').style.display = ME?.rol === 'admin' ? '' : 'none';
-  document.getElementById('sb-contabilidad').style.display = (ME?.rol === 'admin' || ['claudionieva','golcese','tolcese','Invitado'].includes(ME?.usr)) ? '' : 'none';
+  document.getElementById('sb-contabilidad').style.display = (!_bloqContab() && (ME?.rol === 'admin' || ['claudionieva','golcese','tolcese','Invitado'].includes(ME?.usr))) ? '' : 'none';
   document.getElementById('sb-presupuestos').style.display = (ME?.rol === 'admin' || ME?.rol === 'presupuestos' || ME?.rol === 'usuario_presupuestos') ? '' : 'none';
   document.getElementById('sb-genpdf').style.display = ME?.rol === 'user' ? '' : 'none';
   document.getElementById('sb-calc-galicia-mail').style.display = ME?.usr === 'claudionieva' ? '' : 'none';
@@ -11923,7 +11924,7 @@ function aplicarModoSidebar(modo) {
     document.getElementById('sb-administracion').style.display = (['administracion','usuario_administracion'].includes(ME?.rol) && !['abarco','yohanavarro','rrodriguez'].includes(ME?.usr)) ? '' : 'none';
   } else if (modo === 'contabilidad') {
     // Mostrar solo: Contabilidad, Mi cuenta, Cerrar sesión
-    document.getElementById('sb-contabilidad').style.display = '';
+    document.getElementById('sb-contabilidad').style.display = _bloqContab() ? 'none' : '';
     const miCuentaBtn3 = document.querySelector('.sb-item[onclick*="micuenta"]');
     if (miCuentaBtn3) miCuentaBtn3.style.display = '';
     const cerrarSesionBtn3 = document.querySelector('.sb-item[onclick*="doLogout"]');
@@ -11947,7 +11948,11 @@ function aplicarModoSidebar(modo) {
 }
 
 // ── CONTABILIDAD 2 (v3.9.32): mismos usuarios que Contabilidad; código en contabilidad2.js (carga diferida) ──
+// v3.9.33: usuarios que NO ven Contabilidad ni Contabilidad 2 aunque sean admin
+const _BLOQ_CONTAB = ['abarco'];
+function _bloqContab() { return _BLOQ_CONTAB.includes(String(ME?.usr || '').toLowerCase()); }
 function _puedeContabilidad2() {
+  if (_bloqContab()) return false;
   return (typeof canEdit !== 'function' || canEdit()) && (ME?.rol === 'admin' || ['claudionieva','golcese','tolcese','Invitado'].includes(ME?.usr));
 }
 function abrirContabilidad2() {
@@ -12025,7 +12030,7 @@ function showV(v) {
 
   if (v === 'nueva' && !canEdit()) { toast('No tenés permisos para crear solicitudes', 'warn'); return; }
   if ((v === 'contabilidad' || v === 'bancos') && !canEdit()) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
-  if (v === 'contabilidad' && !(ME?.rol === 'admin' || ['claudionieva','golcese','tolcese','Invitado'].includes(ME?.usr))) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
+  if (v === 'contabilidad' && (_bloqContab() || !(ME?.rol === 'admin' || ['claudionieva','golcese','tolcese','Invitado'].includes(ME?.usr)))) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
   if (v === 'contabilidad2' && !_puedeContabilidad2()) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
   if (v === 'administracion' && ['abarco','yohanavarro'].includes(ME?.usr)) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
   if (v === 'reportes') {
