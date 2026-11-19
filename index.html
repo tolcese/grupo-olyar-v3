@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.19</title>
+<title>Grupo Olyar — Solicitudes v3.9.22</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.19';
+    var APP_VER='v3.9.22';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -3814,8 +3814,14 @@ function iconoEstadoBanco(b){
 }
 function celdaBancoMatriz(r, bancoName){
   try{
-    const b=getBancos(r).find(x=>x&&(x.banco||'').toUpperCase()===String(bancoName).toUpperCase());
-    if(!b) return '<span class="mcell-empty">·</span>';
+    const _bs=getBancos(r), _bn=String(bancoName).toUpperCase().trim();
+    const _mismo=_bs.filter(x=>x&&String(x.banco||'').toUpperCase().trim()===_bn);
+    if(!_mismo.length) return '<span class="mcell-empty">·</span>';
+    // v3.9.20: si el banco figura más de una vez, mostrar el de mayor estado
+    let b=bancoRepresentativo(_mismo)||_mismo[0];
+    // v3.9.20: solicitud en AVANZA (estado general) sin ningún banco en AVANZA → su banco se muestra en AVANZA
+    if(String(r.estado||'').toUpperCase()==='AVANZA' && !_bs.some(x=>String(x.estado||'').toUpperCase()==='AVANZA')
+       && String(r.banco||'').toUpperCase().trim()===_bn) b=Object.assign({},b,{estado:'AVANZA'});
     return iconoEstadoBanco(b);
   }catch(e){ return '<span class="mcell-empty">·</span>'; }
 }
@@ -6116,7 +6122,19 @@ async function confirmarRechazoPrend() {
   if (!fecha) { toast('La fecha es obligatoria', 'er'); return; }
   if (!motivo) { toast('El motivo es obligatorio', 'er'); return; }
   try {
+    const _rr = RECORDS.find(x => x.id === id);
+    const _upd = {};
+    if (_rr && Array.isArray(_rr.bancos) && _rr.bancos.length && !_rr.bancos.some(b => String(b.estado||'').toUpperCase() === 'AVANZA')) {
+      // v3.9.20: mantener coherente el estado del banco con el estado general AVANZA
+      let _hit = false;
+      _upd.bancos = _rr.bancos.map(b => {
+        if (!_hit && String(b.banco||'').toUpperCase().trim() === String(_rr.banco||'').toUpperCase().trim()) { _hit = true; return { ...b, estado: 'AVANZA' }; }
+        return b;
+      });
+      if (!_hit) delete _upd.bancos;
+    }
     const { error } = await SB.from('solicitudes').update({
+      ..._upd,
       prenda_rechazada: true,
       fecha_rechazo_prenda: fecha,
       motivo_rechazo_prenda: motivo,
@@ -6132,6 +6150,7 @@ async function confirmarRechazoPrend() {
     if (r) {
       r.prendaRechazada = true; r.fechaRechazoPrend = fecha; r.motivoRechazoPrend = motivo; r.fechaReingresoPrend = null;
       r.entregada = false; r.estado = 'AVANZA'; r.enProceso = false; r.presentada = false; r.finalizada = null;
+      if (_upd.bancos) r.bancos = _upd.bancos;
     }
     toast('Prenda marcada como rechazada ✓', 'ok');
     closePRRechazo();
