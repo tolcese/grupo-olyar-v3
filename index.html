@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.31</title>
+<title>Grupo Olyar — Solicitudes v3.9.32</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.31';
+    var APP_VER='v3.9.32';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -722,6 +722,11 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <div style="font-size:46px;margin-bottom:14px">🧾</div>
             <div style="font-size:16px;font-weight:800;color:var(--ink)">Contabilidad</div>
             <div style="font-size:12px;color:var(--muted);margin-top:4px">Acceso exclusivo de administración</div>
+          </div>
+          <div class="pp-card" id="pp-card-contabilidad2" onclick="irAModoPrincipal('contabilidad2')" style="display:none;cursor:pointer;border:1.5px solid var(--line);border-radius:16px;padding:34px 22px;text-align:center;transition:all .15s;background:#fff" onmouseenter="this.style.borderColor='var(--blue)';this.style.boxShadow='0 8px 24px rgba(29,111,206,.12)';this.style.transform='translateY(-3px)'" onmouseleave="this.style.borderColor='var(--line)';this.style.boxShadow='none';this.style.transform='none'">
+            <div style="font-size:46px;margin-bottom:14px">🧾</div>
+            <div style="font-size:16px;font-weight:800;color:var(--ink)">Contabilidad 2</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">Nueva versión · en construcción</div>
           </div>
           <div class="pp-card" id="pp-card-administracion" onclick="irAModoPrincipal('administracion-admin')" style="display:none;cursor:pointer;border:1.5px solid var(--line);border-radius:16px;padding:34px 22px;text-align:center;transition:all .15s;background:#fff" onmouseenter="this.style.borderColor='var(--blue)';this.style.boxShadow='0 8px 24px rgba(29,111,206,.12)';this.style.transform='translateY(-3px)'" onmouseleave="this.style.borderColor='var(--line)';this.style.boxShadow='none';this.style.transform='none'">
             <div style="font-size:46px;margin-bottom:14px">🏢</div>
@@ -3324,6 +3329,7 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
       </div>
     </div>
 
+    <div id="v-contabilidad2" style="display:none"></div>
     <div id="v-contabilidad" style="display:none">
       <div class="ph">
         <div><div class="ph-t">🧾 Contabilidad</div><div class="ph-s">Gestión contable y coeficientes</div></div>
@@ -4517,6 +4523,7 @@ async function enterApp() {
     document.getElementById('sb-panel-principal').style.display = '';
     showV('panel-principal');
   }
+  { const _c2 = document.getElementById('pp-card-contabilidad2'); if (_c2) _c2.style.display = _puedeContabilidad2() ? '' : 'none'; }
   // AutoCalc después de que la UI está estable para evitar titileo
   { const _salir=document.querySelector('.sb-item[onclick*="doLogout"]'); if(_salir) _salir.style.display=''; }
   setTimeout(() => autoCalcContabilidad(), 1500);
@@ -11939,6 +11946,29 @@ function aplicarModoSidebar(modo) {
   }
 }
 
+// ── CONTABILIDAD 2 (v3.9.32): mismos usuarios que Contabilidad; código en contabilidad2.js (carga diferida) ──
+function _puedeContabilidad2() {
+  return (typeof canEdit !== 'function' || canEdit()) && (ME?.rol === 'admin' || ['claudionieva','golcese','tolcese','Invitado'].includes(ME?.usr));
+}
+function abrirContabilidad2() {
+  if (!_puedeContabilidad2()) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
+  showV('contabilidad2');
+  if (window.C2 && typeof window.C2.init === 'function') { window.C2.init(); return; }
+  const cont = document.getElementById('v-contabilidad2');
+  if (cont) cont.innerHTML = '<div style="text-align:center;color:var(--muted);padding:60px">⏳ Cargando Contabilidad 2…</div>';
+  if (document.getElementById('c2-script')) return;
+  const s = document.createElement('script');
+  s.id = 'c2-script';
+  s.src = 'contabilidad2.js?v=' + encodeURIComponent(window.OLYAR_VER || Date.now());
+  s.onload = () => { if (window.C2 && typeof window.C2.init === 'function') window.C2.init(); };
+  s.onerror = () => {
+    s.remove();
+    if (cont) cont.innerHTML = '<div style="text-align:center;color:#b91c1c;padding:60px">No se pudo cargar contabilidad2.js. Verificá que esté subido junto al index.</div>';
+    toast('No se pudo cargar Contabilidad 2', 'er');
+  };
+  document.head.appendChild(s);
+}
+
 async function irAModoPrincipal(modo) {
   window._modoPrincipal = modo;
   aplicarModoSidebar(modo);
@@ -11959,6 +11989,8 @@ async function irAModoPrincipal(modo) {
     showV('seguros');
   } else if (modo === 'contabilidad') {
     showV('contabilidad');
+  } else if (modo === 'contabilidad2') {
+    abrirContabilidad2();
   } else if (modo === 'administracion-admin') {
     showV('administracion');
   }
@@ -11994,6 +12026,7 @@ function showV(v) {
   if (v === 'nueva' && !canEdit()) { toast('No tenés permisos para crear solicitudes', 'warn'); return; }
   if ((v === 'contabilidad' || v === 'bancos') && !canEdit()) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
   if (v === 'contabilidad' && !(ME?.rol === 'admin' || ['claudionieva','golcese','tolcese','Invitado'].includes(ME?.usr))) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
+  if (v === 'contabilidad2' && !_puedeContabilidad2()) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
   if (v === 'administracion' && ['abarco','yohanavarro'].includes(ME?.usr)) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
   if (v === 'reportes') {
     if (!_avanzaFechasCargando) _avanzaFechas = null; // v3.9.30: recargar fechas de paso a AVANZA al entrar
@@ -12025,7 +12058,7 @@ function showV(v) {
       setTimeout(renderReportes, 50);
     }
   }
-  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','codigopostal','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','seguros','seguros-nueva','central-deudores','copas','prendas-finalizadas','prendas-entregadas','prendas-canceladas'].forEach(id => {
+  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','contabilidad2','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','codigopostal','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','seguros','seguros-nueva','central-deudores','copas','prendas-finalizadas','prendas-entregadas','prendas-canceladas'].forEach(id => {
     const el = document.getElementById('v-'+id);
     if (el) el.style.display = id===v ? '' : 'none';
 
