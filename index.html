@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.34</title>
+<title>Grupo Olyar — Solicitudes v3.9.35</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.34';
+    var APP_VER='v3.9.35';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -12125,9 +12125,13 @@ function showV(v) {
   if (v==='administracion') { loadAdministracion(); }
   if (v !== 'datero') closeDateroPanel();
 
+  // v3.9.35: Coeficientes e Histórico de Contabilidad están fuera de v-contabilidad en el HTML:
+  // al salir de Contabilidad se ocultan; al entrar se vuelve a la pestaña Liquidaciones
+  if (v !== 'contabilidad') {
+    ['cont-tab-coeficientes','cont-panel-historico'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
+  }
   if (v === 'contabilidad') {
-    renderContabilidad();
-    setTimeout(initContMirror, 100);
+    showContTab('liquidaciones');
     recargarLiquidaciones();
   }
 
