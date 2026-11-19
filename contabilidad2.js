@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapa 1 (v3.9.34)
+// CONTABILIDAD 2 — Etapa 1 (v3.9.36)
 // Solo LECTURA: no escribe nada en Supabase.
 //  - Liquidación por operación (lista + detalle)
 //  - Parámetros (porcentajes actuales; se editan en Contabilidad → Cambio de coeficientes)
@@ -342,7 +342,7 @@
           </div>
         </div>
         <div style="display:flex;gap:10px">
-          ${typeof editRec === 'function' && (typeof canEdit !== 'function' || canEdit()) ? `<button class="c2-btn" onclick="editRec('${esc(r.id)}')">Ver solicitud</button>` : ''}
+          ${typeof editRec === 'function' && (typeof canEdit !== 'function' || canEdit()) ? `<button class="c2-btn" onclick="C2.verSolicitud('${esc(r.id)}')">Ver solicitud</button>` : ''}
           <button class="c2-btn pri" disabled title="Etapa 2">Registrar cobro de retribución</button>
         </div>
       </div>
@@ -465,6 +465,12 @@
         ${lista.length ? `<table class="c2-t ancha"><thead><tr><th>Cliente</th><th>Banco</th><th>Estado</th><th>Observaciones</th></tr></thead><tbody>${filas}</tbody></table>` : '<div class="c2-empty">✅ Sin diferencias</div>'}
       </div>`;
   }
+
+  // Abre la solicitud en Comercializadora; al volver (o guardar) regresa a esta operación (ver showV en index)
+  C2.verSolicitud = function (id) {
+    window._volverC2 = id;
+    editRec(id);
+  };
 
   // ── entrada ──
   C2.init = function () {
