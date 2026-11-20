@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1 y 2 (v3.9.39)
+// CONTABILIDAD 2 — Etapas 1 y 2 (v3.9.40)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 //  - Liquidación por operación (lista + detalle)
@@ -587,6 +587,8 @@
     C2.caja.movs.forEach(m => { if (!hasta || String(m.fecha) <= hasta) s += efecto(m, cta.id); });
     return Math.round(s * 100) / 100;
   };
+  // fecha del pago registrada en la Contabilidad vieja ('' si no hay)
+  const fechaVieja = (x, vinculo) => String((vinculo === 'agencia' ? x.fechaAgencia : vinculo === 'gestor' ? x.fechaGestor : vinculo === 'retribucion' ? x.fechaRetrib : '') || '').slice(0, 10);
   const movsOp = (id, vinculo) => C2.caja.movs.filter(m => !m.anulado && String(m.solicitud_id) === String(id) && (!vinculo || m.vinculo === vinculo));
 
   // ── modal propio (no usar confirm() en PWA) ──
@@ -626,6 +628,8 @@
     if (!SYNC[vinculo]) return true;
     const campos = SYNC[vinculo](fecha);
     const prev = C2.cont[id] ? { ...C2.cont[id] } : null;
+    const igual = (a, b) => String(a ?? '').slice(0, 10) === String(b ?? '').slice(0, 10) || (typeof b === 'boolean' && !!a === b);
+    if (prev && Object.keys(campos).every(k => igual(prev[k], campos[k]))) return true; // ya estaba así (p.ej. "Pasar a caja")
     let res;
     if (prev) res = await SB.from('contabilidad').update(campos).eq('solicitud_id', id);
     else {
@@ -663,16 +667,18 @@
     if (vinculo === 'gestor') return x.it.gest.valor + x.gestoria;
     return 0;
   }
-  C2.abrirPago = function (id, vinculo) {
+  C2.abrirPago = function (id, vinculo, desdeVieja) {
     if (!C2.puedeEscribir()) { toast('Solo admin y claudionieva registran movimientos', 'warn'); return; }
     if (!C2.caja.ok) { toast('Caja y bancos no está disponible', 'er'); return; }
     if (!C2.caja.cuentas.some(c => c.activa)) { toast('Primero cargá una cuenta en Caja y bancos → Cuentas y conceptos', 'warn'); return; }
     const r = (RECORDS || []).find(x => String(x.id) === String(id)); if (!r) return;
     const x = C2.calc(r);
     const v = VINC[vinculo];
-    const fechaDef = vinculo === 'liquidacion' && x.fechaLiq && String(x.fechaLiq).slice(0, 10) >= FECHA_ARRANQUE ? String(x.fechaLiq).slice(0, 10) : hoy();
+    const fv = desdeVieja ? fechaVieja(x, vinculo) : '';
+    const fechaDef = fv && fv >= FECHA_ARRANQUE ? fv
+      : vinculo === 'liquidacion' && x.fechaLiq && String(x.fechaLiq).slice(0, 10) >= FECHA_ARRANQUE ? String(x.fechaLiq).slice(0, 10) : hoy();
     const quienRecibe = vinculo === 'agencia' ? esc(r.concesionaria || '—') : vinculo === 'gestor' ? esc(r.gestorAsignado || '—') : esc(bancoDisplay(x.banco));
-    C2.modal(v.t, `
+    C2.modal((desdeVieja ? 'Pasar a caja · ' : '') + v.t, `
       <div class="c2-sub" style="margin-bottom:12px">${esc(r.nombrecliente || '—')} · ${v.tipo === 'egreso' ? 'a' : 'de'} <b>${quienRecibe}</b></div>
       <div class="c2m-g">
         <label>Fecha<input type="date" id="c2p-fecha" value="${fechaDef}" min="${FECHA_ARRANQUE}" max="${hoy()}"></label>
@@ -682,7 +688,8 @@
       </div>
       <div class="c2-f" style="margin-top:8px">Sugerido: ${$c(montoSugerido(x, vinculo))}${vinculo === 'gestor' ? ' (comisión ' + $c(x.it.gest.valor) + ' + gastos de gestoría ' + $c(x.gestoria) + ')' : ''}</div>
       ${vinculo === 'agencia' && x.it.imp.valor > 0 ? `<label class="c2m-chk"><input type="checkbox" id="c2p-imp" checked> Registrar también el impuesto débitos/créditos que debita el banco al transferir (${$c(x.it.imp.valor)}), misma fecha y cuenta</label>` : ''}
-      ${SYNC[vinculo] ? '<div class="c2-note" style="margin-top:12px">También se tilda en la Contabilidad vieja con esta fecha.</div>' : ''}`,
+      ${desdeVieja ? `<div class="c2-note" style="margin-top:12px">En la Contabilidad vieja ya figura ${vinculo === 'retribucion' ? 'cobrada' : 'pagado'}${fv ? ' el ' + fD(fv) : ' (sin fecha)'}. Acá solo se crea el movimiento en caja; si cambiás la fecha, también se corrige en la vieja.</div>`
+        : SYNC[vinculo] ? '<div class="c2-note" style="margin-top:12px">También se tilda en la Contabilidad vieja con esta fecha.</div>' : ''}`,
       `<button class="c2-btn pri" onclick="C2.confirmarPago('${esc(id)}','${vinculo}')">Registrar</button>`);
   };
   C2.confirmarPago = async function (id, vinculo) {
@@ -769,8 +776,10 @@
     const c = cuenta(m.cuenta_id);
     C2.modal('Anular movimiento', `
       <div style="font-size:13.5px;margin-bottom:10px">${fD(m.fecha)} · ${esc(c ? c.nombre : '—')} · <b>${$c(num(m.monto))}</b><br>${esc(descMov(m))}</div>
-      ${SYNC[m.vinculo] ? '<div class="c2-note" style="margin-bottom:10px;background:#fef3c7">También se va a destildar en la Contabilidad vieja (vuelve a quedar pendiente).</div>' : ''}
+
       <label class="c2m-l">Motivo (obligatorio)<input type="text" id="c2a-mot" placeholder="Ej.: monto mal cargado"></label>
+      ${SYNC[m.vinculo] ? `<label class="c2m-chk"><input type="checkbox" id="c2a-dest"> ${m.vinculo === 'retribucion' ? 'El cobro' : 'El pago'} no se hizo: destildarlo también en la Contabilidad vieja</label>
+        <div class="c2-f" style="font-size:11px;margin:4px 0 0 24px">Dejalo sin marcar si solo corregís un dato (monto, cuenta, fecha): después lo volvés a cargar con "Pasar a caja".</div>` : ''}
       ${impDePago(m) ? `<label class="c2m-chk"><input type="checkbox" id="c2a-imp" checked> Anular también el impuesto débitos/créditos de este pago (${$c(num(impDePago(m).monto))})</label>` : ''}`,
       `<button class="c2-btn" style="background:#b91c1c;border-color:#b91c1c;color:#fff" onclick="C2.confirmarAnular('${esc(movId)}')">Anular</button>`);
   };
@@ -787,7 +796,7 @@
       const ri = await SB.from('c2_movimientos').update({ anulado: true, anulado_por: quien(), anulado_at: new Date().toISOString(), motivo_anulacion: 'Anulado junto con el pago a agencia: ' + mot }).eq('id', imp.id).eq('anulado', false);
       if (ri.error) toast('No se pudo anular el impuesto: ' + ri.error.message, 'warn');
     }
-    if (SYNC[m.vinculo] && m.solicitud_id) {
+    if (SYNC[m.vinculo] && m.solicitud_id && val('c2a-dest')) {
       const quedan = C2.caja.movs.some(x => x.id !== m.id && !x.anulado && x.vinculo === m.vinculo && String(x.solicitud_id) === String(m.solicitud_id));
       if (!quedan) ok = await syncContabilidad(m.solicitud_id, m.vinculo, null);
     }
@@ -1009,7 +1018,12 @@
     if (!C2.caja.ok) return '';
     const m = movsOp(x.r.id, vinculo)[0];
     if (m) { const c = cuenta(m.cuenta_id); return `<div class="c2-f" style="font-size:11.5px;margin-top:3px">💰 en caja: ${esc(c ? c.nombre : '—')} · ${fD(m.fecha)} · ${$c(num(m.monto))}</div>`; }
-    if (yaHecho) return '<div class="c2-f" style="font-size:11.5px;margin-top:3px;color:#a8a29e">sin movimiento en caja (registrado en la Contabilidad vieja)</div>';
+    if (yaHecho) {
+      const fv = fechaVieja(x, vinculo);
+      const nota = '<div class="c2-f" style="font-size:11.5px;margin-top:3px;color:#a8a29e">' + (fv && fv < FECHA_ARRANQUE ? 'anterior al arranque de Caja (' + fD(FECHA_ARRANQUE) + ')' : 'sin movimiento en caja (registrado en la Contabilidad vieja)') + '</div>';
+      if (fv && fv < FECHA_ARRANQUE || !C2.puedeEscribir()) return nota;
+      return nota + `<button class="c2-btn" style="padding:4px 10px;font-size:12px;margin-top:6px;border-color:#c2410c;color:#c2410c" onclick="C2.abrirPago('${esc(x.r.id)}','${vinculo}',true)">Pasar a caja</button>`;
+    }
     if (!C2.puedeEscribir()) return '';
     const lbl = { liquidacion: 'Registrar ingreso', agencia: 'Pagar agencia', retribucion: 'Registrar cobro', gestor: 'Pagar gestor' }[vinculo];
     return `<button class="c2-btn pri" style="padding:4px 10px;font-size:12px;margin-top:6px" onclick="C2.abrirPago('${esc(x.r.id)}','${vinculo}')">${lbl}</button>`;
