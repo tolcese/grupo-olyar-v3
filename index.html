@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.36</title>
+<title>Grupo Olyar — Solicitudes v3.9.37</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.36';
+    var APP_VER='v3.9.37';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -4420,16 +4420,16 @@ async function enterApp() {
     // (sin datos del sistema por ahora)
     initPresupRealtime(); initSolRealtime();
   } else if (ME.rol === 'usuario_presupuestos') {
-    await Promise.all([loadLists(), loadRecords(), loadClientes(), loadContabilidad(), loadConcesionarias(), loadCreditos()]);
+    await Promise.all([loadLists(), loadRecords(), loadClientes(), loadContabilidad(), loadConcesionarias(), loadCreditos(), loadCoefBancoSilencioso()]);
     Promise.all([loadGestores(), loadDatero(), loadGastos(), loadPorcentajesBanco()]).catch(()=>{});
     await loadPresupuestos();
     initPresupRealtime(); initSolRealtime();
   } else if (ME.rol === 'administracion' || ME.rol === 'usuario_administracion') {
-    await Promise.all([loadLists(), loadRecords(), loadClientes(), loadContabilidad(), loadConcesionarias(), loadCreditos()]);
+    await Promise.all([loadLists(), loadRecords(), loadClientes(), loadContabilidad(), loadConcesionarias(), loadCreditos(), loadCoefBancoSilencioso()]);
     Promise.all([loadGestores(), loadDatero(), loadGastos(), loadPorcentajesBanco()]).catch(()=>{});
     initPresupRealtime(); initSolRealtime();
   } else {
-    await Promise.all([loadLists(), loadRecords(), loadClientes(), loadContabilidad(), loadConcesionarias(), loadCreditos()]);
+    await Promise.all([loadLists(), loadRecords(), loadClientes(), loadContabilidad(), loadConcesionarias(), loadCreditos(), loadCoefBancoSilencioso()]);
     Promise.all([loadGestores(), loadDatero(), loadGastos(), loadPorcentajesBanco()]).catch(()=>{});
     initPresupRealtime(); initSolRealtime();
   }
@@ -10663,7 +10663,7 @@ async function editCont(id) {
   if (c.impCredito || c.comLukaya || c.ganancia || c.aLiquidar) {
     const importe = parseFloat(String(r?.importe||0).replace(/[$,]/g,'')) || 0;
     const impCredito  = importe ? Math.round(importe * COEFICIENTES.impCredito / 100) : (c.impCredito || 0);
-    const comLukaya   = importe ? Math.round((importe * getComLukayaPct(r.banco) / 100) - impCredito) : (c.comLukaya || 0);
+    const comLukaya   = importe ? Math.round((importe * getComLukayaPct(_bancoOp(r)) / 100) - impCredito) : (c.comLukaya || 0);
     const comGestora  = importe ? Math.round(importe * COEFICIENTES.comGestor / 100) : (c.comGestora || 0);
     // Usar valor guardado de retribBanco si existe, sino calcular desde coeficiente
     const retribBanco = c.retribBanco != null ? c.retribBanco : (importe ? Math.round(importe * COEFICIENTES.retribBanco / 100) : 0);
@@ -10701,7 +10701,7 @@ async function recargarLiquidaciones() {
     const importe = parseFloat(String(r.importe||0).replace(/[$,]/g,'')) || 0;
     if (!importe) continue;
     const impCredito  = Math.round(importe * COEFICIENTES.impCredito / 100);
-    const comLukaya   = Math.round((importe * getComLukayaPct(r.banco) / 100) - impCredito);
+    const comLukaya   = Math.round((importe * getComLukayaPct(_bancoOp(r)) / 100) - impCredito);
     const comGestora  = Math.round(importe * COEFICIENTES.comGestor / 100);
     const retribBanco = Math.round(importe * COEFICIENTES.retribBanco / 100);
     const ganancia    = Math.round(comLukaya - comGestora + retribBanco);
@@ -10985,9 +10985,25 @@ async function eliminarPorcentaje(id) {
 
 let COEF_BANCO = []; // {banco, com_lukaya, id}
 
+// v3.9.37: % por banco cargado al entrar (antes solo al abrir Cambio de Coeficientes → se usaba el 3,2 % general)
+async function loadCoefBancoSilencioso() {
+  try {
+    const { data, error } = await SB.from('coeficientes_banco').select('*').order('banco');
+    if (!error && Array.isArray(data)) COEF_BANCO = data;
+  } catch (e) { console.error('Coeficientes por banco:', e); }
+}
+// v3.9.37: banco de la operación = el que está en AVANZA (si no hay, el de la solicitud)
+function _bancoOp(r) {
+  if (!r) return '';
+  try {
+    const av = (getBancos(r) || []).find(b => String(b.estado || '').toUpperCase() === 'AVANZA');
+    if (av && av.banco) return av.banco;
+  } catch (e) {}
+  return r.banco || '';
+}
 function getComLukayaPct(banco) {
-  const b = (banco || '').toUpperCase();
-  const exc = COEF_BANCO.find(c => c.banco.toUpperCase() === b);
+  const b = (banco || '').toUpperCase().trim();
+  const exc = COEF_BANCO.find(c => String(c.banco || '').toUpperCase().trim() === b);
   return exc ? exc.com_lukaya : COEFICIENTES.comLukaya;
 }
 
@@ -11094,7 +11110,7 @@ function calcContLiquidar() {
   const impCredito = Math.round(importe * COEFICIENTES.impCredito / 100);
   document.getElementById('cont-imp-credito').value = impCredito.toFixed(2);
   // Comisión LUKAYA — solo calcular si el campo está vacío
-  const comLukayaCalc = Math.round((importe * getComLukayaPct(r.banco) / 100) - impCredito);
+  const comLukayaCalc = Math.round((importe * getComLukayaPct(_bancoOp(r)) / 100) - impCredito);
   if (!document.getElementById('cont-com-lukaya').value) {
     document.getElementById('cont-com-lukaya').value = comLukayaCalc.toFixed(2);
   }
@@ -12240,7 +12256,7 @@ async function autoCalcContabilidad() {
     const importe = parseFloat(String(r.importe||0).replace(/[$,]/g,'')) || 0;
     if (!importe) continue;
     const impCredito  = Math.round(importe * COEFICIENTES.impCredito / 100);
-    const comLukaya   = Math.round((importe * getComLukayaPct(r.banco) / 100) - impCredito);
+    const comLukaya   = Math.round((importe * getComLukayaPct(_bancoOp(r)) / 100) - impCredito);
     const comGestora  = Math.round(importe * COEFICIENTES.comGestor / 100);
     const retribBanco = Math.round(importe * COEFICIENTES.retribBanco / 100);
     const ganancia    = Math.round(comLukaya - comGestora + retribBanco);
@@ -12756,7 +12772,7 @@ async function saveRecord() {
           }
           if (recalcular) {
             const impCredito  = Math.round(importeNuevo * COEFICIENTES.impCredito / 100);
-            const comLukaya   = Math.round((importeNuevo * getComLukayaPct(rec?.banco || r?.banco) / 100) - impCredito);
+            const comLukaya   = Math.round((importeNuevo * getComLukayaPct(_bancoOp(rec || r)) / 100) - impCredito);
             const comGestora  = Math.round(importeNuevo * COEFICIENTES.comGestor / 100);
             const retribBanco = Math.round(importeNuevo * COEFICIENTES.retribBanco / 100);
             const aLiquidar   = Math.round(importeNuevo - comLukaya - (c.gastosGestoria||0) - impCredito);
@@ -13390,7 +13406,7 @@ function calcLTLiquidar() {
   const r = RECORDS.find(x => x.id === document.getElementById('lt-edit-id').value);
   const importe = parseFloat(String(r?.importe||0).replace(/[$,]/g,'')) || 0;
   const impCredito  = parseFloat(document.getElementById('lt-imp-credito').value) || Math.round(importe * COEFICIENTES.impCredito / 100);
-  const comLukaya   = parseFloat(document.getElementById('lt-com-lukaya').value)  || Math.round((importe * getComLukayaPct(r?.banco) / 100) - impCredito);
+  const comLukaya   = parseFloat(document.getElementById('lt-com-lukaya').value)  || Math.round((importe * getComLukayaPct(_bancoOp(r)) / 100) - impCredito);
   const comGestora  = parseFloat(document.getElementById('lt-com-gestora').value) || Math.round(importe * COEFICIENTES.comGestor / 100);
   const retribBanco = parseFloat(document.getElementById('lt-retrib-banco').value)|| Math.round(importe * COEFICIENTES.retribBanco / 100);
   const comComercial = parseFloat(document.getElementById('lt-com-comercial').value||0) || 0;
@@ -13461,7 +13477,7 @@ async function editLT(id) {
     // Recalcular desde el importe actual de la solicitud
     const importe = parseFloat(String(r?.importe||0).replace(/[$,]/g,'')) || 0;
     const impCredito = importe ? Math.round(importe * COEFICIENTES.impCredito / 100) : (c.impCredito || 0);
-    const comLukaya  = c.comLukaya  != null ? c.comLukaya  : (importe ? Math.round((importe * getComLukayaPct(r.banco) / 100) - impCredito) : 0);
+    const comLukaya  = c.comLukaya  != null ? c.comLukaya  : (importe ? Math.round((importe * getComLukayaPct(_bancoOp(r)) / 100) - impCredito) : 0);
     const comGestora = c.comGestora != null ? c.comGestora : (importe ? Math.round(importe * COEFICIENTES.comGestor / 100) : 0);
     const retribBanco = c.retribBanco != null ? c.retribBanco : (importe ? Math.round(importe * COEFICIENTES.retribBanco / 100) : 0);
     const gastosGest  = parseFloat(String(c.gastosGestoria||0)) || 0;
