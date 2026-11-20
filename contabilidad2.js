@@ -1,6 +1,7 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapa 1 (v3.9.36)
-// Solo LECTURA: no escribe nada en Supabase.
+// CONTABILIDAD 2 — Etapas 1 y 2 (v3.9.39)
+// Etapa 1 (lectura): liquidación, parámetros, controles.
+// Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 //  - Liquidación por operación (lista + detalle)
 //  - Parámetros (porcentajes actuales; se editan en Contabilidad → Cambio de coeficientes)
 //  - Controles (diferencias entre lo guardado en Contabilidad y lo calculado)
@@ -45,6 +46,7 @@
     if (C2.cargado && !forzar) return;
     C2.cargando = true;
     C2.render();
+    const pCaja = cargarCaja();
     try {
       const [rc, rk, rb] = await Promise.all([
         _sbAll(() => SB.from('contabilidad').select('*').order('solicitud_id')),
@@ -62,6 +64,7 @@
       console.error('Contabilidad 2:', e);
       toast('Contabilidad 2: error al cargar datos (' + (e.message || e) + ')', 'er');
     }
+    await pCaja;
     C2.cargando = false;
     C2.render();
   };
@@ -219,6 +222,34 @@
 #v-contabilidad2 .c2-dot{width:13px;height:13px;border-radius:50%;margin-top:4px;flex:none}
 #v-contabilidad2 .c2-note{background:#f5f5f4;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#44403c}
 #v-contabilidad2 .c2-empty{text-align:center;color:var(--muted);padding:40px 10px}
+#v-contabilidad2 .c2-tabs{display:flex;gap:6px;margin:14px 0}
+#v-contabilidad2 .c2-tabs button{border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer}
+#v-contabilidad2 .c2-tabs button.on{background:#fff1e8;border-color:#fdba8c;color:#c2410c}
+#v-contabilidad2 .c2-ctas{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:0 0 14px}
+#v-contabilidad2 .c2-cta{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer}
+#v-contabilidad2 .c2-cta:hover{border-color:#fdba8c}
+#v-contabilidad2 .c2-cta.on{border-color:#c2410c;box-shadow:0 0 0 2px #fde2cf}
+#v-contabilidad2 .c2-cta.tot{background:#fff7f1;cursor:default}
+#v-contabilidad2 .c2-cta .l{font-size:12px;color:var(--muted);font-weight:700}
+#v-contabilidad2 .c2-cta .v{font-size:20px;font-weight:900;margin:3px 0 1px}
+#c2-modal{position:fixed;inset:0;background:rgba(15,15,15,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px}
+#c2-modal .c2m-box{background:#fff;border-radius:14px;width:100%;max-width:560px;max-height:92vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+#c2-modal .c2m-h{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e7e5e4;font-size:15.5px}
+#c2-modal .c2m-x{border:none;background:none;font-size:16px;cursor:pointer;color:#78716c}
+#c2-modal .c2m-b{padding:16px 18px;font-size:13.5px}
+#c2-modal .c2m-f{display:flex;justify-content:flex-end;gap:10px;padding:12px 18px;border-top:1px solid #e7e5e4}
+#c2-modal .c2m-g{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#c2-modal label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#57534e}
+#c2-modal label.c2m-chk{flex-direction:row;align-items:center;gap:8px;font-weight:600;margin-top:12px}
+#c2-modal input[type=text],#c2-modal input[type=date],#c2-modal input[type=number],#c2-modal select{border:1.5px solid #e7e5e4;border-radius:8px;padding:8px 10px;font-size:13.5px;font-weight:400;color:#1c1917;background:#fff}
+#c2-modal .c2m-err{display:none;margin:0 18px 4px;padding:8px 10px;border-radius:8px;background:#fee2e2;color:#991b1b;font-size:12.5px;font-weight:600}
+#c2-modal .c2-btn{border:1.5px solid #e7e5e4;background:#fff;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer}
+#c2-modal .c2-btn.pri{background:#c2410c;border-color:#c2410c;color:#fff}
+#c2-modal .c2-btn[disabled]{opacity:.45;cursor:not-allowed}
+#c2-modal .c2-sub{font-size:13px;color:#78716c}
+#c2-modal .c2-f{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#57534e}
+#c2-modal .c2-note{background:#f5f5f4;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#44403c}
+@media (max-width:600px){#c2-modal .c2m-g{grid-template-columns:1fr}}
 @media (max-width:1100px){#v-contabilidad2 .c2{grid-template-columns:1fr}#v-contabilidad2 .c2-nav{position:static}#v-contabilidad2 .c2-grid2{grid-template-columns:1fr}#v-contabilidad2 .c2-kpis{grid-template-columns:repeat(2,1fr)}}
 `;
     document.head.appendChild(s);
@@ -237,6 +268,7 @@
     ['controles', 'Controles', 1]
   ];
   C2.ir = function (sec, opId) {
+    if (sec === 'caja' && C2.seccion !== 'caja') C2.cajaTab = 'movimientos';
     C2.seccion = sec;
     C2.opId = opId || null;
     C2.render();
@@ -247,13 +279,14 @@
     const root = document.getElementById('v-contabilidad2');
     if (!root) return;
     css();
-    const nav = SECCIONES.map(([k, t, etapa]) => etapa === 1
+    const nav = SECCIONES.map(([k, t, etapa]) => etapa <= 2
       ? `<button class="${C2.seccion === k ? 'on' : ''}" onclick="C2.ir('${k}')">${t}</button>`
       : `<button disabled title="Próxima etapa">${t}<small>(etapa ${etapa})</small></button>`).join('');
     let body;
     if (!C2.cargado) body = `<div class="c2-card c2-empty">${C2.cargando ? '⏳ Cargando datos contables…' : 'Sin datos.'}</div>`;
     else if (C2.seccion === 'liquidacion' && C2.opId) body = vistaOperacion(C2.opId);
     else if (C2.seccion === 'liquidacion') body = vistaLista();
+    else if (C2.seccion === 'caja') body = vistaCaja();
     else if (C2.seccion === 'parametros') body = vistaParametros();
     else if (C2.seccion === 'controles') body = vistaControles();
     else body = '<div class="c2-card c2-empty">Próxima etapa</div>';
@@ -288,7 +321,7 @@
       </tr>`;
     }).join('');
     return `
-      <div class="c2-kick">Contabilidad 2 · etapa 1 (solo lectura)</div>
+      <div class="c2-kick">Contabilidad 2</div>
       <div class="c2-h1">Liquidación por operación</div>
       <div class="c2-sub">${f.alcance === 'avanza' ? 'Todas las solicitudes en AVANZA' : 'Créditos en estado Liquidado o Pagado (Prendas → Crédito)'} · Fechas = fecha de Liquidado</div>
       <div class="c2-kpis">
@@ -326,7 +359,9 @@
     const ajF = i => i.ajuste ? `<div class="c2-f" style="font-size:11px">calculado ${$(i.calc)}</div>` : '';
     const ganAj = x.ganGuardada !== null && Math.abs(x.ganGuardada - x.ganancia) > 1;
     const dRet = dias(x.fechaLiq);
-    const paso = (ok, titulo, sub, pend) => `<li><span class="c2-dot" style="background:${ok ? '#15803d' : pend ? '#c2410c' : '#a8a29e'}"></span><div><div style="font-weight:700">${titulo}</div><div style="font-size:12.5px;color:var(--muted)">${sub}</div></div></li>`;
+    const paso = (ok, titulo, sub, pend, extra) => `<li><span class="c2-dot" style="background:${ok ? '#15803d' : pend ? '#c2410c' : '#a8a29e'}"></span><div><div style="font-weight:700">${titulo}</div><div style="font-size:12.5px;color:var(--muted)">${sub}</div>${extra || ''}</div></li>`;
+    const liqVieja = x.fechaLiq && String(x.fechaLiq).slice(0, 10) < FECHA_ARRANQUE && !movsOp(x.r.id, 'liquidacion').length;
+    const extraLiq = !C2.caja.ok ? '' : liqVieja ? '<div class="c2-f" style="font-size:11.5px;margin-top:3px;color:#a8a29e">anterior al arranque de Caja (' + fD(FECHA_ARRANQUE) + ')</div>' : C2.pasoCaja(x, 'liquidacion', false);
     const sinCont = !x.c;
     return `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
@@ -343,7 +378,6 @@
         </div>
         <div style="display:flex;gap:10px">
           ${typeof editRec === 'function' && (typeof canEdit !== 'function' || canEdit()) ? `<button class="c2-btn" onclick="C2.verSolicitud('${esc(r.id)}')">Ver solicitud</button>` : ''}
-          <button class="c2-btn pri" disabled title="Etapa 2">Registrar cobro de retribución</button>
         </div>
       </div>
       ${sinCont ? `<div class="c2-note" style="margin-top:14px;background:#fef3c7">Esta operación todavía no tiene fila en Contabilidad: todo lo que ves es calculado con los porcentajes de Parámetros.</div>` : ''}
@@ -376,16 +410,19 @@
             ${ganAj ? `<div class="c2-note" style="margin-top:10px;background:#fef3c7">En Contabilidad la ganancia guardada es <b>${$(x.ganGuardada)}</b>, distinta de la calculada (${$(x.ganancia)}). Revisalo en Controles.</div>` : ''}
           </div>
         </div>
+        <div>
         <div class="c2-card">
           <h3>Recorrido del dinero</h3>
           <ul class="c2-tl">
-            ${paso(!!x.fechaLiq, 'Liquidada por el banco', x.fechaLiq ? fD(x.fechaLiq) + (x.fLiqEstimada ? ' (estimada: fecha de Pagado)' : '') : 'Sin fecha de Liquidado', !x.fechaLiq)}
-            ${paso(x.agenciaPagada, 'Agencia pagada · ' + esc(r.concesionaria || '—'), x.agenciaPagada ? fD(x.fechaAgencia) : 'Pendiente · ' + $(x.aLiquidar), !x.agenciaPagada)}
-            ${paso(x.retribCobrada, 'Retribución del banco', x.retribCobrada ? 'Cobrada ' + fD(x.fechaRetrib) : 'Pendiente' + (dRet !== null ? ' hace ' + dRet + ' días' : '') + ' · ' + $(x.it.retrib.valor), !x.retribCobrada)}
-            ${paso(x.gestorPagado, 'Comisión y gastos al gestor · ' + esc(r.gestorAsignado || '—'), x.gestorPagado ? fD(x.fechaGestor) : 'Pendiente · ' + $(x.it.gest.valor + x.gestoria), !x.gestorPagado)}
+            ${paso(!!x.fechaLiq, 'Liquidada por el banco', x.fechaLiq ? fD(x.fechaLiq) + (x.fLiqEstimada ? ' (estimada: fecha de Pagado)' : '') : 'Sin fecha de Liquidado', !x.fechaLiq, extraLiq)}
+            ${paso(x.agenciaPagada, 'Agencia pagada · ' + esc(r.concesionaria || '—'), x.agenciaPagada ? fD(x.fechaAgencia) : 'Pendiente · ' + $(x.aLiquidar), !x.agenciaPagada, C2.pasoCaja(x, 'agencia', x.agenciaPagada))}
+            ${paso(x.retribCobrada, 'Retribución del banco', x.retribCobrada ? 'Cobrada ' + fD(x.fechaRetrib) : 'Pendiente' + (dRet !== null ? ' hace ' + dRet + ' días' : '') + ' · ' + $(x.it.retrib.valor), !x.retribCobrada, C2.pasoCaja(x, 'retribucion', x.retribCobrada))}
+            ${paso(x.gestorPagado, 'Comisión y gastos al gestor · ' + esc(r.gestorAsignado || '—'), x.gestorPagado ? fD(x.fechaGestor) : 'Pendiente · ' + $(x.it.gest.valor + x.gestoria), !x.gestorPagado, C2.pasoCaja(x, 'gestor', x.gestorPagado))}
             ${paso(x.agenciaPagada && x.retribCobrada && x.gestorPagado, 'Cerrada', 'Cuando todo lo anterior esté hecho', false)}
           </ul>
-          <div class="c2-note">Etapa 1: los pagos se ven pero todavía se registran en la Contabilidad actual. En la etapa 2, al tildar un pago acá se va a crear el movimiento en Caja y bancos.</div>
+          <div class="c2-note">${C2.caja.ok ? 'Al registrar un pago o cobro acá se crea el movimiento en Caja y bancos y se tilda también en la Contabilidad vieja.' : 'Caja y bancos no está disponible: los pagos se siguen registrando en la Contabilidad vieja.'}</div>
+        </div>
+        ${C2.movsOperacionHTML(x)}
         </div>
       </div>`;
   }
@@ -470,6 +507,521 @@
   C2.verSolicitud = function (id) {
     window._volverC2 = id;
     editRec(id);
+  };
+
+
+  // ══════════════════════════════════════════════════════════════
+  // ETAPA 2 — CAJA Y BANCOS (v3.9.38)
+  // Tablas: c2_cuentas, c2_conceptos, c2_movimientos (ver c2_etapa2.sql)
+  // Los movimientos nunca se borran: se anulan con motivo.
+  // Pagos de una operación (agencia / retribución / gestor) también tildan la Contabilidad vieja.
+  // ══════════════════════════════════════════════════════════════
+  const FECHA_ARRANQUE = '2026-11-01';
+  // pesos con centavos solo si los hay
+  const $c = v => { v = Math.round((v || 0) * 100) / 100; const d = Math.abs(v % 1) > 0.004 ? 2 : 0; return (v < 0 ? '−$' : '$') + Math.abs(v).toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+  const _C2_ESCRIBEN = ['admin', 'claudionieva'];
+  const IMP_DET = 'Impuesto débitos/créditos · pago agencia';
+  // movimiento de impuesto creado junto con un pago a agencia (misma operación, fecha y cuenta)
+  const impDePago = m => m.vinculo === 'agencia' ? C2.caja.movs.find(i => !i.anulado && !i.vinculo && i.tipo === 'egreso' && String(i.solicitud_id) === String(m.solicitud_id) && String(i.fecha) === String(m.fecha) && String(i.cuenta_id) === String(m.cuenta_id) && i.detalle === IMP_DET) : null;
+  C2.caja = { cuentas: [], conceptos: [], movs: [], ok: false, err: null };
+  C2.cajaF = { cuenta: '', desde: '', hasta: '', concepto: '', q: '', anulados: false };
+  C2.cajaTab = 'movimientos';
+
+  C2.puedeEscribir = () => C2.puede() && (typeof canEdit !== 'function' || canEdit()) &&
+    _C2_ESCRIBEN.includes(String(ME?.usr || '').toLowerCase());
+
+  const hoy = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const quien = () => ME?.nom || ME?.usr || '—';
+  // Monto escrito a mano: "1.234.567", "1234567,50", "1.234.567,50", "1234567.5"
+  const numIn = v => {
+    let s = String(v ?? '').replace(/[$\s]/g, '');
+    if (!s) return null;
+    if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+    const n = parseFloat(s);
+    return isFinite(n) ? Math.round(n * 100) / 100 : null;
+  };
+  const fmtIn = v => (v ? Math.round(v).toLocaleString('es-AR') : '');
+  const VINC = {
+    liquidacion: { t: 'Ingreso de la liquidación del banco', tipo: 'ingreso' },
+    agencia: { t: 'Pago a la agencia', tipo: 'egreso' },
+    retribucion: { t: 'Cobro de la retribución del banco', tipo: 'ingreso' },
+    gestor: { t: 'Pago al gestor', tipo: 'egreso' }
+  };
+
+  async function cargarCaja() {
+    const k = C2.caja;
+    try {
+      const [a, b, c] = await Promise.all([
+        SB.from('c2_cuentas').select('*').order('orden').order('id'),
+        SB.from('c2_conceptos').select('*').order('tipo').order('nombre'),
+        _sbAll(() => SB.from('c2_movimientos').select('*').order('id'))
+      ]);
+      const e = a.error || b.error || c.error;
+      if (e) throw e;
+      k.cuentas = a.data || []; k.conceptos = b.data || []; k.movs = c.data || [];
+      k.ok = true; k.err = null;
+    } catch (e) {
+      k.ok = false;
+      const m = String(e.message || e);
+      k.err = /does not exist|relation|schema cache|Could not find/i.test(m) ? 'faltaSQL' : m;
+      console.warn('C2 caja:', m);
+    }
+  }
+  C2.recargarCaja = async function () { await cargarCaja(); C2.render(); };
+
+  const cuenta = id => C2.caja.cuentas.find(c => String(c.id) === String(id));
+  const concepto = id => C2.caja.conceptos.find(c => String(c.id) === String(id));
+  // efecto de un movimiento sobre una cuenta (con signo)
+  function efecto(m, ctaId) {
+    if (m.anulado) return 0;
+    const v = num(m.monto) || 0, id = String(ctaId);
+    if (m.tipo === 'ingreso') return String(m.cuenta_id) === id ? v : 0;
+    if (m.tipo === 'egreso') return String(m.cuenta_id) === id ? -v : 0;
+    if (String(m.cuenta_id) === id) return -v;
+    if (String(m.cuenta_destino_id) === id) return v;
+    return 0;
+  }
+  C2.saldoCuenta = function (cta, hasta) {
+    let s = num(cta.saldo_inicial) || 0;
+    C2.caja.movs.forEach(m => { if (!hasta || String(m.fecha) <= hasta) s += efecto(m, cta.id); });
+    return Math.round(s * 100) / 100;
+  };
+  const movsOp = (id, vinculo) => C2.caja.movs.filter(m => !m.anulado && String(m.solicitud_id) === String(id) && (!vinculo || m.vinculo === vinculo));
+
+  // ── modal propio (no usar confirm() en PWA) ──
+  C2.modal = function (titulo, html, botones) {
+    C2.cerrarModal();
+    const ov = document.createElement('div');
+    ov.id = 'c2-modal';
+    ov.innerHTML = `<div class="c2m-box"><div class="c2m-h"><b>${titulo}</b><button class="c2m-x" onclick="C2.cerrarModal()">✕</button></div>
+      <div class="c2m-b">${html}</div><div class="c2m-err" id="c2m-err"></div>
+      <div class="c2m-f"><button class="c2-btn" onclick="C2.cerrarModal()">Cancelar</button>${botones || ''}</div></div>`;
+    ov.addEventListener('mousedown', e => { if (e.target === ov) C2.cerrarModal(); });
+    document.body.appendChild(ov);
+    const f = ov.querySelector('input:not([type=hidden]):not([readonly]),select,textarea'); if (f) setTimeout(() => f.focus(), 30);
+  };
+  C2.cerrarModal = function () { const m = document.getElementById('c2-modal'); if (m) m.remove(); };
+  const mErr = t => { const e = document.getElementById('c2m-err'); if (e) { e.textContent = t; e.style.display = t ? 'block' : 'none'; } };
+  const val = id => { const e = document.getElementById(id); return e ? (e.type === 'checkbox' ? e.checked : e.value) : null; };
+  function bloquear(b) { document.querySelectorAll('#c2-modal .c2m-f button').forEach(x => { x.disabled = b; }); }
+  const optCuentas = (sel, excluir) => C2.caja.cuentas.filter(c => c.activa && String(c.id) !== String(excluir || ''))
+    .map(c => `<option value="${c.id}"${String(c.id) === String(sel) ? ' selected' : ''}>${esc(c.nombre)}</option>`).join('');
+  function validarFechaCuenta(fecha, ctaId) {
+    const c = cuenta(ctaId);
+    if (!c) return 'Elegí una cuenta';
+    if (!fecha) return 'Poné la fecha';
+    if (fecha > hoy()) return 'La fecha no puede ser futura';
+    if (fecha < String(c.fecha_inicio)) return `La cuenta ${c.nombre} arranca el ${fD(c.fecha_inicio)}: la fecha no puede ser anterior`;
+    return '';
+  }
+
+  // ── Sincronización con la Contabilidad vieja ──
+  const SYNC = {
+    agencia: f => ({ pagado: !!f, fecha_pagado: f || null }),
+    gestor: f => ({ pago_gest: !!f, fecha_pago_gest: f || null }),
+    retribucion: f => ({ fecha_pago_banco: f || null })
+  };
+  async function syncContabilidad(id, vinculo, fecha) {
+    if (!SYNC[vinculo]) return true;
+    const campos = SYNC[vinculo](fecha);
+    const prev = C2.cont[id] ? { ...C2.cont[id] } : null;
+    let res;
+    if (prev) res = await SB.from('contabilidad').update(campos).eq('solicitud_id', id);
+    else {
+      const r = (RECORDS || []).find(x => String(x.id) === String(id));
+      const x = C2.calc(r);
+      res = await SB.from('contabilidad').upsert({
+        solicitud_id: id, a_liquidar: x.aLiquidar, imp_credito: x.it.imp.valor, gastos_gestoria: null,
+        com_lukaya: x.it.comLuk.valor, fecha_liq: x.fechaLiq ? String(x.fechaLiq).slice(0, 10) : null,
+        com_comercial: null, com_operativo: null, com_gestora: x.it.gest.valor, retrib_banco: x.it.retrib.valor,
+        ganancia: x.ganancia, pagos_extras: null, pagado: false, fecha_pagado: null, pago_gest: false,
+        fecha_pago_gest: null, fecha_pago_banco: null, obs: null, ...campos
+      }, { onConflict: 'solicitud_id' });
+    }
+    if (res.error) { console.error('C2 sync contabilidad:', res.error); return false; }
+    C2.cont[id] = { ...(prev || { solicitud_id: id }), ...campos };
+    // memoria de la Contabilidad vieja
+    const cam = {};
+    if ('pagado' in campos) { cam.pagado = campos.pagado; cam.fechaPagado = campos.fecha_pagado; }
+    if ('pago_gest' in campos) { cam.pagoGest = campos.pago_gest; cam.fechaPagoGest = campos.fecha_pago_gest; }
+    if ('fecha_pago_banco' in campos) cam.fechaPagoBanco = campos.fecha_pago_banco;
+    try { if (typeof CONT_DATA !== 'undefined' && CONT_DATA) CONT_DATA[id] = { ...(CONT_DATA[id] || {}), ...cam }; } catch (e) {}
+    try { if (typeof LT_DATA !== 'undefined' && LT_DATA && LT_DATA[id]) LT_DATA[id] = { ...LT_DATA[id], ...cam }; } catch (e) {}
+    if (typeof registrarHistorial === 'function') {
+      const ant = prev || {};
+      registrarHistorial('contabilidad', id, Object.keys(campos).map(k => ({ campo: k, ant: ant[k] ?? null, nuevo: campos[k] })).concat([{ campo: 'origen', ant: null, nuevo: 'Contabilidad 2 · ' + (fecha ? '' : 'anulación de ') + VINC[vinculo].t.toLowerCase() }]));
+    }
+    return true;
+  }
+
+  // ── Pagos / cobros de una operación ──
+  function montoSugerido(x, vinculo) {
+    if (vinculo === 'liquidacion') return x.I;
+    if (vinculo === 'agencia') return x.aLiquidar;
+    if (vinculo === 'retribucion') return x.it.retrib.valor;
+    if (vinculo === 'gestor') return x.it.gest.valor + x.gestoria;
+    return 0;
+  }
+  C2.abrirPago = function (id, vinculo) {
+    if (!C2.puedeEscribir()) { toast('Solo admin y claudionieva registran movimientos', 'warn'); return; }
+    if (!C2.caja.ok) { toast('Caja y bancos no está disponible', 'er'); return; }
+    if (!C2.caja.cuentas.some(c => c.activa)) { toast('Primero cargá una cuenta en Caja y bancos → Cuentas y conceptos', 'warn'); return; }
+    const r = (RECORDS || []).find(x => String(x.id) === String(id)); if (!r) return;
+    const x = C2.calc(r);
+    const v = VINC[vinculo];
+    const fechaDef = vinculo === 'liquidacion' && x.fechaLiq && String(x.fechaLiq).slice(0, 10) >= FECHA_ARRANQUE ? String(x.fechaLiq).slice(0, 10) : hoy();
+    const quienRecibe = vinculo === 'agencia' ? esc(r.concesionaria || '—') : vinculo === 'gestor' ? esc(r.gestorAsignado || '—') : esc(bancoDisplay(x.banco));
+    C2.modal(v.t, `
+      <div class="c2-sub" style="margin-bottom:12px">${esc(r.nombrecliente || '—')} · ${v.tipo === 'egreso' ? 'a' : 'de'} <b>${quienRecibe}</b></div>
+      <div class="c2m-g">
+        <label>Fecha<input type="date" id="c2p-fecha" value="${fechaDef}" min="${FECHA_ARRANQUE}" max="${hoy()}"></label>
+        <label>Cuenta<select id="c2p-cuenta">${optCuentas(C2._ultCuenta)}</select></label>
+        <label>Monto<input type="text" inputmode="decimal" id="c2p-monto" value="${fmtIn(montoSugerido(x, vinculo))}"></label>
+        <label style="grid-column:1/-1">Detalle (opcional)<input type="text" id="c2p-det" placeholder="N° de transferencia, observación…"></label>
+      </div>
+      <div class="c2-f" style="margin-top:8px">Sugerido: ${$c(montoSugerido(x, vinculo))}${vinculo === 'gestor' ? ' (comisión ' + $c(x.it.gest.valor) + ' + gastos de gestoría ' + $c(x.gestoria) + ')' : ''}</div>
+      ${vinculo === 'agencia' && x.it.imp.valor > 0 ? `<label class="c2m-chk"><input type="checkbox" id="c2p-imp" checked> Registrar también el impuesto débitos/créditos que debita el banco al transferir (${$c(x.it.imp.valor)}), misma fecha y cuenta</label>` : ''}
+      ${SYNC[vinculo] ? '<div class="c2-note" style="margin-top:12px">También se tilda en la Contabilidad vieja con esta fecha.</div>' : ''}`,
+      `<button class="c2-btn pri" onclick="C2.confirmarPago('${esc(id)}','${vinculo}')">Registrar</button>`);
+  };
+  C2.confirmarPago = async function (id, vinculo) {
+    const fecha = val('c2p-fecha'), cta = val('c2p-cuenta'), monto = numIn(val('c2p-monto')), det = String(val('c2p-det') || '').trim();
+    const e = validarFechaCuenta(fecha, cta); if (e) return mErr(e);
+    if (!monto || monto <= 0) return mErr('El monto tiene que ser mayor a cero');
+    const con = C2.caja.conceptos.find(c => c.vinculo === vinculo && c.activo);
+    if (!con) return mErr('No existe el concepto de sistema para "' + VINC[vinculo].t + '". Revisá Cuentas y conceptos.');
+    bloquear(true); mErr('');
+    try {
+      // anti-duplicado contra la base (por si otro usuario lo cargó recién)
+      const chk = await SB.from('c2_movimientos').select('id').eq('solicitud_id', id).eq('vinculo', vinculo).eq('anulado', false).limit(1);
+      if (chk.error) throw chk.error;
+      if ((chk.data || []).length) { bloquear(false); await cargarCaja(); C2.render(); return mErr('Ya hay un movimiento registrado para esto. Actualicé la pantalla.'); }
+      const ins = await SB.from('c2_movimientos').insert({
+        fecha, tipo: VINC[vinculo].tipo, cuenta_id: Number(cta), monto, concepto_id: con.id,
+        vinculo, solicitud_id: id, detalle: det || null, creado_por: quien()
+      }).select().single();
+      if (ins.error) throw ins.error;
+      if (vinculo === 'agencia' && val('c2p-imp')) {
+        const r = (RECORDS || []).find(x => String(x.id) === String(id));
+        const x = C2.calc(r);
+        const ci = C2.caja.conceptos.find(c => c.activo && !c.vinculo && c.tipo === 'egreso' && /impuesto/i.test(c.nombre));
+        if (x.it.imp.valor > 0) {
+          const i2 = await SB.from('c2_movimientos').insert({ fecha, tipo: 'egreso', cuenta_id: Number(cta), monto: x.it.imp.valor, concepto_id: ci ? ci.id : null, solicitud_id: id, detalle: IMP_DET, creado_por: quien() });
+          if (i2.error) toast('Se registró el pago pero no el impuesto: ' + i2.error.message, 'warn');
+        }
+      }
+      C2._ultCuenta = cta;
+      const ok = await syncContabilidad(id, vinculo, fecha);
+      C2.cerrarModal();
+      toast(ok ? 'Registrado ✓' : 'Movimiento registrado, pero NO se pudo tildar en la Contabilidad vieja. Tildalo a mano.', ok ? 'ok' : 'warn');
+      await cargarCaja(); C2.render();
+    } catch (err) { bloquear(false); mErr('Error: ' + (err.message || err)); }
+  };
+
+  // ── Movimiento manual (ingreso / egreso / transferencia) ──
+  C2.abrirMov = function (tipo) {
+    if (!C2.puedeEscribir()) return;
+    if (!C2.caja.cuentas.some(c => c.activa)) { toast('Primero cargá una cuenta', 'warn'); C2.cajaTab = 'config'; C2.render(); return; }
+    const conOpts = C2.caja.conceptos.filter(c => c.activo && !c.vinculo && c.tipo === tipo).map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+    const tit = tipo === 'ingreso' ? '➕ Nuevo ingreso' : tipo === 'egreso' ? '➖ Nuevo egreso' : '⇄ Transferencia entre cuentas';
+    const ctaDef = C2.cajaF.cuenta || C2._ultCuenta;
+    C2.modal(tit, `<div class="c2m-g">
+        <label>Fecha<input type="date" id="c2m-fecha" value="${hoy()}" min="${FECHA_ARRANQUE}" max="${hoy()}"></label>
+        <label>${tipo === 'transferencia' ? 'Desde la cuenta' : 'Cuenta'}<select id="c2m-cuenta">${optCuentas(ctaDef)}</select></label>
+        ${tipo === 'transferencia' ? `<label>Hacia la cuenta<select id="c2m-dest"><option value="">— elegí —</option>${optCuentas('')}</select></label>`
+        : `<label>Concepto<select id="c2m-con">${conOpts ? '<option value="">— elegí —</option>' + conOpts : '<option value="">(no hay conceptos de ' + tipo + ')</option>'}</select></label>`}
+        <label>Monto<input type="text" inputmode="decimal" id="c2m-monto" placeholder="0"></label>
+        <label style="grid-column:1/-1">Detalle${tipo === 'transferencia' ? ' (opcional)' : ''}<input type="text" id="c2m-det" placeholder="Descripción del movimiento"></label>
+      </div>
+      ${tipo !== 'transferencia' ? '<div class="c2-f" style="margin-top:8px">Los pagos de agencias, gestores, retribuciones y liquidaciones se registran desde cada operación (Liquidación por operación).</div>' : ''}`,
+      `<button class="c2-btn pri" onclick="C2.guardarMov('${tipo}')">Guardar</button>`);
+  };
+  C2.guardarMov = async function (tipo) {
+    const fecha = val('c2m-fecha'), cta = val('c2m-cuenta'), monto = numIn(val('c2m-monto')), det = String(val('c2m-det') || '').trim();
+    let e = validarFechaCuenta(fecha, cta); if (e) return mErr(e);
+    const row = { fecha, tipo, cuenta_id: Number(cta), monto, detalle: det || null, creado_por: quien() };
+    if (tipo === 'transferencia') {
+      const d = val('c2m-dest');
+      if (!d) return mErr('Elegí la cuenta destino');
+      if (d === cta) return mErr('Origen y destino no pueden ser la misma cuenta');
+      e = validarFechaCuenta(fecha, d); if (e) return mErr(e);
+      row.cuenta_destino_id = Number(d);
+    } else {
+      const c = val('c2m-con');
+      if (!c) return mErr('Elegí el concepto');
+      if (!det) return mErr('Escribí un detalle');
+      row.concepto_id = Number(c);
+    }
+    if (!monto || monto <= 0) return mErr('El monto tiene que ser mayor a cero');
+    bloquear(true); mErr('');
+    const res = await SB.from('c2_movimientos').insert(row);
+    if (res.error) { bloquear(false); return mErr('Error: ' + res.error.message); }
+    C2._ultCuenta = cta;
+    C2.cerrarModal(); toast('Movimiento guardado ✓', 'ok');
+    await cargarCaja(); C2.render();
+  };
+
+  // ── Anular ──
+  C2.abrirAnular = function (movId) {
+    if (!C2.puedeEscribir()) return;
+    const m = C2.caja.movs.find(x => String(x.id) === String(movId)); if (!m) return;
+    const c = cuenta(m.cuenta_id);
+    C2.modal('Anular movimiento', `
+      <div style="font-size:13.5px;margin-bottom:10px">${fD(m.fecha)} · ${esc(c ? c.nombre : '—')} · <b>${$c(num(m.monto))}</b><br>${esc(descMov(m))}</div>
+      ${SYNC[m.vinculo] ? '<div class="c2-note" style="margin-bottom:10px;background:#fef3c7">También se va a destildar en la Contabilidad vieja (vuelve a quedar pendiente).</div>' : ''}
+      <label class="c2m-l">Motivo (obligatorio)<input type="text" id="c2a-mot" placeholder="Ej.: monto mal cargado"></label>
+      ${impDePago(m) ? `<label class="c2m-chk"><input type="checkbox" id="c2a-imp" checked> Anular también el impuesto débitos/créditos de este pago (${$c(num(impDePago(m).monto))})</label>` : ''}`,
+      `<button class="c2-btn" style="background:#b91c1c;border-color:#b91c1c;color:#fff" onclick="C2.confirmarAnular('${esc(movId)}')">Anular</button>`);
+  };
+  C2.confirmarAnular = async function (movId) {
+    const mot = String(val('c2a-mot') || '').trim();
+    if (mot.length < 3) return mErr('Escribí el motivo');
+    const m = C2.caja.movs.find(x => String(x.id) === String(movId)); if (!m) return;
+    bloquear(true); mErr('');
+    const res = await SB.from('c2_movimientos').update({ anulado: true, anulado_por: quien(), anulado_at: new Date().toISOString(), motivo_anulacion: mot }).eq('id', m.id).eq('anulado', false);
+    if (res.error) { bloquear(false); return mErr('Error: ' + res.error.message); }
+    let ok = true;
+    const imp = impDePago(m);
+    if (imp && val('c2a-imp')) {
+      const ri = await SB.from('c2_movimientos').update({ anulado: true, anulado_por: quien(), anulado_at: new Date().toISOString(), motivo_anulacion: 'Anulado junto con el pago a agencia: ' + mot }).eq('id', imp.id).eq('anulado', false);
+      if (ri.error) toast('No se pudo anular el impuesto: ' + ri.error.message, 'warn');
+    }
+    if (SYNC[m.vinculo] && m.solicitud_id) {
+      const quedan = C2.caja.movs.some(x => x.id !== m.id && !x.anulado && x.vinculo === m.vinculo && String(x.solicitud_id) === String(m.solicitud_id));
+      if (!quedan) ok = await syncContabilidad(m.solicitud_id, m.vinculo, null);
+    }
+    if (typeof registrarHistorial === 'function') registrarHistorial('c2_movimientos', m.id, [{ campo: 'anulado', ant: 'false', nuevo: 'true · ' + mot }]);
+    C2.cerrarModal();
+    toast(ok ? 'Movimiento anulado' : 'Anulado, pero NO se pudo destildar en la Contabilidad vieja. Hacelo a mano.', ok ? 'ok' : 'warn');
+    await cargarCaja(); C2.render();
+  };
+
+  // ── ABM cuentas ──
+  C2.abrirCuenta = function (id) {
+    if (!C2.puedeEscribir()) return;
+    const c = id ? cuenta(id) : null;
+    const tipos = [['banco', 'Banco'], ['efectivo', 'Efectivo'], ['billetera', 'Billetera virtual']];
+    C2.modal(c ? 'Editar cuenta' : 'Nueva cuenta', `<div class="c2m-g">
+        <label style="grid-column:1/-1">Nombre<input type="text" id="c2c-nom" value="${esc(c ? c.nombre : '')}" placeholder="Ej.: Galicia cta. cte."></label>
+        <label>Tipo<select id="c2c-tipo">${tipos.map(([k, t]) => `<option value="${k}"${(c ? c.tipo : 'banco') === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+        <label>Orden<input type="number" id="c2c-orden" value="${c ? c.orden : C2.caja.cuentas.length + 1}"></label>
+        <label>Fecha de arranque<input type="date" id="c2c-fini" value="${c ? c.fecha_inicio : FECHA_ARRANQUE}"></label>
+        <label>Saldo inicial a esa fecha<input type="text" inputmode="decimal" id="c2c-saldo" value="${c ? String(num(c.saldo_inicial) || 0).replace('.', ',') : ''}" placeholder="0"></label>
+        ${c ? `<label class="c2m-chk" style="grid-column:1/-1"><input type="checkbox" id="c2c-act"${c.activa ? ' checked' : ''}> Cuenta activa (si la desactivás no aparece para cargar movimientos)</label>` : ''}
+      </div>`,
+      `<button class="c2-btn pri" onclick="C2.guardarCuenta(${c ? c.id : 'null'})">Guardar</button>`);
+  };
+  C2.guardarCuenta = async function (id) {
+    const nombre = String(val('c2c-nom') || '').trim();
+    const fini = val('c2c-fini');
+    const sTxt = String(val('c2c-saldo') || '').trim();
+    const saldo = sTxt === '' ? 0 : numIn(sTxt.replace(/^-/, ''));
+    if (!nombre) return mErr('Poné el nombre');
+    if (C2.caja.cuentas.some(c => c.nombre.trim().toLowerCase() === nombre.toLowerCase() && String(c.id) !== String(id))) return mErr('Ya existe una cuenta con ese nombre');
+    if (!fini) return mErr('Poné la fecha de arranque');
+    if (saldo === null) return mErr('Saldo inicial inválido');
+    const row = { nombre, tipo: val('c2c-tipo'), orden: parseInt(val('c2c-orden'), 10) || 0, fecha_inicio: fini, saldo_inicial: sTxt.startsWith('-') ? -saldo : saldo };
+    if (id) {
+      row.activa = !!val('c2c-act');
+      const prim = C2.caja.movs.filter(m => !m.anulado && (String(m.cuenta_id) === String(id) || String(m.cuenta_destino_id) === String(id))).map(m => String(m.fecha)).sort()[0];
+      if (prim && fini > prim) return mErr('Hay movimientos desde el ' + fD(prim) + ': la fecha de arranque no puede ser posterior');
+    } else row.creado_por = quien();
+    bloquear(true); mErr('');
+    const ant = id ? { ...cuenta(id) } : null;
+    const res = id ? await SB.from('c2_cuentas').update(row).eq('id', id).select().single() : await SB.from('c2_cuentas').insert(row).select().single();
+    if (res.error) { bloquear(false); return mErr('Error: ' + res.error.message); }
+    if (typeof registrarHistorial === 'function') {
+      const campos = ['nombre', 'tipo', 'fecha_inicio', 'saldo_inicial', 'activa'];
+      const cambios = ant ? campos.filter(k => k in row && String(ant[k] ?? '') !== String(row[k] ?? '') && !(k === 'saldo_inicial' && num(ant[k]) === num(row[k]))).map(k => ({ campo: k, ant: ant[k], nuevo: row[k] }))
+        : [{ campo: 'alta', ant: null, nuevo: nombre + ' · saldo inicial ' + row.saldo_inicial + ' al ' + fini }];
+      registrarHistorial('c2_cuentas', res.data.id, cambios);
+    }
+    C2.cerrarModal(); toast('Cuenta guardada ✓', 'ok');
+    await cargarCaja(); C2.render();
+  };
+
+  // ── ABM conceptos ──
+  C2.abrirConcepto = function (id) {
+    if (!C2.puedeEscribir()) return;
+    const c = id ? concepto(id) : null;
+    const sis = !!(c && c.sistema);
+    C2.modal(c ? 'Editar concepto' : 'Nuevo concepto', `<div class="c2m-g">
+        <label style="grid-column:1/-1">Nombre<input type="text" id="c2k-nom" value="${esc(c ? c.nombre : '')}" placeholder="Ej.: Alquiler oficina"></label>
+        <label>Tipo<select id="c2k-tipo"${sis ? ' disabled' : ''}><option value="egreso"${c && c.tipo === 'egreso' ? ' selected' : ''}>Egreso</option><option value="ingreso"${c && c.tipo === 'ingreso' ? ' selected' : ''}>Ingreso</option></select></label>
+        ${c ? `<label class="c2m-chk"${sis ? ' style="opacity:.5"' : ''}><input type="checkbox" id="c2k-act"${c.activo ? ' checked' : ''}${sis ? ' disabled' : ''}> Activo</label>` : ''}
+      </div>${sis ? '<div class="c2-note" style="margin-top:10px">Concepto de sistema: lo usan los botones de cada operación. Solo se puede cambiar el nombre.</div>' : ''}`,
+      `<button class="c2-btn pri" onclick="C2.guardarConcepto(${c ? c.id : 'null'})">Guardar</button>`);
+  };
+  C2.guardarConcepto = async function (id) {
+    const c = id ? concepto(id) : null;
+    const nombre = String(val('c2k-nom') || '').trim();
+    if (!nombre) return mErr('Poné el nombre');
+    const row = { nombre };
+    if (!c || !c.sistema) { row.tipo = val('c2k-tipo'); if (c) row.activo = !!val('c2k-act'); }
+    if (C2.caja.conceptos.some(k => k.nombre.trim().toLowerCase() === nombre.toLowerCase() && k.tipo === (row.tipo || c.tipo) && String(k.id) !== String(id))) return mErr('Ya existe ese concepto');
+    bloquear(true); mErr('');
+    const res = id ? await SB.from('c2_conceptos').update(row).eq('id', id) : await SB.from('c2_conceptos').insert(row);
+    if (res.error) { bloquear(false); return mErr('Error: ' + res.error.message); }
+    C2.cerrarModal(); toast('Concepto guardado ✓', 'ok');
+    await cargarCaja(); C2.render();
+  };
+
+  // ── Vista ──
+  function descMov(m) {
+    if (m.tipo === 'transferencia') { const d = cuenta(m.cuenta_destino_id); const o = cuenta(m.cuenta_id); return 'Transferencia ' + (o ? o.nombre : '—') + ' → ' + (d ? d.nombre : '—'); }
+    const k = concepto(m.concepto_id);
+    return k ? k.nombre : (m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso');
+  }
+  C2.cajaFiltrar = function (k, v) { C2.cajaF[k] = v; C2.render(); };
+
+  function vistaCaja() {
+    const k = C2.caja, w = C2.puedeEscribir();
+    const head = `<div class="c2-kick">Contabilidad 2 · etapa 2</div><div class="c2-h1">Caja y bancos</div>
+      <div class="c2-sub">Saldos y movimientos de cada cuenta desde el ${fD(FECHA_ARRANQUE)}.${w ? '' : ' Solo lectura: registran movimientos admin y claudionieva.'}</div>`;
+    if (k.err === 'faltaSQL') return head + `<div class="c2-card c2-empty" style="margin-top:16px">⚠️ Todavía no están creadas las tablas de Caja y bancos.<br><small>Hay que correr <b>c2_etapa2.sql</b> en el SQL Editor de Supabase y después tocar 🔄 Actualizar datos.</small></div>`;
+    if (k.err) return head + `<div class="c2-card c2-empty" style="margin-top:16px">Error al cargar Caja y bancos: ${esc(k.err)}</div>`;
+    const tabs = `<div class="c2-tabs"><button class="${C2.cajaTab === 'movimientos' ? 'on' : ''}" onclick="C2.cajaTab='movimientos';C2.render()">Movimientos</button><button class="${C2.cajaTab === 'config' ? 'on' : ''}" onclick="C2.cajaTab='config';C2.render()">Cuentas y conceptos</button></div>`;
+    return head + tabs + (C2.cajaTab === 'config' ? vistaCajaConfig(w) : vistaCajaMovs(w));
+  }
+
+  function vistaCajaMovs(w) {
+    const k = C2.caja, f = C2.cajaF;
+    if (!k.cuentas.length) return `<div class="c2-card c2-empty">Todavía no hay cuentas cargadas.${w ? `<br><br><button class="c2-btn pri" onclick="C2.cajaTab='config';C2.render();C2.abrirCuenta()">+ Cargar la primera cuenta</button>` : ''}</div>`;
+    const activas = k.cuentas.filter(c => c.activa || C2.saldoCuenta(c) !== 0);
+    const total = activas.reduce((s, c) => s + C2.saldoCuenta(c), 0);
+    const tarjetas = activas.map(c => {
+      const s = C2.saldoCuenta(c);
+      const on = String(f.cuenta) === String(c.id);
+      return `<div class="c2-cta${on ? ' on' : ''}" onclick="C2.cajaFiltrar('cuenta','${on ? '' : c.id}')" title="${on ? 'Ver todas' : 'Ver solo esta cuenta'}">
+        <div class="l">${esc(c.nombre)} <span class="c2-b gy" style="font-size:10px;padding:1px 6px">${esc(c.tipo)}</span>${c.activa ? '' : ' <span class="c2-b re" style="font-size:10px;padding:1px 6px">inactiva</span>'}</div>
+        <div class="v ${s < 0 ? 'neg' : ''}">${$c(s)}</div>
+        <div class="c2-f" style="font-size:11px">inicial ${$c(num(c.saldo_inicial))} al ${fD(c.fecha_inicio)}</div></div>`;
+    }).join('');
+    let lista = k.movs.filter(m => {
+      if (!f.anulados && m.anulado) return false;
+      if (f.cuenta && String(m.cuenta_id) !== String(f.cuenta) && String(m.cuenta_destino_id) !== String(f.cuenta)) return false;
+      if (f.desde && String(m.fecha) < f.desde) return false;
+      if (f.hasta && String(m.fecha) > f.hasta) return false;
+      if (f.concepto === 'transferencia' && m.tipo !== 'transferencia') return false;
+      if (f.concepto && f.concepto !== 'transferencia' && String(m.concepto_id) !== String(f.concepto)) return false;
+      if (f.q) {
+        const r = m.solicitud_id ? (RECORDS || []).find(x => String(x.id) === String(m.solicitud_id)) : null;
+        const t = [m.detalle, descMov(m), m.creado_por, r && r.nombrecliente, r && r.concesionaria, r && r.gestorAsignado, m.monto].join(' ').toLowerCase();
+        if (!t.includes(f.q.toLowerCase())) return false;
+      }
+      return true;
+    });
+    // saldo corrido (solo con una cuenta elegida)
+    const saldoTras = {};
+    if (f.cuenta) {
+      const c = cuenta(f.cuenta);
+      let s = num(c.saldo_inicial) || 0;
+      k.movs.filter(m => efecto(m, c.id) !== 0).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)) || a.id - b.id)
+        .forEach(m => { s += efecto(m, c.id); saldoTras[m.id] = s; });
+    }
+    lista.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)) || b.id - a.id);
+    let ing = 0, egr = 0;
+    lista.forEach(m => {
+      if (m.anulado || m.tipo === 'transferencia' && !f.cuenta) return;
+      const v = f.cuenta ? efecto(m, f.cuenta) : (m.tipo === 'ingreso' ? num(m.monto) : -num(m.monto));
+      if (v > 0) ing += v; else egr -= v;
+    });
+    const filas = lista.map(m => {
+      const c = cuenta(m.cuenta_id);
+      const r = m.solicitud_id ? (RECORDS || []).find(x => String(x.id) === String(m.solicitud_id)) : null;
+      const v = num(m.monto) || 0;
+      let colI = '', colE = '';
+      if (m.tipo === 'ingreso') colI = $c(v);
+      else if (m.tipo === 'egreso') colE = $c(v);
+      else if (f.cuenta) { if (String(m.cuenta_destino_id) === String(f.cuenta)) colI = $c(v); else colE = $c(v); }
+      else colI = '<span style="color:var(--muted)">⇄ ' + $c(v) + '</span>';
+      const st = m.anulado ? ' style="opacity:.5;text-decoration:line-through"' : '';
+      return `<tr${m.anulado ? ` title="Anulado por ${esc(m.anulado_por || '—')}: ${esc(m.motivo_anulacion || '')}"` : ''}>
+        <td style="white-space:nowrap"${st}>${fD(m.fecha)}</td>
+        <td${st}>${esc(c ? c.nombre : '—')}${m.tipo === 'transferencia' && cuenta(m.cuenta_destino_id) ? ' → ' + esc(cuenta(m.cuenta_destino_id).nombre) : ''}</td>
+        <td${st}>${esc(descMov(m))}${m.anulado ? ' <span class="c2-b re" style="text-decoration:none">anulado</span>' : ''}</td>
+        <td${st}>${esc(m.detalle || '')}${m.anulado ? `<div class="c2-f" style="font-size:11px;text-decoration:none">Motivo: ${esc(m.motivo_anulacion || '—')}</div>` : ''}</td>
+        <td>${r ? `<a href="#" onclick="C2.ir('liquidacion','${esc(r.id)}');return false">${esc(r.nombrecliente || r.id)}</a>` : ''}</td>
+        <td class="n pos"${st}>${colI}</td>
+        <td class="n neg"${st}>${colE}</td>
+        ${f.cuenta ? `<td class="n" style="font-weight:700">${m.anulado ? '' : $c(saldoTras[m.id])}</td>` : ''}
+        <td style="font-size:12px;color:var(--muted)">${esc(m.creado_por || '—')}</td>
+        <td>${w && !m.anulado ? `<button class="c2-btn" style="padding:3px 9px;font-size:12px" onclick="C2.abrirAnular('${m.id}')">Anular</button>` : ''}</td>
+      </tr>`;
+    }).join('');
+    const conOpts = k.conceptos.map(c => `<option value="${c.id}"${String(f.concepto) === String(c.id) ? ' selected' : ''}>${esc(c.nombre)}</option>`).join('');
+    return `
+      <div class="c2-ctas">${tarjetas}<div class="c2-cta tot"><div class="l">Total en cuentas</div><div class="v ${total < 0 ? 'neg' : ''}">${$c(total)}</div><div class="c2-f" style="font-size:11px">${activas.length} cuenta${activas.length !== 1 ? 's' : ''}</div></div></div>
+      ${w ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 14px">
+        <button class="c2-btn pri" onclick="C2.abrirMov('ingreso')">➕ Ingreso</button>
+        <button class="c2-btn pri" onclick="C2.abrirMov('egreso')">➖ Egreso</button>
+        <button class="c2-btn" onclick="C2.abrirMov('transferencia')">⇄ Transferencia</button></div>` : ''}
+      <div class="c2-card">
+        <div class="c2-fil" style="margin-top:0">
+          <select onchange="C2.cajaFiltrar('cuenta',this.value)"><option value="">Todas las cuentas</option>${k.cuentas.map(c => `<option value="${c.id}"${String(f.cuenta) === String(c.id) ? ' selected' : ''}>${esc(c.nombre)}</option>`).join('')}</select>
+          <select onchange="C2.cajaFiltrar('concepto',this.value)"><option value="">Todos los conceptos</option><option value="transferencia"${f.concepto === 'transferencia' ? ' selected' : ''}>Transferencias</option>${conOpts}</select>
+          <span class="c2-kick">desde</span><input type="date" value="${f.desde}" onchange="C2.cajaFiltrar('desde',this.value)">
+          <span class="c2-kick">hasta</span><input type="date" value="${f.hasta}" onchange="C2.cajaFiltrar('hasta',this.value)">
+          <input id="c2-cq" placeholder="🔍 Detalle, cliente, agencia…" value="${esc(f.q)}" oninput="C2.cajaF.q=this.value;clearTimeout(C2._t);C2._t=setTimeout(()=>{C2.render();const i=document.getElementById('c2-cq');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},250)" style="min-width:200px">
+          <label class="c2-kick" style="display:flex;gap:5px;align-items:center"><input type="checkbox"${f.anulados ? ' checked' : ''} onchange="C2.cajaFiltrar('anulados',this.checked)"> ver anulados</label>
+          <button class="c2-btn" onclick="C2.cajaF={cuenta:'',desde:'',hasta:'',concepto:'',q:'',anulados:false};C2.render()">✕ Limpiar</button>
+        </div>
+        <div class="c2-sub" style="margin-bottom:8px">${lista.length} movimiento${lista.length !== 1 ? 's' : ''} · Ingresos <b class="pos">${$c(ing)}</b> · Egresos <b class="neg">${$c(egr)}</b>${f.cuenta ? '' : ' · (las transferencias no suman: con todas las cuentas se compensan)'}</div>
+        <div style="overflow-x:auto">
+        ${lista.length ? `<table class="c2-t ancha"><thead><tr><th>Fecha</th><th>Cuenta</th><th>Concepto</th><th>Detalle</th><th>Operación</th><th class="n">Ingreso</th><th class="n">Egreso</th>${f.cuenta ? '<th class="n">Saldo</th>' : ''}<th>Cargó</th><th></th></tr></thead><tbody>${filas}</tbody></table>`
+        : '<div class="c2-empty">No hay movimientos con estos filtros.</div>'}
+        </div>
+      </div>`;
+  }
+
+  function vistaCajaConfig(w) {
+    const k = C2.caja;
+    const usos = id => k.movs.filter(m => !m.anulado && (String(m.cuenta_id) === String(id) || String(m.cuenta_destino_id) === String(id))).length;
+    const fC = k.cuentas.map(c => `<tr>
+        <td style="font-weight:700">${esc(c.nombre)}</td><td>${esc(c.tipo)}</td><td>${fD(c.fecha_inicio)}</td>
+        <td class="n">${$c(num(c.saldo_inicial))}</td><td class="n" style="font-weight:700">${$c(C2.saldoCuenta(c))}</td>
+        <td class="n">${usos(c.id)}</td>
+        <td><span class="c2-b ${c.activa ? 'gr' : 'gy'}">${c.activa ? 'activa' : 'inactiva'}</span></td>
+        <td>${w ? `<button class="c2-btn" style="padding:3px 9px;font-size:12px" onclick="C2.abrirCuenta(${c.id})">Editar</button>` : ''}</td></tr>`).join('');
+    const vin = { liquidacion: 'Liquidación del banco', agencia: 'Pago agencia', retribucion: 'Retribución banco', gestor: 'Pago gestor' };
+    const fK = k.conceptos.map(c => `<tr>
+        <td style="font-weight:700">${esc(c.nombre)}</td>
+        <td><span class="c2-b ${c.tipo === 'ingreso' ? 'gr' : 're'}">${c.tipo}</span></td>
+        <td>${c.vinculo ? '<span class="c2-b bl">' + vin[c.vinculo] + '</span>' : '<span style="color:var(--muted)">manual</span>'}</td>
+        <td><span class="c2-b ${c.activo ? 'gr' : 'gy'}">${c.activo ? 'activo' : 'inactivo'}</span></td>
+        <td>${w ? `<button class="c2-btn" style="padding:3px 9px;font-size:12px" onclick="C2.abrirConcepto(${c.id})">Editar</button>` : ''}</td></tr>`).join('');
+    return `
+      <div class="c2-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h3>Cuentas</h3><div class="c2-sub">Cada cuenta arranca con su saldo inicial a la fecha de arranque (por defecto ${fD(FECHA_ARRANQUE)}).</div></div>
+        ${w ? '<button class="c2-btn pri" onclick="C2.abrirCuenta()">+ Nueva cuenta</button>' : ''}</div>
+        <div style="overflow-x:auto;margin-top:10px">${k.cuentas.length ? `<table class="c2-t"><thead><tr><th>Nombre</th><th>Tipo</th><th>Arranque</th><th class="n">Saldo inicial</th><th class="n">Saldo actual</th><th class="n">Movs.</th><th>Estado</th><th></th></tr></thead><tbody>${fC}</tbody></table>` : '<div class="c2-empty">Sin cuentas</div>'}</div>
+      </div>
+      <div class="c2-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h3>Conceptos</h3><div class="c2-sub">Los de sistema (en azul) los usan los botones de cada operación.</div></div>
+        ${w ? '<button class="c2-btn pri" onclick="C2.abrirConcepto()">+ Nuevo concepto</button>' : ''}</div>
+        <div style="overflow-x:auto;margin-top:10px"><table class="c2-t"><thead><tr><th>Concepto</th><th>Tipo</th><th>Uso</th><th>Estado</th><th></th></tr></thead><tbody>${fK || '<tr><td colspan="5" class="c2-empty">Sin conceptos</td></tr>'}</tbody></table></div>
+      </div>`;
+  }
+
+  // Bloque "en caja" de cada paso del recorrido de una operación
+  C2.pasoCaja = function (x, vinculo, yaHecho) {
+    if (!C2.caja.ok) return '';
+    const m = movsOp(x.r.id, vinculo)[0];
+    if (m) { const c = cuenta(m.cuenta_id); return `<div class="c2-f" style="font-size:11.5px;margin-top:3px">💰 en caja: ${esc(c ? c.nombre : '—')} · ${fD(m.fecha)} · ${$c(num(m.monto))}</div>`; }
+    if (yaHecho) return '<div class="c2-f" style="font-size:11.5px;margin-top:3px;color:#a8a29e">sin movimiento en caja (registrado en la Contabilidad vieja)</div>';
+    if (!C2.puedeEscribir()) return '';
+    const lbl = { liquidacion: 'Registrar ingreso', agencia: 'Pagar agencia', retribucion: 'Registrar cobro', gestor: 'Pagar gestor' }[vinculo];
+    return `<button class="c2-btn pri" style="padding:4px 10px;font-size:12px;margin-top:6px" onclick="C2.abrirPago('${esc(x.r.id)}','${vinculo}')">${lbl}</button>`;
+  };
+  C2.movsOperacionHTML = function (x) {
+    if (!C2.caja.ok) return '';
+    const ms = C2.caja.movs.filter(m => String(m.solicitud_id) === String(x.r.id)).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)) || a.id - b.id);
+    if (!ms.length) return '';
+    return `<div class="c2-card"><h3>Movimientos en Caja y bancos</h3><table class="c2-t" style="margin-top:8px"><tbody>${ms.map(m => {
+      const c = cuenta(m.cuenta_id);
+      return `<tr${m.anulado ? ' style="opacity:.5"' : ''}><td style="white-space:nowrap">${fD(m.fecha)}</td><td>${esc(descMov(m))}${m.anulado ? ' <span class="c2-b re">anulado</span>' : ''}<div class="c2-f" style="font-size:11px">${esc(c ? c.nombre : '—')}</div></td><td class="n ${m.tipo === 'ingreso' ? 'pos' : 'neg'}">${m.tipo === 'ingreso' ? '+' : '−'}${$c(num(m.monto))}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
   };
 
   // ── entrada ──
