@@ -1,7 +1,8 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1 y 2 (v3.9.40)
+// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.41)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
+// Etapa 3: Cobrar y pagar (pendientes agrupados por agencia / gestor / banco).
 //  - Liquidación por operación (lista + detalle)
 //  - Parámetros (porcentajes actuales; se editan en Contabilidad → Cambio de coeficientes)
 //  - Controles (diferencias entre lo guardado en Contabilidad y lo calculado)
@@ -232,6 +233,20 @@
 #v-contabilidad2 .c2-cta.tot{background:#fff7f1;cursor:default}
 #v-contabilidad2 .c2-cta .l{font-size:12px;color:var(--muted);font-weight:700}
 #v-contabilidad2 .c2-cta .v{font-size:20px;font-weight:900;margin:3px 0 1px}
+#v-contabilidad2 .c2-kpi-click{cursor:pointer}
+#v-contabilidad2 .c2-kpi-click:hover{border-color:#fdba8c}
+#v-contabilidad2 .c2-kpi-click.on{border-color:#c2410c;box-shadow:0 0 0 2px #fde2cf}
+#v-contabilidad2 .c2-grp{border:1.5px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+#v-contabilidad2 .c2-grp summary{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;background:#fafaf9;list-style:none}
+#v-contabilidad2 .c2-grp summary::-webkit-details-marker{display:none}
+#v-contabilidad2 .c2-grp summary::before{content:'▸';color:#a8a29e;font-size:12px}
+#v-contabilidad2 .c2-grp[open] summary::before{content:'▾'}
+#v-contabilidad2 .c2-grp summary .t{font-weight:800;font-size:14px}
+#v-contabilidad2 .c2-grp summary .tot{margin-left:auto;font-weight:900;font-size:15px}
+#v-contabilidad2 .c2-grp table.c2-t{margin:0;table-layout:fixed;min-width:640px}
+#v-contabilidad2 .c2-grp th:nth-child(1){width:12%}#v-contabilidad2 .c2-grp th:nth-child(2){width:9%}#v-contabilidad2 .c2-grp th:nth-child(3){width:29%}#v-contabilidad2 .c2-grp th:nth-child(4){width:22%}#v-contabilidad2 .c2-grp th:nth-child(5){width:14%}#v-contabilidad2 .c2-grp th:nth-child(6){width:14%}
+#v-contabilidad2 .c2-grp td{overflow:hidden;text-overflow:ellipsis}
+#v-contabilidad2 .c2-grp table.c2-t td,#v-contabilidad2 .c2-grp table.c2-t th{padding-left:14px}
 #c2-modal{position:fixed;inset:0;background:rgba(15,15,15,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px}
 #c2-modal .c2m-box{background:#fff;border-radius:14px;width:100%;max-width:560px;max-height:92vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
 #c2-modal .c2m-h{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e7e5e4;font-size:15.5px}
@@ -279,7 +294,7 @@
     const root = document.getElementById('v-contabilidad2');
     if (!root) return;
     css();
-    const nav = SECCIONES.map(([k, t, etapa]) => etapa <= 2
+    const nav = SECCIONES.map(([k, t, etapa]) => etapa <= 3
       ? `<button class="${C2.seccion === k ? 'on' : ''}" onclick="C2.ir('${k}')">${t}</button>`
       : `<button disabled title="Próxima etapa">${t}<small>(etapa ${etapa})</small></button>`).join('');
     let body;
@@ -287,6 +302,7 @@
     else if (C2.seccion === 'liquidacion' && C2.opId) body = vistaOperacion(C2.opId);
     else if (C2.seccion === 'liquidacion') body = vistaLista();
     else if (C2.seccion === 'caja') body = vistaCaja();
+    else if (C2.seccion === 'cobrarpagar') body = vistaCobrarPagar();
     else if (C2.seccion === 'parametros') body = vistaParametros();
     else if (C2.seccion === 'controles') body = vistaControles();
     else body = '<div class="c2-card c2-empty">Próxima etapa</div>';
@@ -1037,6 +1053,111 @@
       return `<tr${m.anulado ? ' style="opacity:.5"' : ''}><td style="white-space:nowrap">${fD(m.fecha)}</td><td>${esc(descMov(m))}${m.anulado ? ' <span class="c2-b re">anulado</span>' : ''}<div class="c2-f" style="font-size:11px">${esc(c ? c.nombre : '—')}</div></td><td class="n ${m.tipo === 'ingreso' ? 'pos' : 'neg'}">${m.tipo === 'ingreso' ? '+' : '−'}${$c(num(m.monto))}</td></tr>`;
     }).join('')}</tbody></table></div>`;
   };
+
+
+  // ══════════════════════════════════════════════════════════════
+  // ETAPA 3 — COBRAR Y PAGAR (v3.9.41)
+  // Pendientes de operaciones Liquidado/Pagado, agrupados por agencia / gestor / banco.
+  // Los botones usan C2.abrirPago (mismo flujo que el detalle de la operación).
+  // ══════════════════════════════════════════════════════════════
+  C2.cpTab = 'agencia';
+  C2.cpQ = '';
+  C2.cpAbiertos = {};
+  const CP_TABS = [
+    ['agencia', 'Agencias a pagar', 'pagar'],
+    ['gestor', 'Gestores a pagar', 'pagar'],
+    ['retribucion', 'Retribuciones a cobrar', 'cobrar'],
+    ['liquidacion', 'Liquidaciones a ingresar en caja', 'caja'],
+    ['pasar', 'Para pasar a caja', 'caja']
+  ];
+
+  // Devuelve [{vinculo, x, monto, desde, dias, grupo, accion:'pagar'|'pasar'}]
+  C2.pendientes = function () {
+    const out = [];
+    const ops = (RECORDS || []).filter(r => r.creditoEstado === 'Liquidado' || r.creditoEstado === 'Pagado').map(C2.calc);
+    const fl = x => x.fechaLiq ? String(x.fechaLiq).slice(0, 10) : '';
+    const add = (tab, vinculo, x, monto, grupo, accion, desde) => {
+      const d = desde || fl(x);
+      out.push({ tab, vinculo, x, monto, grupo: String(grupo || '').trim() || '(sin dato)', accion, desde: d, dias: dias(d) });
+    };
+    ops.forEach(x => {
+      if (!x.agenciaPagada) add('agencia', 'agencia', x, x.aLiquidar, x.r.concesionaria, 'pagar');
+      if (!x.gestorPagado) add('gestor', 'gestor', x, x.it.gest.valor + x.gestoria, x.r.gestorAsignado, 'pagar');
+      if (!x.retribCobrada) add('retribucion', 'retribucion', x, x.it.retrib.valor, bancoDisplay(x.banco), 'pagar');
+      if (C2.caja.ok) {
+        if (fl(x) && fl(x) >= FECHA_ARRANQUE && !movsOp(x.r.id, 'liquidacion').length) add('liquidacion', 'liquidacion', x, x.I, bancoDisplay(x.banco), 'pagar');
+        [['agencia', x.agenciaPagada, x.aLiquidar, x.r.concesionaria], ['gestor', x.gestorPagado, x.it.gest.valor + x.gestoria, x.r.gestorAsignado], ['retribucion', x.retribCobrada, x.it.retrib.valor, bancoDisplay(x.banco)]]
+          .forEach(([v, hecho, monto]) => {
+            const fv = fechaVieja(x, v);
+            if (hecho && fv && fv >= FECHA_ARRANQUE && !movsOp(x.r.id, v).length) out.push({ tab: 'pasar', vinculo: v, x, monto, grupo: VINC[v].t, accion: 'pasar', desde: fv, dias: dias(fv) });
+          });
+      }
+    });
+    return out;
+  };
+
+  C2.cpToggle = function (key, open) { C2.cpAbiertos[key] = open; };
+
+  function vistaCobrarPagar() {
+    const w = C2.puedeEscribir() && C2.caja.ok;
+    const todos = C2.pendientes();
+    const q = C2.cpQ.toLowerCase();
+    const filtrados = !q ? todos : todos.filter(p => [p.x.r.nombrecliente, p.x.r.dni, p.x.r.dominio, p.x.r.concesionaria, p.x.r.gestorAsignado, p.x.banco, p.grupo].some(v => String(v || '').toLowerCase().includes(q)));
+    const tot = t => filtrados.filter(p => p.tab === t).reduce((s, p) => s + (p.monto || 0), 0);
+    const cnt = t => filtrados.filter(p => p.tab === t).length;
+    const tabsVis = CP_TABS.filter(([k]) => C2.caja.ok || ['agencia', 'gestor', 'retribucion'].includes(k));
+    if (!tabsVis.some(([k]) => k === C2.cpTab)) C2.cpTab = 'agencia';
+    const kpis = tabsVis.map(([k, t, tipo]) => `<div class="c2-kpi c2-kpi-click${C2.cpTab === k ? ' on' : ''}" onclick="C2.cpTab='${k}';C2.render()">
+        <div class="l">${t}</div><div class="v ${tipo === 'pagar' ? 'neg' : tipo === 'cobrar' ? 'pos' : ''}">${$c(tot(k))}</div><div class="c2-f" style="font-size:11px">${cnt(k)} ${cnt(k) === 1 ? 'operación' : 'operaciones'}</div></div>`).join('');
+
+    const lista = filtrados.filter(p => p.tab === C2.cpTab);
+    const grupos = {};
+    lista.forEach(p => { (grupos[p.grupo] = grupos[p.grupo] || []).push(p); });
+    const gs = Object.entries(grupos).map(([g, items]) => ({ g, items: items.sort((a, b) => (b.dias ?? -1) - (a.dias ?? -1)), total: items.reduce((s, p) => s + (p.monto || 0), 0), max: Math.max(...items.map(p => p.dias ?? -1)) }))
+      .sort((a, b) => b.total - a.total);
+    const colDias = d => d === null || d < 0 ? '<span style="color:var(--muted)">—</span>' : `<span class="c2-b ${d > 30 ? 're' : d > 10 ? 'am' : 'gy'}">${d} d</span>`;
+    const lblBtn = { agencia: 'Pagar', gestor: 'Pagar', retribucion: 'Registrar cobro', liquidacion: 'Registrar ingreso' };
+    const filasGrupo = items => items.map(p => `<tr>
+        <td style="white-space:nowrap">${fD(p.desde)}</td>
+        <td>${colDias(p.dias)}</td>
+        <td><a href="#" onclick="C2.ir('liquidacion','${esc(p.x.r.id)}');return false" style="font-weight:700">${esc(p.x.r.nombrecliente || '—')}</a></td>
+        <td>${C2.cpTab === 'pasar' ? esc(p.vinculo === 'agencia' ? p.x.r.concesionaria || '—' : p.vinculo === 'gestor' ? p.x.r.gestorAsignado || '—' : bancoDisplay(p.x.banco)) : C2.cpTab === 'retribucion' || C2.cpTab === 'liquidacion' ? esc(p.x.r.concesionaria || '—') : colorBanco(p.x.banco)}</td>
+        <td class="n" style="font-weight:700">${$c(p.monto)}</td>
+        <td style="text-align:right">${w ? (p.accion === 'pasar'
+          ? `<button class="c2-btn" style="padding:3px 10px;font-size:12px;border-color:#c2410c;color:#c2410c" onclick="C2.abrirPago('${esc(p.x.r.id)}','${p.vinculo}',true)">Pasar a caja</button>`
+          : `<button class="c2-btn pri" style="padding:3px 10px;font-size:12px" onclick="C2.abrirPago('${esc(p.x.r.id)}','${p.vinculo}')">${lblBtn[p.vinculo]}</button>`) : ''}</td>
+      </tr>`).join('');
+    const colTit = C2.cpTab === 'pasar' ? 'Agencia / gestor / banco' : C2.cpTab === 'retribucion' || C2.cpTab === 'liquidacion' ? 'Agencia' : 'Banco';
+    const bloques = gs.map(o => {
+      const key = C2.cpTab + '|' + o.g;
+      const abierto = C2.cpAbiertos[key] ?? (gs.length <= 3 || !!q);
+      return `<details class="c2-grp"${abierto ? ' open' : ''} ontoggle="C2.cpToggle(${esc(JSON.stringify(key))},this.open)">
+        <summary><span class="t">${esc(o.g)}</span><span class="c2-b gy">${o.items.length}</span>${o.max >= 0 ? `<span class="c2-f" style="font-size:11.5px">más antigua ${o.max} d</span>` : ''}<span class="tot">${$c(o.total)}</span></summary>
+        <div style="overflow-x:auto"><table class="c2-t"><thead><tr><th>${C2.cpTab === 'pasar' ? 'Fecha vieja' : 'Liquidado'}</th><th>Días</th><th>Cliente</th><th>${colTit}</th><th class="n">Monto</th><th></th></tr></thead><tbody>${filasGrupo(o.items)}</tbody></table></div>
+      </details>`;
+    }).join('');
+    const ayuda = {
+      agencia: 'Operaciones con el pago a la agencia pendiente (A liquidar = I − bruta − gestoría). Agrupado por agencia.',
+      gestor: 'Comisión del gestor + gastos de gestoría pendientes. Agrupado por gestor.',
+      retribucion: 'Retribución (I × ' + pct(C2.coef.retribBanco) + ') que todavía no pagó el banco. Agrupado por banco.',
+      liquidacion: 'Liquidadas desde el ' + fD(FECHA_ARRANQUE) + ' cuyo ingreso del banco todavía no se cargó en caja.',
+      pasar: 'Pagos y cobros tildados en la Contabilidad vieja (desde el ' + fD(FECHA_ARRANQUE) + ') que todavía no tienen movimiento en caja.'
+    }[C2.cpTab];
+    return `
+      <div class="c2-kick">Contabilidad 2 · etapa 3</div>
+      <div class="c2-h1">Cobrar y pagar</div>
+      <div class="c2-sub">Lo pendiente de las operaciones en Liquidado o Pagado. Días = desde la fecha de Liquidado.${w ? '' : C2.caja.ok ? ' Solo lectura: registran admin y claudionieva.' : ''}</div>
+      <div class="c2-kpis" style="grid-template-columns:repeat(${tabsVis.length},1fr)">${kpis}</div>
+      <div class="c2-card">
+        <div class="c2-fil" style="margin-top:0">
+          <input id="c2-cpq" placeholder="🔍 Cliente, agencia, gestor, banco, DNI…" value="${esc(C2.cpQ)}" oninput="C2.cpQ=this.value;clearTimeout(C2._t);C2._t=setTimeout(()=>{C2.render();const i=document.getElementById('c2-cpq');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},250)" style="min-width:260px">
+          ${gs.length > 1 ? `<button class="c2-btn" onclick="${gs.map(o => `C2.cpAbiertos[${esc(JSON.stringify(C2.cpTab + '|' + o.g))}]=true;`).join('')}C2.render()">Abrir todos</button><button class="c2-btn" onclick="${gs.map(o => `C2.cpAbiertos[${esc(JSON.stringify(C2.cpTab + '|' + o.g))}]=false;`).join('')}C2.render()">Cerrar todos</button>` : ''}
+          <span class="c2-kick">${gs.length} grupo${gs.length !== 1 ? 's' : ''} · ${lista.length} ${lista.length === 1 ? 'operación' : 'operaciones'} · ${$c(lista.reduce((s, p) => s + (p.monto || 0), 0))}</span>
+        </div>
+        <div class="c2-sub" style="margin-bottom:10px">${ayuda}</div>
+        ${bloques || '<div class="c2-empty">✅ No hay nada pendiente acá.</div>'}
+      </div>`;
+  }
 
   // ── entrada ──
   C2.init = function () {
