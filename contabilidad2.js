@@ -1,8 +1,9 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.41)
+// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.42)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 // Etapa 3: Cobrar y pagar (pendientes agrupados por agencia / gestor / banco).
+// v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 //  - Liquidación por operación (lista + detalle)
 //  - Parámetros (porcentajes actuales; se editan en Contabilidad → Cambio de coeficientes)
 //  - Controles (diferencias entre lo guardado en Contabilidad y lo calculado)
@@ -48,6 +49,7 @@
     C2.cargando = true;
     C2.render();
     const pCaja = cargarCaja();
+    const pAj = cargarAjustes();
     try {
       const [rc, rk, rb] = await Promise.all([
         _sbAll(() => SB.from('contabilidad').select('*').order('solicitud_id')),
@@ -66,6 +68,7 @@
       toast('Contabilidad 2: error al cargar datos (' + (e.message || e) + ')', 'er');
     }
     await pCaja;
+    await pAj;
     C2.cargando = false;
     C2.render();
   };
@@ -97,34 +100,35 @@
     return '';
   }
 
-  // Devuelve el cálculo completo. "usado" = valor guardado si existe (ajuste manual), si no el calculado.
+  // v3.9.42: los montos se CALCULAN con los % de Parámetros (banco en AVANZA). Lo guardado en la Contabilidad
+  // vieja ya no se usa como monto (solo se compara en Controles). Los ajustes manuales van en c2_ajustes.
+  // Gastos de gestoría, com. comercial/operativa y pagos extras son datos cargados en la vieja (base editable).
+  C2.aj = {};       // solicitud_id -> { campo: fila de c2_ajustes }
+  C2.ajOk = false;
   C2.calc = function (r) {
     const c = C2.cont[r.id] || null;
+    const A = C2.aj[r.id] || {};
     const I = num(r.importe) || 0;
     const banco = bancoOperacion(r);
     const p = { bruta: pctBruta(banco), imp: C2.coef.impCredito, retrib: C2.coef.retribBanco, gest: C2.coef.comGestor };
-    const calc = {
-      imp: r0(I * p.imp / 100),
-      bruta: r0(I * p.bruta / 100),
-      retrib: r0(I * p.retrib / 100),
-      gest: r0(I * p.gest / 100)
-    };
-    calc.comLuk = calc.bruta - calc.imp;
     const g = (campo) => c ? num(c[campo]) : null;
-    const item = (calculado, guardado) => {
-      const aj = guardado !== null && Math.abs(guardado - calculado) > 1;
-      return { calc: calculado, guardado, valor: guardado !== null ? guardado : calculado, ajuste: aj };
+    const item = (calculado, campo) => {
+      const a = A[campo]; const v = a ? num(a.valor) : null;
+      return { calc: calculado, valor: v !== null ? v : calculado, ajuste: v !== null, campo, info: a || null };
     };
+    const aplicaGest = !(A.gest_aplica && num(A.gest_aplica.valor) === 0);
     const it = {
-      imp: item(calc.imp, g('imp_credito')),
-      comLuk: item(calc.comLuk, g('com_lukaya')),
-      retrib: item(calc.retrib, g('retrib_banco')),
-      gest: item(calc.gest, g('com_gestora'))
+      bruta: item(r0(I * p.bruta / 100), 'bruta'),
+      imp: item(r0(I * p.imp / 100), 'imp'),
+      retrib: item(r0(I * p.retrib / 100), 'retrib'),
+      gest: aplicaGest ? item(r0(I * p.gest / 100), 'gest') : { calc: 0, valor: 0, ajuste: false, campo: 'gest', noAplica: true },
+      gestoria: item(g('gastos_gestoria') || 0, 'gestoria'),
+      comCom: item((g('com_comercial') || 0) + (g('com_operativo') || 0), 'comcom'),
+      extras: item(g('pagos_extras') || 0, 'extras')
     };
-    const gestoria = g('gastos_gestoria') || 0;
-    const comCom = (g('com_comercial') || 0) + (g('com_operativo') || 0);
-    const extras = g('pagos_extras') || 0;
-    const bruta = it.comLuk.valor + it.imp.valor; // comisión bruta efectiva
+    it.comLuk = { calc: it.bruta.calc - it.imp.calc, valor: it.bruta.valor - it.imp.valor, ajuste: false, derivado: true };
+    const gestoria = it.gestoria.valor, comCom = it.comCom.valor, extras = it.extras.valor;
+    const bruta = it.bruta.valor;
     const aLiquidar = I - bruta - gestoria;
     const ganancia = it.comLuk.valor + it.retrib.valor - it.gest.valor - comCom - extras;
     const retribCobrada = !!(c && c.fecha_pago_banco);
@@ -133,17 +137,19 @@
     let fLiqEstimada = false;
     if (!fLiq && r.creditoEstado === 'Pagado') { fLiq = fechaPagadoCredito(r); fLiqEstimada = !!fLiq; }
     return {
-      r, c, I, banco, p, it, gestoria, comCom, extras, bruta, aLiquidar, ganancia, gananciaCobrada,
+      r, c, I, banco, p, it, gestoria, comCom, extras, bruta, aLiquidar, ganancia, gananciaCobrada, aplicaGest,
       fechaLiq: fLiq, fLiqEstimada,
       agenciaPagada: !!(c && c.pagado), fechaAgencia: c && c.fecha_pagado,
       gestorPagado: !!(c && c.pago_gest), fechaGestor: c && c.fecha_pago_gest,
       retribCobrada, fechaRetrib: c && c.fecha_pago_banco,
-      aLiqGuardado: g('a_liquidar'), ganGuardada: g('ganancia')
+      vieja: c ? { imp: g('imp_credito'), comLuk: g('com_lukaya'), retrib: g('retrib_banco'), gest: g('com_gestora'), aLiq: g('a_liquidar'), gan: g('ganancia') } : null
     };
   };
 
+  // gestor sin nada para pagar (sin comisión y sin gastos de gestoría) cuenta como resuelto
+  const gestorOk = x => x.gestorPagado || x.it.gest.valor + x.gestoria <= 0;
   function estadoOp(x) {
-    if (x.agenciaPagada && x.gestorPagado && x.retribCobrada) return ['Cerrada', 'gr'];
+    if (x.agenciaPagada && gestorOk(x) && x.retribCobrada) return ['Cerrada', 'gr'];
     if (!x.agenciaPagada) return ['Falta pagar agencia', 'am'];
     if (!x.retribCobrada) return ['Esperando retribución', 'am'];
     return ['Falta pagar gestor', 'am'];
@@ -247,6 +253,13 @@
 #v-contabilidad2 .c2-grp th:nth-child(1){width:12%}#v-contabilidad2 .c2-grp th:nth-child(2){width:9%}#v-contabilidad2 .c2-grp th:nth-child(3){width:29%}#v-contabilidad2 .c2-grp th:nth-child(4){width:22%}#v-contabilidad2 .c2-grp th:nth-child(5){width:14%}#v-contabilidad2 .c2-grp th:nth-child(6){width:14%}
 #v-contabilidad2 .c2-grp td{overflow:hidden;text-overflow:ellipsis}
 #v-contabilidad2 .c2-grp table.c2-t td,#v-contabilidad2 .c2-grp table.c2-t th{padding-left:14px}
+#v-contabilidad2 .c2-ed{border:none;background:none;cursor:pointer;font-size:13px;padding:2px 4px;border-radius:6px;opacity:.55}
+#v-contabilidad2 .c2-ed:hover{opacity:1;background:#fff1e8}
+#v-contabilidad2 .c2-sw{display:inline-flex;border:1.5px solid var(--line);border-radius:7px;overflow:hidden;vertical-align:middle;margin-left:6px;cursor:pointer;user-select:none}
+#v-contabilidad2 .c2-sw.ro{cursor:default;opacity:.8}
+#v-contabilidad2 .c2-sw b{font-size:10.5px;padding:2px 7px;color:#a8a29e;background:#fff}
+#v-contabilidad2 .c2-sw b.on{background:#15803d;color:#fff}
+#v-contabilidad2 .c2-sw b.on.no{background:#b91c1c}
 #c2-modal{position:fixed;inset:0;background:rgba(15,15,15,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px}
 #c2-modal .c2m-box{background:#fff;border-radius:14px;width:100%;max-width:560px;max-height:92vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
 #c2-modal .c2m-h{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e7e5e4;font-size:15.5px}
@@ -371,9 +384,12 @@
     if (!r) return `<div class="c2-card c2-empty">No se encontró la operación. <button class="c2-btn" onclick="C2.ir('liquidacion')">← Volver</button></div>`;
     const x = C2.calc(r);
     const [et, col] = estadoOp(x);
-    const aj = i => i.ajuste ? `<span class="c2-aj" title="Calculado: ${$(i.calc)}">ajuste</span>` : '';
+    const aj = i => i.ajuste ? `<span class="c2-aj" title="${esc('Ajustado por ' + (i.info && i.info.usuario || '—') + (i.info && i.info.motivo ? ': ' + i.info.motivo : ''))}">ajuste</span>` : '';
     const ajF = i => i.ajuste ? `<div class="c2-f" style="font-size:11px">calculado ${$(i.calc)}</div>` : '';
-    const ganAj = x.ganGuardada !== null && Math.abs(x.ganGuardada - x.ganancia) > 1;
+    const puedeAj = C2.puedeEscribir() && C2.ajOk;
+    const ed = campo => puedeAj ? `<button class="c2-ed" title="Editar" onclick="C2.abrirAjuste('${esc(r.id)}','${campo}')">✏️</button>` : '';
+    const ganVieja = x.vieja && x.vieja.gan !== null && Math.abs(x.vieja.gan - x.ganancia) > 1 ? x.vieja.gan : null;
+    const swGest = `<span class="c2-sw${puedeAj ? '' : ' ro'}"${puedeAj ? ` onclick="C2.toggleGest('${esc(r.id)}')" title="¿Lleva comisión gestor?"` : ''}><b class="${x.aplicaGest ? 'on' : ''}">SÍ</b><b class="${x.aplicaGest ? '' : 'on no'}">NO</b></span>`;
     const dRet = dias(x.fechaLiq);
     const paso = (ok, titulo, sub, pend, extra) => `<li><span class="c2-dot" style="background:${ok ? '#15803d' : pend ? '#c2410c' : '#a8a29e'}"></span><div><div style="font-weight:700">${titulo}</div><div style="font-size:12.5px;color:var(--muted)">${sub}</div>${extra || ''}</div></li>`;
     const liqVieja = x.fechaLiq && String(x.fechaLiq).slice(0, 10) < FECHA_ARRANQUE && !movsOp(x.r.id, 'liquidacion').length;
@@ -388,7 +404,7 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
             <span class="c2-b ${col}">Estado: ${et}</span>
             <span class="c2-b ${x.agenciaPagada ? 'gr' : 'am'}">${x.agenciaPagada ? 'Agencia pagada' : 'Agencia pendiente'}</span>
-            <span class="c2-b ${x.gestorPagado ? 'gr' : 'am'}">${x.gestorPagado ? 'Gestor pagado' : 'Gestor pendiente'}</span>
+            <span class="c2-b ${gestorOk(x) ? 'gr' : 'am'}">${x.gestorPagado ? 'Gestor pagado' : gestorOk(x) ? 'Sin pago a gestor' : 'Gestor pendiente'}</span>
             <span class="c2-b gy">Crédito: ${esc(r.creditoEstado || '—')}</span>
           </div>
         </div>
@@ -401,29 +417,30 @@
         <div>
           <div class="c2-card">
             <h3>1 · Cuánto se le transfiere a la agencia</h3>
-            <div class="c2-sub">Se calcula solo. Si un valor se corrigió a mano en Contabilidad queda marcado como <span class="c2-aj" style="margin:0">ajuste</span></div>
-            <table class="c2-t" style="margin-top:10px"><thead><tr><th>Concepto</th><th>Fórmula</th><th class="n">Monto</th></tr></thead><tbody>
-              <tr><td>Importe del crédito (I)</td><td class="c2-f">dato de la solicitud</td><td class="n">${$(x.I)}</td></tr>
-              <tr><td>Comisión bruta</td><td class="c2-f">I × ${pct(x.p.bruta)} (${esc(bancoDisplay(x.banco))})</td><td class="n">${$(x.bruta)}</td></tr>
-              <tr><td>Impuesto al crédito ${aj(x.it.imp)}</td><td class="c2-f">I × ${pct(x.p.imp)}</td><td class="n neg">${$(-x.it.imp.valor)}${ajF(x.it.imp)}</td></tr>
-              <tr><td>Comisión LUKAYA ${aj(x.it.comLuk)}</td><td class="c2-f">bruta − imp. crédito</td><td class="n">${$(x.it.comLuk.valor)}${ajF(x.it.comLuk)}</td></tr>
-              <tr><td>Gastos de gestoría</td><td class="c2-f">dato cargado</td><td class="n">${$(x.gestoria)}</td></tr>
-              <tr class="tot"><td>A liquidar a la agencia</td><td class="c2-f">I − bruta − gestoría</td><td class="n">${$(x.aLiquidar)}</td></tr>
+            <div class="c2-sub">Se calcula con los % de Parámetros. Si un valor se corrige a mano con ✏️ queda marcado como <span class="c2-aj" style="margin:0">ajuste</span></div>
+            <table class="c2-t" style="margin-top:10px"><thead><tr><th>Concepto</th><th>Fórmula</th><th class="n">Monto</th><th style="width:34px"></th></tr></thead><tbody>
+              <tr><td>Importe del crédito (I)</td><td class="c2-f">dato de la solicitud</td><td class="n">${$(x.I)}</td><td></td></tr>
+              <tr><td>Comisión bruta ${aj(x.it.bruta)}</td><td class="c2-f">I × ${pct(x.p.bruta)} (${esc(bancoDisplay(x.banco))})</td><td class="n">${$(x.it.bruta.valor)}${ajF(x.it.bruta)}</td><td>${ed('bruta')}</td></tr>
+              <tr><td>Impuesto al crédito ${aj(x.it.imp)}</td><td class="c2-f">I × ${pct(x.p.imp)}</td><td class="n neg">${$(-x.it.imp.valor)}${ajF(x.it.imp)}</td><td>${ed('imp')}</td></tr>
+              <tr><td>Comisión LUKAYA</td><td class="c2-f">bruta − imp. crédito</td><td class="n">${$(x.it.comLuk.valor)}</td><td>${ed('comLuk')}</td></tr>
+              <tr><td>Gastos de gestoría ${aj(x.it.gestoria)}</td><td class="c2-f">dato cargado</td><td class="n">${$(x.gestoria)}${ajF(x.it.gestoria)}</td><td>${ed('gestoria')}</td></tr>
+              <tr class="tot"><td>A liquidar a la agencia</td><td class="c2-f">I − bruta − gestoría</td><td class="n">${$(x.aLiquidar)}</td><td>${ed('aLiq')}</td></tr>
             </tbody></table>
           </div>
           <div class="c2-card">
             <h3>2 · Cuánto gana LUKAYA en esta operación</h3>
             <div class="c2-sub">La ganancia nunca se escribe a mano: siempre sale de esta suma</div>
-            <table class="c2-t" style="margin-top:10px"><thead><tr><th>Concepto</th><th>Fórmula</th><th class="n">Monto</th></tr></thead><tbody>
-              <tr><td>Comisión LUKAYA</td><td></td><td class="n">${$(x.it.comLuk.valor)}</td></tr>
-              <tr><td>Retribución banco ${aj(x.it.retrib)}</td><td class="c2-f">I × ${pct(x.p.retrib)}</td><td class="n pos">+${$(x.it.retrib.valor)}${ajF(x.it.retrib)}</td></tr>
-              <tr><td>Comisión gestor ${aj(x.it.gest)}</td><td class="c2-f">I × ${pct(x.p.gest)}</td><td class="n neg">${$(-x.it.gest.valor)}${ajF(x.it.gest)}</td></tr>
-              <tr><td>Comisión comercial / operativa</td><td class="c2-f">dato cargado</td><td class="n ${x.comCom ? 'neg' : ''}">${$(-x.comCom)}</td></tr>
-              <tr><td>Pagos extras</td><td class="c2-f">dato cargado</td><td class="n ${x.extras ? 'neg' : ''}">${$(-x.extras)}</td></tr>
-              <tr class="tot"><td>Ganancia devengada</td><td class="c2-f">suma de arriba</td><td class="n">${$(x.ganancia)}</td></tr>
-              <tr><td>Ganancia cobrada</td><td class="c2-f">${x.retribCobrada ? 'retribución ya cobrada' : 'sin retribución hasta que pague el banco'}</td><td class="n">${$(x.gananciaCobrada)}</td></tr>
+            <table class="c2-t" style="margin-top:10px"><thead><tr><th>Concepto</th><th>Fórmula</th><th class="n">Monto</th><th style="width:34px"></th></tr></thead><tbody>
+              <tr><td>Comisión LUKAYA</td><td class="c2-f">de la sección 1</td><td class="n">${$(x.it.comLuk.valor)}</td><td></td></tr>
+              <tr><td>Retribución banco ${aj(x.it.retrib)}</td><td class="c2-f">I × ${pct(x.p.retrib)}</td><td class="n pos">+${$(x.it.retrib.valor)}${ajF(x.it.retrib)}</td><td>${ed('retrib')}</td></tr>
+              <tr><td>Comisión gestor ${swGest} ${aj(x.it.gest)}</td><td class="c2-f">${x.aplicaGest ? 'I × ' + pct(x.p.gest) : 'no lleva comisión'}</td><td class="n ${x.it.gest.valor ? 'neg' : ''}">${$(-x.it.gest.valor)}${ajF(x.it.gest)}</td><td>${x.aplicaGest ? ed('gest') : ''}</td></tr>
+              <tr><td>Comisión comercial / operativa ${aj(x.it.comCom)}</td><td class="c2-f">dato cargado</td><td class="n ${x.comCom ? 'neg' : ''}">${$(-x.comCom)}${ajF(x.it.comCom)}</td><td>${ed('comcom')}</td></tr>
+              <tr><td>Pagos extras ${aj(x.it.extras)}</td><td class="c2-f">dato cargado</td><td class="n ${x.extras ? 'neg' : ''}">${$(-x.extras)}${ajF(x.it.extras)}</td><td>${ed('extras')}</td></tr>
+              <tr class="tot"><td>Ganancia devengada</td><td class="c2-f">suma de arriba</td><td class="n">${$(x.ganancia)}</td><td></td></tr>
+              <tr><td>Ganancia cobrada</td><td class="c2-f">${x.retribCobrada ? 'retribución ya cobrada' : 'sin retribución hasta que pague el banco'}</td><td class="n">${$(x.gananciaCobrada)}</td><td></td></tr>
             </tbody></table>
-            ${ganAj ? `<div class="c2-note" style="margin-top:10px;background:#fef3c7">En Contabilidad la ganancia guardada es <b>${$(x.ganGuardada)}</b>, distinta de la calculada (${$(x.ganancia)}). Revisalo en Controles.</div>` : ''}
+            ${ganVieja !== null ? `<div class="c2-note" style="margin-top:10px;background:#dbeafe">En la Contabilidad vieja esta operación tiene ganancia <b>${$(ganVieja)}</b> (guardada con otros valores). Contabilidad 2 usa la calculada acá. Ver Controles.</div>` : ''}
+            ${!C2.ajOk && C2.puedeEscribir() ? '<div class="c2-note" style="margin-top:10px;background:#fef3c7">Para poder editar montos hay que correr <b>c2_ajustes.sql</b> en Supabase.</div>' : ''}
           </div>
         </div>
         <div>
@@ -433,8 +450,9 @@
             ${paso(!!x.fechaLiq, 'Liquidada por el banco', x.fechaLiq ? fD(x.fechaLiq) + (x.fLiqEstimada ? ' (estimada: fecha de Pagado)' : '') : 'Sin fecha de Liquidado', !x.fechaLiq, extraLiq)}
             ${paso(x.agenciaPagada, 'Agencia pagada · ' + esc(r.concesionaria || '—'), x.agenciaPagada ? fD(x.fechaAgencia) : 'Pendiente · ' + $(x.aLiquidar), !x.agenciaPagada, C2.pasoCaja(x, 'agencia', x.agenciaPagada))}
             ${paso(x.retribCobrada, 'Retribución del banco', x.retribCobrada ? 'Cobrada ' + fD(x.fechaRetrib) : 'Pendiente' + (dRet !== null ? ' hace ' + dRet + ' días' : '') + ' · ' + $(x.it.retrib.valor), !x.retribCobrada, C2.pasoCaja(x, 'retribucion', x.retribCobrada))}
-            ${paso(x.gestorPagado, 'Comisión y gastos al gestor · ' + esc(r.gestorAsignado || '—'), x.gestorPagado ? fD(x.fechaGestor) : 'Pendiente · ' + $(x.it.gest.valor + x.gestoria), !x.gestorPagado, C2.pasoCaja(x, 'gestor', x.gestorPagado))}
-            ${paso(x.agenciaPagada && x.retribCobrada && x.gestorPagado, 'Cerrada', 'Cuando todo lo anterior esté hecho', false)}
+            ${!x.gestorPagado && gestorOk(x) ? paso(true, 'Gestor · ' + esc(r.gestorAsignado || '—'), 'Nada para pagar (sin comisión ni gastos de gestoría)', false)
+              : paso(x.gestorPagado, 'Comisión y gastos al gestor · ' + esc(r.gestorAsignado || '—'), x.gestorPagado ? fD(x.fechaGestor) : 'Pendiente · ' + $(x.it.gest.valor + x.gestoria), !x.gestorPagado, C2.pasoCaja(x, 'gestor', x.gestorPagado))}
+            ${paso(x.agenciaPagada && x.retribCobrada && gestorOk(x), 'Cerrada', 'Cuando todo lo anterior esté hecho', false)}
           </ul>
           <div class="c2-note">${C2.caja.ok ? 'Al registrar un pago o cobro acá se crea el movimiento en Caja y bancos y se tilda también en la Contabilidad vieja.' : 'Caja y bancos no está disponible: los pagos se siguen registrando en la Contabilidad vieja.'}</div>
         </div>
@@ -483,10 +501,12 @@
       if (x.fLiqEstimada) probs.push(['bl', 'Sin fecha de Liquidado: se usa la de Pagado (' + fD(x.fechaLiq) + ')']);
       if (liq && !x.c) probs.push(['am', 'Sin fila en Contabilidad']);
       if (!x.I) probs.push(['re', 'Sin importe']);
-      const nombres = { imp: 'Impuesto al crédito', comLuk: 'Comisión LUKAYA', retrib: 'Retribución banco', gest: 'Comisión gestor' };
-      Object.keys(x.it).forEach(k => { const i = x.it[k]; if (i.ajuste) probs.push(['am', `${nombres[k]}: guardado ${$(i.guardado)} · calculado ${$(i.calc)}`]); });
-      if (x.ganGuardada !== null && Math.abs(x.ganGuardada - x.ganancia) > 1) probs.push(['am', `Ganancia guardada ${$(x.ganGuardada)} ≠ calculada ${$(x.ganancia)}`]);
-      if (x.aLiqGuardado !== null && Math.abs(x.aLiqGuardado - x.aLiquidar) > 1) probs.push(['am', `A liquidar guardado ${$(x.aLiqGuardado)} ≠ calculado ${$(x.aLiquidar)}`]);
+      Object.keys(x.it).forEach(k => { const i = x.it[k]; if (i.ajuste) probs.push(['am', `Ajuste ${AJN[i.campo]}: ${$(i.valor)} (calculado ${$(i.calc)})`]); });
+      if (!x.aplicaGest) probs.push(['gy', 'Sin comisión gestor']);
+      if (x.vieja) {
+        const vv = [['comLuk', 'Com. LUKAYA', x.it.comLuk.valor], ['imp', 'Imp. crédito', x.it.imp.valor], ['retrib', 'Retribución', x.it.retrib.valor], ['gest', 'Com. gestor', x.it.gest.valor], ['aLiq', 'A liquidar', x.aLiquidar], ['gan', 'Ganancia', x.ganancia]];
+        vv.forEach(([k, t, v]) => { const o = x.vieja[k]; if (o !== null && Math.abs(o - v) > 1) probs.push(['bl', `${t}: vieja ${$(o)} · C2 ${$(v)}`]); });
+      }
       const bLegacy = String(r.banco || '').toUpperCase().trim();
       if (bLegacy && bLegacy !== x.banco) probs.push(['bl', `Banco de la solicitud ${bLegacy} ≠ banco en AVANZA ${x.banco}`]);
       if (probs.length) out.push({ x, probs, liq });
@@ -506,7 +526,7 @@
     return `
       <div class="c2-kick">Contabilidad 2 · etapa 1</div>
       <div class="c2-h1">Controles</div>
-      <div class="c2-sub">Diferencias entre lo guardado en la Contabilidad actual y lo que calcula Contabilidad 2. Sirve para validar las fórmulas antes de seguir.</div>
+      <div class="c2-sub">En amarillo: ajustes manuales hechos en Contabilidad 2. En azul: diferencias con lo guardado en la Contabilidad vieja (por ejemplo, operaciones guardadas con otro %).</div>
       <div class="c2-fil">
         <select onchange="C2.filtro.alcance=this.value;C2.render()">
           <option value="liquidadas"${f.alcance === 'liquidadas' ? ' selected' : ''}>Solo liquidadas</option>
@@ -1082,7 +1102,7 @@
     };
     ops.forEach(x => {
       if (!x.agenciaPagada) add('agencia', 'agencia', x, x.aLiquidar, x.r.concesionaria, 'pagar');
-      if (!x.gestorPagado) add('gestor', 'gestor', x, x.it.gest.valor + x.gestoria, x.r.gestorAsignado, 'pagar');
+      if (!x.gestorPagado && x.it.gest.valor + x.gestoria > 0) add('gestor', 'gestor', x, x.it.gest.valor + x.gestoria, x.r.gestorAsignado, 'pagar');
       if (!x.retribCobrada) add('retribucion', 'retribucion', x, x.it.retrib.valor, bancoDisplay(x.banco), 'pagar');
       if (C2.caja.ok) {
         if (fl(x) && fl(x) >= FECHA_ARRANQUE && !movsOp(x.r.id, 'liquidacion').length) add('liquidacion', 'liquidacion', x, x.I, bancoDisplay(x.banco), 'pagar');
@@ -1158,6 +1178,126 @@
         ${bloques || '<div class="c2-empty">✅ No hay nada pendiente acá.</div>'}
       </div>`;
   }
+
+
+  // ══════════════════════════════════════════════════════════════
+  // AJUSTES MANUALES POR OPERACIÓN (v3.9.42) — tabla c2_ajustes
+  // Un ajuste reemplaza el valor calculado de un concepto. "Volver al calculado" lo borra.
+  // Com. LUKAYA y A liquidar no se guardan: se editan como ajuste de la comisión bruta.
+  // ══════════════════════════════════════════════════════════════
+  const AJN = { bruta: 'comisión bruta', imp: 'impuesto al crédito', retrib: 'retribución banco', gest: 'comisión gestor', gestoria: 'gastos de gestoría', comcom: 'comisión comercial / operativa', extras: 'pagos extras', gest_aplica: 'lleva comisión gestor' };
+  const AJ_EDIT = {
+    bruta: { t: 'Comisión bruta', pct: true },
+    imp: { t: 'Impuesto al crédito', pct: true },
+    retrib: { t: 'Retribución banco', pct: true },
+    gest: { t: 'Comisión gestor', pct: true },
+    gestoria: { t: 'Gastos de gestoría' },
+    comcom: { t: 'Comisión comercial / operativa' },
+    extras: { t: 'Pagos extras' },
+    comLuk: { t: 'Comisión LUKAYA', target: 'bruta' },
+    aLiq: { t: 'A liquidar a la agencia', target: 'bruta' }
+  };
+
+  async function cargarAjustes() {
+    try {
+      const res = await _sbAll(() => SB.from('c2_ajustes').select('*').order('id'));
+      if (res.error) throw res.error;
+      C2.aj = {};
+      (res.data || []).forEach(a => { (C2.aj[a.solicitud_id] = C2.aj[a.solicitud_id] || {})[a.campo] = a; });
+      C2.ajOk = true;
+    } catch (e) {
+      C2.ajOk = false; C2.aj = {};
+      console.warn('C2 ajustes:', e.message || e);
+    }
+  }
+
+  // valor actual / calculado de un campo editable
+  function ajValores(x, k) {
+    if (k === 'comLuk') return { actual: x.it.comLuk.valor, calc: x.it.bruta.calc - x.it.imp.valor };
+    if (k === 'aLiq') return { actual: x.aLiquidar, calc: x.I - x.it.bruta.calc - x.gestoria };
+    const m = { bruta: 'bruta', imp: 'imp', retrib: 'retrib', gest: 'gest', gestoria: 'gestoria', comcom: 'comCom', extras: 'extras' }[k];
+    return { actual: x.it[m].valor, calc: x.it[m].calc };
+  }
+
+  C2.abrirAjuste = function (id, k) {
+    if (!C2.puedeEscribir() || !C2.ajOk) return;
+    const r = (RECORDS || []).find(o => String(o.id) === String(id)); if (!r) return;
+    const x = C2.calc(r), d = AJ_EDIT[k], v = ajValores(x, k);
+    const campoReal = d.target || k;
+    const existe = (C2.aj[id] || {})[campoReal];
+    C2.modal('Editar · ' + d.t, `
+      <div class="c2-sub" style="margin-bottom:12px">${esc(r.nombrecliente || '—')} · ${esc(bancoDisplay(x.banco))} · importe ${$c(x.I)}</div>
+      <table style="width:100%;font-size:13px;margin-bottom:12px"><tbody>
+        <tr><td style="color:#78716c">Calculado</td><td style="text-align:right">${$c(v.calc)}</td></tr>
+        <tr><td style="color:#78716c">Actual</td><td style="text-align:right;font-weight:700">${$c(v.actual)}${existe ? ' <span style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:5px;font-weight:800">ajuste</span>' : ''}</td></tr>
+      </tbody></table>
+      <div class="c2m-g">
+        <label>Nuevo valor<input type="text" inputmode="decimal" id="c2j-val" value="${fmtIn(v.actual)}"></label>
+        <label>Motivo (obligatorio)<input type="text" id="c2j-mot" value="" placeholder="Ej.: acuerdo con la agencia"></label>
+      </div>
+      ${d.pct ? '<div class="c2-f" style="margin-top:8px">Podés escribir un porcentaje del importe, por ejemplo <b>5%</b> o <b>4,5%</b>.</div>' : ''}
+      ${d.target ? `<div class="c2-note" style="margin-top:10px">${d.t} no se guarda sola: se calcula de la comisión bruta. Al guardar se ajusta la <b>comisión bruta</b> para que dé este valor.</div>` : ''}
+      ${existe ? `<div class="c2-f" style="margin-top:10px;font-size:11.5px">Ajuste actual de ${esc(AJN[campoReal])}: ${$c(num(existe.valor))} · ${esc(existe.usuario || '—')}${existe.motivo ? ' · ' + esc(existe.motivo) : ''}</div>` : ''}`,
+      (existe ? `<button class="c2-btn" onclick="C2.quitarAjuste('${esc(id)}','${campoReal}')">Volver al calculado</button>` : '') +
+      `<button class="c2-btn pri" onclick="C2.guardarAjuste('${esc(id)}','${k}')">Guardar</button>`);
+  };
+
+  C2.guardarAjuste = async function (id, k) {
+    const r = (RECORDS || []).find(o => String(o.id) === String(id)); if (!r) return;
+    const x = C2.calc(r), d = AJ_EDIT[k];
+    const txt = String(val('c2j-val') || '').trim();
+    const mot = String(val('c2j-mot') || '').trim();
+    let nuevo;
+    if (/%$/.test(txt)) {
+      if (!d.pct) return mErr('Acá no se puede usar porcentaje');
+      const pc = numIn(txt.replace('%', ''));
+      if (pc === null || pc < 0 || pc > 100) return mErr('Porcentaje inválido');
+      nuevo = r0(x.I * pc / 100);
+    } else {
+      const neg = txt.startsWith('-');
+      nuevo = numIn(txt.replace(/^-/, ''));
+      if (nuevo === null) return mErr('Valor inválido');
+      if (neg) nuevo = -nuevo;
+    }
+    if (mot.length < 3) return mErr('Escribí el motivo');
+    let campo = k, valor = nuevo;
+    if (k === 'comLuk') { campo = 'bruta'; valor = nuevo + x.it.imp.valor; }
+    if (k === 'aLiq') { campo = 'bruta'; valor = x.I - nuevo - x.gestoria; }
+    if (['bruta', 'imp', 'retrib', 'gest'].includes(campo) && valor < 0) return mErr('El resultado no puede ser negativo');
+    const ant = (C2.aj[id] || {})[campo];
+    const antVal = ajValores(x, campo === 'bruta' ? 'bruta' : k).actual;
+    bloquear(true); mErr('');
+    const res = await SB.from('c2_ajustes').upsert({ solicitud_id: id, campo, valor, motivo: mot, usuario: quien(), updated_at: new Date().toISOString() }, { onConflict: 'solicitud_id,campo' });
+    if (res.error) { bloquear(false); return mErr('Error: ' + res.error.message); }
+    if (typeof registrarHistorial === 'function') registrarHistorial('c2_ajustes', id, [{ campo: 'ajuste ' + AJN[campo], ant: ant ? num(ant.valor) : antVal, nuevo: valor + ' · ' + mot }]);
+    C2.cerrarModal(); toast('Ajuste guardado ✓', 'ok');
+    await cargarAjustes(); C2.render();
+  };
+
+  C2.quitarAjuste = async function (id, campo) {
+    const ant = (C2.aj[id] || {})[campo]; if (!ant) return;
+    bloquear(true); mErr('');
+    const res = await SB.from('c2_ajustes').delete().eq('solicitud_id', id).eq('campo', campo);
+    if (res.error) { bloquear(false); return mErr('Error: ' + res.error.message); }
+    if (typeof registrarHistorial === 'function') registrarHistorial('c2_ajustes', id, [{ campo: 'ajuste ' + AJN[campo], ant: num(ant.valor), nuevo: 'vuelve al calculado' }]);
+    C2.cerrarModal(); toast('Volvió al valor calculado', 'ok');
+    await cargarAjustes(); C2.render();
+  };
+
+  // SÍ / NO comisión gestor
+  C2.toggleGest = async function (id) {
+    if (!C2.puedeEscribir() || !C2.ajOk) return;
+    const r = (RECORDS || []).find(o => String(o.id) === String(id)); if (!r) return;
+    const x = C2.calc(r);
+    const res = x.aplicaGest
+      ? await SB.from('c2_ajustes').upsert({ solicitud_id: id, campo: 'gest_aplica', valor: 0, motivo: 'No lleva comisión gestor', usuario: quien(), updated_at: new Date().toISOString() }, { onConflict: 'solicitud_id,campo' })
+      : await SB.from('c2_ajustes').delete().eq('solicitud_id', id).eq('campo', 'gest_aplica');
+    if (res.error) { toast('Error: ' + res.error.message, 'er'); return; }
+    if (typeof registrarHistorial === 'function') registrarHistorial('c2_ajustes', id, [{ campo: 'comisión gestor', ant: x.aplicaGest ? 'SÍ' : 'NO', nuevo: x.aplicaGest ? 'NO' : 'SÍ' }]);
+    await cargarAjustes(); C2.render();
+    toast(x.aplicaGest ? 'Sin comisión gestor' : 'Con comisión gestor', 'ok');
+    if (x.gestorPagado) toast('Ojo: el gestor ya figura pagado', 'warn');
+  };
 
   // ── entrada ──
   C2.init = function () {
