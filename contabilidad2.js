@@ -1,11 +1,12 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.49)
+// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.50)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 // Etapa 3: Cobrar y pagar (pendientes agrupados por agencia / gestor / banco).
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
 // v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
+// v3.9.50: Caja limpia filtros al entrar, aviso de filtros activos y link "ver en caja ›" desde el recorrido.
 // v3.9.49: COLUMBIA debita el impuesto 1,2 % al liquidar (IMP_EN_LIQ): la casilla del impuesto va en Registrar ingreso.
 // v3.9.48: Caja y bancos → movimientos ordenables por columna (cliente, fecha, cuenta, concepto, montos…).
 // v3.9.47: en el Recorrido del dinero no se muestran la retribución en NO ni el gestor sin nada para pagar.
@@ -309,7 +310,10 @@
     ['controles', 'Controles', 1]
   ];
   C2.ir = function (sec, opId) {
-    if (sec === 'caja' && C2.seccion !== 'caja') C2.cajaTab = 'movimientos';
+    // v3.9.50: al entrar a Caja desde otra sección se limpian los filtros (si no, un filtro viejo de cuenta escondía movimientos)
+    if (sec === 'caja' && C2.seccion !== 'caja') { C2.cajaTab = 'movimientos'; if (!C2._mantenerFiltro) C2.cajaF = { cuenta: '', desde: '', hasta: '', concepto: '', q: '', anulados: false }; }
+    C2._mantenerFiltro = false;
+    if (sec !== 'caja') C2._resaltar = null;
     C2.seccion = sec;
     C2.opId = opId || null;
     C2.render();
@@ -1085,7 +1089,8 @@
       else if (f.cuenta) { if (String(m.cuenta_destino_id) === String(f.cuenta)) colI = $c(v); else colE = $c(v); }
       else colI = '<span style="color:var(--muted)">⇄ ' + $c(v) + '</span>';
       const st = m.anulado ? ' style="opacity:.5;text-decoration:line-through"' : '';
-      return `<tr${m.anulado ? ` title="Anulado por ${esc(m.anulado_por || '—')}: ${esc(m.motivo_anulacion || '')}"` : ''}>
+      const resal = String(C2._resaltar || '') === String(m.id);
+      return `<tr${resal ? ' id="c2-resaltado" style="background:#fff7ed;box-shadow:inset 3px 0 0 #c2410c"' : ''}${m.anulado ? ` title="Anulado por ${esc(m.anulado_por || '—')}: ${esc(m.motivo_anulacion || '')}"` : ''}>
         <td style="white-space:nowrap"${st}>${fD(m.fecha)}</td>
         <td${st}>${esc(c ? c.nombre : '—')}${m.tipo === 'transferencia' && cuenta(m.cuenta_destino_id) ? ' → ' + esc(cuenta(m.cuenta_destino_id).nombre) : ''}</td>
         <td${st}>${esc(descMov(m))}${m.anulado ? ' <span class="c2-b re" style="text-decoration:none">anulado</span>' : ''}</td>
@@ -1115,6 +1120,15 @@
           <label class="c2-kick" style="display:flex;gap:5px;align-items:center"><input type="checkbox"${f.anulados ? ' checked' : ''} onchange="C2.cajaFiltrar('anulados',this.checked)"> ver anulados</label>
           <button class="c2-btn" onclick="C2.cajaF={cuenta:'',desde:'',hasta:'',concepto:'',q:'',anulados:false};C2.render()">✕ Limpiar</button>
         </div>
+        ${(() => {
+          const act = [];
+          if (f.cuenta) { const c = cuenta(f.cuenta); act.push('cuenta <b>' + esc(c ? c.nombre : '?') + '</b>'); }
+          if (f.concepto) act.push('concepto <b>' + esc(f.concepto === 'transferencia' ? 'Transferencias' : (concepto(f.concepto) || {}).nombre || '?') + '</b>');
+          if (f.desde) act.push('desde <b>' + fD(f.desde) + '</b>');
+          if (f.hasta) act.push('hasta <b>' + fD(f.hasta) + '</b>');
+          if (f.q) act.push('búsqueda <b>“' + esc(f.q) + '”</b>');
+          return act.length ? `<div class="c2-note" style="margin-bottom:10px;background:#fef3c7">🔎 Filtrando por ${act.join(' · ')}. Puede haber movimientos que no se ven. <a href="#" onclick="C2.cajaF={cuenta:'',desde:'',hasta:'',concepto:'',q:'',anulados:false};C2._resaltar=null;C2.render();return false"><b>Ver todos</b></a></div>` : '';
+        })()}
         <div class="c2-sub" style="margin-bottom:8px">Tocá un encabezado para ordenar${C2.cajaOrden.k !== 'fecha' ? ` · <a href="#" onclick="C2.cajaOrden={k:'fecha',dir:'desc'};C2.render();return false">volver a ordenar por fecha</a>` : ''} · ${lista.length} movimiento${lista.length !== 1 ? 's' : ''} · Ingresos <b class="pos">${$c(ing)}</b> · Egresos <b class="neg">${$c(egr)}</b>${f.cuenta ? '' : ' · (las transferencias no suman: con todas las cuentas se compensan)'}</div>
         <div style="overflow-x:auto">
         ${lista.length ? `<table class="c2-t ancha"><thead><tr>${th('fecha', 'Fecha')}${th('cuenta', 'Cuenta')}${th('concepto', 'Concepto')}${th('detalle', 'Detalle')}${th('operacion', 'Operación (cliente)')}${th('ingreso', 'Ingreso', 'n')}${th('egreso', 'Egreso', 'n')}${f.cuenta ? '<th class="n">Saldo</th>' : ''}${th('usuario', 'Cargó')}<th></th></tr></thead><tbody>${filas}</tbody></table>`
@@ -1156,7 +1170,7 @@
   C2.pasoCaja = function (x, vinculo, yaHecho) {
     if (!C2.caja.ok) return '';
     const m = movsOp(x.r.id, vinculo)[0];
-    if (m) { const c = cuenta(m.cuenta_id), im = impDePago(m); return `<div class="c2-f" style="font-size:11.5px;margin-top:3px">💰 en caja: ${esc(c ? c.nombre : '—')} · ${fD(m.fecha)} · ${$c(num(m.monto))}${im ? '<br>🧾 impuesto 1,2 %: −' + $c(num(im.monto)) : ''}</div>`; }
+    if (m) { const c = cuenta(m.cuenta_id), im = impDePago(m); return `<div class="c2-f" style="font-size:11.5px;margin-top:3px">💰 en caja: ${esc(c ? c.nombre : '—')} · ${fD(m.fecha)} · ${$c(num(m.monto))} · <a href="#" onclick="C2.verMov('${m.id}');return false">ver en caja ›</a>${im ? '<br>🧾 impuesto 1,2 %: −' + $c(num(im.monto)) : ''}</div>`; }
     if (yaHecho) {
       const fv = fechaVieja(x, vinculo);
       const nota = '<div class="c2-f" style="font-size:11.5px;margin-top:3px;color:#a8a29e">' + (fv && fv < arranque() ? 'anterior al arranque de Caja (' + fD(arranque()) + ')' : 'sin movimiento en caja (registrado en la Contabilidad vieja)') + '</div>';
@@ -1166,6 +1180,15 @@
     if (!C2.puedeEscribir()) return '';
     const lbl = { liquidacion: 'Registrar ingreso', agencia: 'Pagar agencia', retribucion: 'Registrar cobro', gestor: 'Pagar gestor' }[vinculo];
     return `<button class="c2-btn pri" style="padding:4px 10px;font-size:12px;margin-top:6px" onclick="C2.abrirPago('${esc(x.r.id)}','${vinculo}')">${lbl}</button>`;
+  };
+  // Abre Caja y bancos en la cuenta del movimiento y lo resalta
+  C2.verMov = function (movId) {
+    const m = C2.caja.movs.find(x => String(x.id) === String(movId)); if (!m) return;
+    C2.cajaF = { cuenta: String(m.cuenta_id), desde: '', hasta: '', concepto: '', q: '', anulados: !!m.anulado };
+    C2.cajaOrden = { k: 'fecha', dir: 'desc' };
+    C2._resaltar = m.id; C2._mantenerFiltro = true;
+    C2.ir('caja');
+    setTimeout(() => { const t = document.getElementById('c2-resaltado'); if (t) t.scrollIntoView({ block: 'center' }); }, 60);
   };
   C2.movsOperacionHTML = function (x) {
     if (!C2.caja.ok) return '';
