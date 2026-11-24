@@ -1,11 +1,12 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.44)
+// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.45)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 // Etapa 3: Cobrar y pagar (pendientes agrupados por agencia / gestor / banco).
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
 // v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
+// v3.9.45: arranque de Caja = fecha de arranque más antigua de las cuentas activas (antes fijo 01/11).
 //  - Liquidación por operación (lista + detalle)
 //  - Parámetros (porcentajes actuales; se editan en Contabilidad → Cambio de coeficientes)
 //  - Controles (diferencias entre lo guardado en Contabilidad y lo calculado)
@@ -402,8 +403,8 @@
     const swRetrib = sw('retrib_aplica', x.aplicaRetrib, '¿Corresponde retribución del banco?');
     const dRet = dias(x.fechaLiq);
     const paso = (ok, titulo, sub, pend, extra) => `<li><span class="c2-dot" style="background:${ok ? '#15803d' : pend ? '#c2410c' : '#a8a29e'}"></span><div><div style="font-weight:700">${titulo}</div><div style="font-size:12.5px;color:var(--muted)">${sub}</div>${extra || ''}</div></li>`;
-    const liqVieja = x.fechaLiq && String(x.fechaLiq).slice(0, 10) < FECHA_ARRANQUE && !movsOp(x.r.id, 'liquidacion').length;
-    const extraLiq = !C2.caja.ok ? '' : liqVieja ? '<div class="c2-f" style="font-size:11.5px;margin-top:3px;color:#a8a29e">anterior al arranque de Caja (' + fD(FECHA_ARRANQUE) + ')</div>' : C2.pasoCaja(x, 'liquidacion', false);
+    const liqVieja = x.fechaLiq && String(x.fechaLiq).slice(0, 10) < arranque() && !movsOp(x.r.id, 'liquidacion').length;
+    const extraLiq = !C2.caja.ok ? '' : liqVieja ? '<div class="c2-f" style="font-size:11.5px;margin-top:3px;color:#a8a29e">anterior al arranque de Caja (' + fD(arranque()) + ')</div>' : C2.pasoCaja(x, 'liquidacion', false);
     const sinCont = !x.c;
     return `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
@@ -564,7 +565,10 @@
   // Los movimientos nunca se borran: se anulan con motivo.
   // Pagos de una operación (agencia / retribución / gestor) también tildan la Contabilidad vieja.
   // ══════════════════════════════════════════════════════════════
-  const FECHA_ARRANQUE = '2026-11-01';
+  const FECHA_ARRANQUE = '2026-11-01';   // por defecto, si todavía no hay cuentas
+  // v3.9.45: el arranque de Caja es la fecha de arranque MÁS ANTIGUA de las cuentas activas (editable en cada cuenta).
+  // Si una cuenta arranca el 01/08 con su saldo a esa fecha, se pueden cargar operaciones desde el 01/08.
+  const arranque = () => { const fs = C2.caja.cuentas.filter(c => c.activa && c.fecha_inicio).map(c => String(c.fecha_inicio).slice(0, 10)).sort(); return fs[0] || FECHA_ARRANQUE; };
   // pesos con centavos solo si los hay
   const $c = v => { v = Math.round((v || 0) * 100) / 100; const d = Math.abs(v % 1) > 0.004 ? 2 : 0; return (v < 0 ? '−$' : '$') + Math.abs(v).toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d }); };
   const _C2_ESCRIBEN = ['admin', 'claudionieva'];
@@ -723,13 +727,13 @@
     const x = C2.calc(r);
     const v = VINC[vinculo];
     const fv = desdeVieja ? fechaVieja(x, vinculo) : '';
-    const fechaDef = fv && fv >= FECHA_ARRANQUE ? fv
-      : vinculo === 'liquidacion' && x.fechaLiq && String(x.fechaLiq).slice(0, 10) >= FECHA_ARRANQUE ? String(x.fechaLiq).slice(0, 10) : hoy();
+    const fechaDef = fv && fv >= arranque() ? fv
+      : vinculo === 'liquidacion' && x.fechaLiq && String(x.fechaLiq).slice(0, 10) >= arranque() ? String(x.fechaLiq).slice(0, 10) : hoy();
     const quienRecibe = vinculo === 'agencia' ? esc(r.concesionaria || '—') : vinculo === 'gestor' ? esc(r.gestorAsignado || '—') : esc(bancoDisplay(x.banco));
     C2.modal((desdeVieja ? 'Pasar a caja · ' : '') + v.t, `
       <div class="c2-sub" style="margin-bottom:12px">${esc(r.nombrecliente || '—')} · ${v.tipo === 'egreso' ? 'a' : 'de'} <b>${quienRecibe}</b></div>
       <div class="c2m-g">
-        <label>Fecha<input type="date" id="c2p-fecha" value="${fechaDef}" min="${FECHA_ARRANQUE}" max="${hoy()}"></label>
+        <label>Fecha<input type="date" id="c2p-fecha" value="${fechaDef}" min="${arranque()}" max="${hoy()}"></label>
         <label>Cuenta<select id="c2p-cuenta">${optCuentas(C2._ultCuenta)}</select></label>
         <label>Monto<input type="text" inputmode="decimal" id="c2p-monto" value="${fmtIn(montoSugerido(x, vinculo))}"></label>
         <label style="grid-column:1/-1">Detalle (opcional)<input type="text" id="c2p-det" placeholder="N° de transferencia, observación…"></label>
@@ -782,7 +786,7 @@
     const tit = tipo === 'ingreso' ? '➕ Nuevo ingreso' : tipo === 'egreso' ? '➖ Nuevo egreso' : '⇄ Transferencia entre cuentas';
     const ctaDef = C2.cajaF.cuenta || C2._ultCuenta;
     C2.modal(tit, `<div class="c2m-g">
-        <label>Fecha<input type="date" id="c2m-fecha" value="${hoy()}" min="${FECHA_ARRANQUE}" max="${hoy()}"></label>
+        <label>Fecha<input type="date" id="c2m-fecha" value="${hoy()}" min="${arranque()}" max="${hoy()}"></label>
         <label>${tipo === 'transferencia' ? 'Desde la cuenta' : 'Cuenta'}<select id="c2m-cuenta">${optCuentas(ctaDef)}</select></label>
         ${tipo === 'transferencia' ? `<label>Hacia la cuenta<select id="c2m-dest"><option value="">— elegí —</option>${optCuentas('')}</select></label>`
         : `<label>Concepto<select id="c2m-con">${conOpts ? '<option value="">— elegí —</option>' + conOpts : '<option value="">(no hay conceptos de ' + tipo + ')</option>'}</select></label>`}
@@ -863,8 +867,8 @@
         <label style="grid-column:1/-1">Nombre<input type="text" id="c2c-nom" value="${esc(c ? c.nombre : '')}" placeholder="Ej.: Galicia cta. cte."></label>
         <label>Tipo<select id="c2c-tipo">${tipos.map(([k, t]) => `<option value="${k}"${(c ? c.tipo : 'banco') === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
         <label>Orden<input type="number" id="c2c-orden" value="${c ? c.orden : C2.caja.cuentas.length + 1}"></label>
-        <label>Fecha de arranque<input type="date" id="c2c-fini" value="${c ? c.fecha_inicio : FECHA_ARRANQUE}"></label>
-        <label>Saldo inicial a esa fecha<input type="text" inputmode="decimal" id="c2c-saldo" value="${c ? String(num(c.saldo_inicial) || 0).replace('.', ',') : ''}" placeholder="0"></label>
+        <label>Fecha de arranque<input type="date" id="c2c-fini" value="${c ? c.fecha_inicio : arranque()}"></label>
+        <label>Saldo inicial a esa fecha (del extracto)<input type="text" inputmode="decimal" id="c2c-saldo" value="${c ? String(num(c.saldo_inicial) || 0).replace('.', ',') : ''}" placeholder="0"></label>
         ${c ? `<label class="c2m-chk" style="grid-column:1/-1"><input type="checkbox" id="c2c-act"${c.activa ? ' checked' : ''}> Cuenta activa (si la desactivás no aparece para cargar movimientos)</label>` : ''}
       </div>`,
       `<button class="c2-btn pri" onclick="C2.guardarCuenta(${c ? c.id : 'null'})">Guardar</button>`);
@@ -935,7 +939,7 @@
   function vistaCaja() {
     const k = C2.caja, w = C2.puedeEscribir();
     const head = `<div class="c2-kick">Contabilidad 2 · etapa 2</div><div class="c2-h1">Caja y bancos</div>
-      <div class="c2-sub">Saldos y movimientos de cada cuenta desde el ${fD(FECHA_ARRANQUE)}.${w ? '' : ' Solo lectura: registran movimientos admin y claudionieva.'}</div>`;
+      <div class="c2-sub">Saldos y movimientos de cada cuenta desde el ${fD(arranque())}.${w ? '' : ' Solo lectura: registran movimientos admin y claudionieva.'}</div>`;
     if (k.err === 'faltaSQL') return head + `<div class="c2-card c2-empty" style="margin-top:16px">⚠️ Todavía no están creadas las tablas de Caja y bancos.<br><small>Hay que correr <b>c2_etapa2.sql</b> en el SQL Editor de Supabase y después tocar 🔄 Actualizar datos.</small></div>`;
     if (k.err) return head + `<div class="c2-card c2-empty" style="margin-top:16px">Error al cargar Caja y bancos: ${esc(k.err)}</div>`;
     const tabs = `<div class="c2-tabs"><button class="${C2.cajaTab === 'movimientos' ? 'on' : ''}" onclick="C2.cajaTab='movimientos';C2.render()">Movimientos</button><button class="${C2.cajaTab === 'config' ? 'on' : ''}" onclick="C2.cajaTab='config';C2.render()">Cuentas y conceptos</button></div>`;
@@ -1050,7 +1054,7 @@
         <td>${w ? `<button class="c2-btn" style="padding:3px 9px;font-size:12px" onclick="C2.abrirConcepto(${c.id})">Editar</button>` : ''}</td></tr>`).join('');
     return `
       <div class="c2-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h3>Cuentas</h3><div class="c2-sub">Cada cuenta arranca con su saldo inicial a la fecha de arranque (por defecto ${fD(FECHA_ARRANQUE)}).</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h3>Cuentas</h3><div class="c2-sub">Cada cuenta arranca con su saldo inicial a su fecha de arranque. Caja arranca el <b>${fD(arranque())}</b> (la fecha más antigua de las cuentas activas).<br>Para cargar operaciones anteriores, editá la cuenta: poné una fecha de arranque más vieja y el saldo que tenía <b>ese día</b> según el extracto.</div></div>
         ${w ? '<button class="c2-btn pri" onclick="C2.abrirCuenta()">+ Nueva cuenta</button>' : ''}</div>
         <div style="overflow-x:auto;margin-top:10px">${k.cuentas.length ? `<table class="c2-t"><thead><tr><th>Nombre</th><th>Tipo</th><th>Arranque</th><th class="n">Saldo inicial</th><th class="n">Saldo actual</th><th class="n">Movs.</th><th>Estado</th><th></th></tr></thead><tbody>${fC}</tbody></table>` : '<div class="c2-empty">Sin cuentas</div>'}</div>
       </div>
@@ -1068,8 +1072,8 @@
     if (m) { const c = cuenta(m.cuenta_id); return `<div class="c2-f" style="font-size:11.5px;margin-top:3px">💰 en caja: ${esc(c ? c.nombre : '—')} · ${fD(m.fecha)} · ${$c(num(m.monto))}</div>`; }
     if (yaHecho) {
       const fv = fechaVieja(x, vinculo);
-      const nota = '<div class="c2-f" style="font-size:11.5px;margin-top:3px;color:#a8a29e">' + (fv && fv < FECHA_ARRANQUE ? 'anterior al arranque de Caja (' + fD(FECHA_ARRANQUE) + ')' : 'sin movimiento en caja (registrado en la Contabilidad vieja)') + '</div>';
-      if (fv && fv < FECHA_ARRANQUE || !C2.puedeEscribir()) return nota;
+      const nota = '<div class="c2-f" style="font-size:11.5px;margin-top:3px;color:#a8a29e">' + (fv && fv < arranque() ? 'anterior al arranque de Caja (' + fD(arranque()) + ')' : 'sin movimiento en caja (registrado en la Contabilidad vieja)') + '</div>';
+      if (fv && fv < arranque() || !C2.puedeEscribir()) return nota;
       return nota + `<button class="c2-btn" style="padding:4px 10px;font-size:12px;margin-top:6px;border-color:#c2410c;color:#c2410c" onclick="C2.abrirPago('${esc(x.r.id)}','${vinculo}',true)">Pasar a caja</button>`;
     }
     if (!C2.puedeEscribir()) return '';
@@ -1117,11 +1121,11 @@
       if (!x.gestorPagado && x.it.gest.valor + x.gestoria > 0) add('gestor', 'gestor', x, x.it.gest.valor + x.gestoria, x.r.gestorAsignado, 'pagar');
       if (!x.retribCobrada && x.it.retrib.valor > 0) add('retribucion', 'retribucion', x, x.it.retrib.valor, bancoDisplay(x.banco), 'pagar');
       if (C2.caja.ok) {
-        if (fl(x) && fl(x) >= FECHA_ARRANQUE && !movsOp(x.r.id, 'liquidacion').length) add('liquidacion', 'liquidacion', x, x.I, bancoDisplay(x.banco), 'pagar');
+        if (fl(x) && fl(x) >= arranque() && !movsOp(x.r.id, 'liquidacion').length) add('liquidacion', 'liquidacion', x, x.I, bancoDisplay(x.banco), 'pagar');
         [['agencia', x.agenciaPagada, x.aLiquidar, x.r.concesionaria], ['gestor', x.gestorPagado, x.it.gest.valor + x.gestoria, x.r.gestorAsignado], ['retribucion', x.retribCobrada, x.it.retrib.valor, bancoDisplay(x.banco)]]
           .forEach(([v, hecho, monto]) => {
             const fv = fechaVieja(x, v);
-            if (hecho && fv && fv >= FECHA_ARRANQUE && !movsOp(x.r.id, v).length) out.push({ tab: 'pasar', vinculo: v, x, monto, grupo: VINC[v].t, accion: 'pasar', desde: fv, dias: dias(fv) });
+            if (hecho && fv && fv >= arranque() && !movsOp(x.r.id, v).length) out.push({ tab: 'pasar', vinculo: v, x, monto, grupo: VINC[v].t, accion: 'pasar', desde: fv, dias: dias(fv) });
           });
       }
     });
@@ -1172,8 +1176,8 @@
       agencia: 'Operaciones con el pago a la agencia pendiente (A liquidar = I − bruta − gestoría). Agrupado por agencia.',
       gestor: 'Comisión del gestor + gastos de gestoría pendientes. Agrupado por gestor.',
       retribucion: 'Retribución (I × ' + pct(C2.coef.retribBanco) + ') que todavía no pagó el banco. Agrupado por banco.',
-      liquidacion: 'Liquidadas desde el ' + fD(FECHA_ARRANQUE) + ' cuyo ingreso del banco todavía no se cargó en caja.',
-      pasar: 'Pagos y cobros tildados en la Contabilidad vieja (desde el ' + fD(FECHA_ARRANQUE) + ') que todavía no tienen movimiento en caja.'
+      liquidacion: 'Liquidadas desde el ' + fD(arranque()) + ' cuyo ingreso del banco todavía no se cargó en caja.',
+      pasar: 'Pagos y cobros tildados en la Contabilidad vieja (desde el ' + fD(arranque()) + ') que todavía no tienen movimiento en caja.'
     }[C2.cpTab];
     return `
       <div class="c2-kick">Contabilidad 2 · etapa 3</div>
