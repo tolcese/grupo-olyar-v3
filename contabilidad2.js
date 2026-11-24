@@ -1,11 +1,12 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.45)
+// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.46)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 // Etapa 3: Cobrar y pagar (pendientes agrupados por agencia / gestor / banco).
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
 // v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
+// v3.9.46: botón Eliminar cuenta (sin movimientos activos; función SQL c2_eliminar_cuenta).
 // v3.9.45: arranque de Caja = fecha de arranque más antigua de las cuentas activas (antes fijo 01/11).
 //  - Liquidación por operación (lista + detalle)
 //  - Parámetros (porcentajes actuales; se editan en Contabilidad → Cambio de coeficientes)
@@ -902,6 +903,38 @@
     await cargarCaja(); C2.render();
   };
 
+  // ── Eliminar cuenta (v3.9.46) — solo sin movimientos activos; usa la función c2_eliminar_cuenta ──
+  C2.abrirEliminarCuenta = function (id) {
+    if (!C2.puedeEscribir()) return;
+    const c = cuenta(id); if (!c) return;
+    const activos = C2.caja.movs.filter(m => !m.anulado && (String(m.cuenta_id) === String(id) || String(m.cuenta_destino_id) === String(id))).length;
+    if (activos) { toast('La cuenta tiene ' + activos + ' movimiento(s) activo(s): anulalos primero', 'warn'); return; }
+    const anulados = C2.caja.movs.filter(m => m.anulado && (String(m.cuenta_id) === String(id) || String(m.cuenta_destino_id) === String(id))).length;
+    C2.modal('Eliminar cuenta', `
+      <div style="font-size:13.5px;margin-bottom:10px">Vas a eliminar la cuenta <b>${esc(c.nombre)}</b> (saldo inicial ${$c(num(c.saldo_inicial))}). No se puede deshacer.</div>
+      ${anulados ? `<div class="c2-note" style="margin-bottom:10px;background:#fef3c7">También se borran sus <b>${anulados}</b> movimiento(s) anulado(s).</div>` : ''}
+      <label class="c2m-l">Para confirmar, escribí el nombre de la cuenta<input type="text" id="c2e-nom" placeholder="${esc(c.nombre)}" autocomplete="off"></label>`,
+      `<button class="c2-btn" style="background:#b91c1c;border-color:#b91c1c;color:#fff" onclick="C2.confirmarEliminarCuenta(${c.id})">Eliminar</button>`);
+  };
+  C2.confirmarEliminarCuenta = async function (id) {
+    const c = cuenta(id); if (!c) return;
+    if (String(val('c2e-nom') || '').trim().toLowerCase() !== c.nombre.trim().toLowerCase()) return mErr('El nombre no coincide');
+    bloquear(true); mErr('');
+    let res = await SB.rpc('c2_eliminar_cuenta', { p_id: Number(id) });
+    if (res.error && /c2_eliminar_cuenta|function|schema cache/i.test(res.error.message || '')) {
+      // sin la función (falta SQL): solo se puede si la cuenta no tiene NINGÚN movimiento
+      const tiene = C2.caja.movs.some(m => String(m.cuenta_id) === String(id) || String(m.cuenta_destino_id) === String(id));
+      if (tiene) { bloquear(false); return mErr('Para eliminar cuentas con movimientos anulados falta correr c2_eliminar_cuenta.sql en Supabase'); }
+      res = await SB.from('c2_cuentas').delete().eq('id', id);
+    }
+    if (res.error) { bloquear(false); return mErr('Error: ' + res.error.message); }
+    if (C2.cajaF.cuenta && String(C2.cajaF.cuenta) === String(id)) C2.cajaF.cuenta = '';
+    if (String(C2._ultCuenta) === String(id)) C2._ultCuenta = '';
+    if (typeof registrarHistorial === 'function') registrarHistorial('c2_cuentas', id, [{ campo: 'eliminada', ant: c.nombre + ' · saldo inicial ' + c.saldo_inicial, nuevo: null }]);
+    C2.cerrarModal(); toast('Cuenta eliminada', 'ok');
+    await cargarCaja(); C2.render();
+  };
+
   // ── ABM conceptos ──
   C2.abrirConcepto = function (id) {
     if (!C2.puedeEscribir()) return;
@@ -1044,7 +1077,7 @@
         <td class="n">${$c(num(c.saldo_inicial))}</td><td class="n" style="font-weight:700">${$c(C2.saldoCuenta(c))}</td>
         <td class="n">${usos(c.id)}</td>
         <td><span class="c2-b ${c.activa ? 'gr' : 'gy'}">${c.activa ? 'activa' : 'inactiva'}</span></td>
-        <td>${w ? `<button class="c2-btn" style="padding:3px 9px;font-size:12px" onclick="C2.abrirCuenta(${c.id})">Editar</button>` : ''}</td></tr>`).join('');
+        <td style="white-space:nowrap">${w ? `<button class="c2-btn" style="padding:3px 9px;font-size:12px" onclick="C2.abrirCuenta(${c.id})">Editar</button>` : ''}${w && !usos(c.id) ? ` <button class="c2-btn" style="padding:3px 9px;font-size:12px;color:#b91c1c;border-color:#fca5a5" onclick="C2.abrirEliminarCuenta(${c.id})" title="Solo cuentas sin movimientos activos">Eliminar</button>` : ''}</td></tr>`).join('');
     const vin = { liquidacion: 'Liquidación del banco', agencia: 'Pago agencia', retribucion: 'Retribución banco', gestor: 'Pago gestor' };
     const fK = k.conceptos.map(c => `<tr>
         <td style="font-weight:700">${esc(c.nombre)}</td>
