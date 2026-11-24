@@ -1,11 +1,12 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.46)
+// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.47)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 // Etapa 3: Cobrar y pagar (pendientes agrupados por agencia / gestor / banco).
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
 // v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
+// v3.9.47: en el Recorrido del dinero no se muestran la retribución en NO ni el gestor sin nada para pagar.
 // v3.9.46: botón Eliminar cuenta (sin movimientos activos; función SQL c2_eliminar_cuenta).
 // v3.9.45: arranque de Caja = fecha de arranque más antigua de las cuentas activas (antes fijo 01/11).
 //  - Liquidación por operación (lista + detalle)
@@ -461,9 +462,9 @@
           <ul class="c2-tl">
             ${paso(!!x.fechaLiq, 'Liquidada por el banco', x.fechaLiq ? fD(x.fechaLiq) + (x.fLiqEstimada ? ' (estimada: fecha de Pagado)' : '') : 'Sin fecha de Liquidado', !x.fechaLiq, extraLiq)}
             ${paso(x.agenciaPagada, 'Agencia pagada · ' + esc(r.concesionaria || '—'), x.agenciaPagada ? fD(x.fechaAgencia) : 'Pendiente · ' + $(x.aLiquidar), !x.agenciaPagada, C2.pasoCaja(x, 'agencia', x.agenciaPagada))}
-            ${!x.retribCobrada && retribOk(x) ? paso(true, 'Retribución del banco', 'No corresponde', false)
+            ${!x.retribCobrada && retribOk(x) ? ''
               : paso(x.retribCobrada, 'Retribución del banco', x.retribCobrada ? 'Cobrada ' + fD(x.fechaRetrib) : 'Pendiente' + (dRet !== null ? ' hace ' + dRet + ' días' : '') + ' · ' + $(x.it.retrib.valor), !x.retribCobrada, C2.pasoCaja(x, 'retribucion', x.retribCobrada))}
-            ${!x.gestorPagado && gestorOk(x) ? paso(true, 'Gestor · ' + esc(r.gestorAsignado || '—'), 'Nada para pagar (sin comisión ni gastos de gestoría)', false)
+            ${!x.gestorPagado && gestorOk(x) ? ''
               : paso(x.gestorPagado, 'Comisión y gastos al gestor · ' + esc(r.gestorAsignado || '—'), x.gestorPagado ? fD(x.fechaGestor) : 'Pendiente · ' + $(x.it.gest.valor + x.gestoria), !x.gestorPagado, C2.pasoCaja(x, 'gestor', x.gestorPagado))}
             ${paso(x.agenciaPagada && retribOk(x) && gestorOk(x), 'Cerrada', 'Cuando todo lo anterior esté hecho', false)}
           </ul>
