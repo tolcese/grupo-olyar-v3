@@ -1,10 +1,11 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.43)
+// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.44)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 // Etapa 3: Cobrar y pagar (pendientes agrupados por agencia / gestor / banco).
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
+// v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
 //  - Liquidación por operación (lista + detalle)
 //  - Parámetros (porcentajes actuales; se editan en Contabilidad → Cambio de coeficientes)
 //  - Controles (diferencias entre lo guardado en Contabilidad y lo calculado)
@@ -42,6 +43,9 @@
 
   C2.puede = () => (typeof _bloqContab !== 'function' || !_bloqContab()) && (typeof canEdit !== 'function' || canEdit()) &&
     (ME?.rol === 'admin' || ['claudionieva', 'golcese', 'tolcese', 'Invitado'].includes(ME?.usr));
+
+  // v3.9.44: impuesto al crédito FIJO en 1,2 % (no se toma de Parámetros / coeficientes)
+  const IMP_CREDITO_PCT = 1.2;
 
   // ── carga de datos (solo lectura) ──
   C2.cargar = async function (forzar) {
@@ -111,7 +115,7 @@
     const A = C2.aj[r.id] || {};
     const I = num(r.importe) || 0;
     const banco = bancoOperacion(r);
-    const p = { bruta: pctBruta(banco), imp: C2.coef.impCredito, retrib: C2.coef.retribBanco, gest: C2.coef.comGestor };
+    const p = { bruta: pctBruta(banco), imp: IMP_CREDITO_PCT, retrib: C2.coef.retribBanco, gest: C2.coef.comGestor };
     const g = (campo) => c ? num(c[campo]) : null;
     const item = (calculado, campo) => {
       const a = A[campo]; const v = a ? num(a.valor) : null;
@@ -483,7 +487,7 @@
         <h3>Generales</h3>
         <table class="c2-t" style="margin-top:8px"><tbody>
           <tr><td>Comisión bruta (si el banco no tiene uno propio)</td><td class="n">${pct(C2.coef.comLukaya)}</td></tr>
-          <tr><td>Impuesto al crédito</td><td class="n">${pct(C2.coef.impCredito)}</td></tr>
+          <tr><td>Impuesto al crédito <span class="c2-b gy" style="font-size:10px;padding:1px 6px">fijo</span></td><td class="n">${pct(IMP_CREDITO_PCT)}</td></tr>
           <tr><td>Retribución banco</td><td class="n">${pct(C2.coef.retribBanco)}</td></tr>
           <tr><td>Comisión gestor</td><td class="n">${pct(C2.coef.comGestor)}</td></tr>
           <tr><td>IIBB (alícuota)</td><td class="n" style="color:var(--muted)">etapa 5</td></tr>
