@@ -1,11 +1,12 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.48)
+// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.49)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 // Etapa 3: Cobrar y pagar (pendientes agrupados por agencia / gestor / banco).
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
 // v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
+// v3.9.49: COLUMBIA debita el impuesto 1,2 % al liquidar (IMP_EN_LIQ): la casilla del impuesto va en Registrar ingreso.
 // v3.9.48: Caja y bancos → movimientos ordenables por columna (cliente, fecha, cuenta, concepto, montos…).
 // v3.9.47: en el Recorrido del dinero no se muestran la retribución en NO ni el gestor sin nada para pagar.
 // v3.9.46: botón Eliminar cuenta (sin movimientos activos; función SQL c2_eliminar_cuenta).
@@ -576,8 +577,18 @@
   const $c = v => { v = Math.round((v || 0) * 100) / 100; const d = Math.abs(v % 1) > 0.004 ? 2 : 0; return (v < 0 ? '−$' : '$') + Math.abs(v).toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d }); };
   const _C2_ESCRIBEN = ['admin', 'claudionieva'];
   const IMP_DET = 'Impuesto débitos/créditos · pago agencia';
-  // movimiento de impuesto creado junto con un pago a agencia (misma operación, fecha y cuenta)
-  const impDePago = m => m.vinculo === 'agencia' ? C2.caja.movs.find(i => !i.anulado && !i.vinculo && i.tipo === 'egreso' && String(i.solicitud_id) === String(m.solicitud_id) && String(i.fecha) === String(m.fecha) && String(i.cuenta_id) === String(m.cuenta_id) && i.detalle === IMP_DET) : null;
+  const IMP_DET_LIQ = 'Impuesto débitos/créditos · liquidación';
+  // v3.9.49: bancos que debitan el impuesto (1,2 %) al LIQUIDAR en vez de al pagar a la agencia
+  const IMP_EN_LIQ = ['COLUMBIA'];
+  const impEnLiq = x => IMP_EN_LIQ.some(b => String(x.banco || '').toUpperCase().includes(b));
+  // ¿en qué paso se registra el impuesto de esta operación?
+  const vincImp = x => impEnLiq(x) ? 'liquidacion' : 'agencia';
+  // movimiento de impuesto creado junto con un pago a agencia o un ingreso de liquidación (misma operación, fecha y cuenta)
+  const impDePago = m => {
+    const det = m.vinculo === 'agencia' ? IMP_DET : m.vinculo === 'liquidacion' ? IMP_DET_LIQ : null;
+    if (!det) return null;
+    return C2.caja.movs.find(i => !i.anulado && !i.vinculo && i.tipo === 'egreso' && String(i.solicitud_id) === String(m.solicitud_id) && String(i.fecha) === String(m.fecha) && String(i.cuenta_id) === String(m.cuenta_id) && i.detalle === det) || null;
+  };
   C2.caja = { cuentas: [], conceptos: [], movs: [], ok: false, err: null };
   C2.cajaF = { cuenta: '', desde: '', hasta: '', concepto: '', q: '', anulados: false };
   C2.cajaTab = 'movimientos';
@@ -750,7 +761,10 @@
         <label style="grid-column:1/-1">Detalle (opcional)<input type="text" id="c2p-det" placeholder="N° de transferencia, observación…"></label>
       </div>
       <div class="c2-f" style="margin-top:8px">Sugerido: ${$c(montoSugerido(x, vinculo))}${vinculo === 'gestor' ? ' (comisión ' + $c(x.it.gest.valor) + ' + gastos de gestoría ' + $c(x.gestoria) + ')' : ''}</div>
-      ${vinculo === 'agencia' && x.it.imp.valor > 0 ? `<label class="c2m-chk"><input type="checkbox" id="c2p-imp" checked> Registrar también el impuesto débitos/créditos que debita el banco al transferir (${$c(x.it.imp.valor)}), misma fecha y cuenta</label>` : ''}
+      ${vinculo === vincImp(x) && x.it.imp.valor > 0 ? `<label class="c2m-chk"><input type="checkbox" id="c2p-imp" checked> ${vinculo === 'liquidacion'
+        ? `${esc(bancoDisplay(x.banco))} debita el impuesto débitos/créditos al liquidar: registrarlo como egreso (${$c(x.it.imp.valor)}), misma fecha y cuenta`
+        : `Registrar también el impuesto débitos/créditos que debita el banco al transferir (${$c(x.it.imp.valor)}), misma fecha y cuenta`}</label>` : ''}
+      ${vinculo === 'agencia' && impEnLiq(x) && x.it.imp.valor > 0 ? `<div class="c2-f" style="margin-top:8px">En ${esc(bancoDisplay(x.banco))} el impuesto (${$c(x.it.imp.valor)}) se registra al liquidar, no acá.</div>` : ''}
       ${desdeVieja ? `<div class="c2-note" style="margin-top:12px">En la Contabilidad vieja ya figura ${vinculo === 'retribucion' ? 'cobrada' : 'pagado'}${fv ? ' el ' + fD(fv) : ' (sin fecha)'}. Acá solo se crea el movimiento en caja; si cambiás la fecha, también se corrige en la vieja.</div>`
         : SYNC[vinculo] ? '<div class="c2-note" style="margin-top:12px">También se tilda en la Contabilidad vieja con esta fecha.</div>' : ''}`,
       `<button class="c2-btn pri" onclick="C2.confirmarPago('${esc(id)}','${vinculo}')">Registrar</button>`);
@@ -772,13 +786,13 @@
         vinculo, solicitud_id: id, detalle: det || null, creado_por: quien()
       }).select().single();
       if (ins.error) throw ins.error;
-      if (vinculo === 'agencia' && val('c2p-imp')) {
+      if ((vinculo === 'agencia' || vinculo === 'liquidacion') && val('c2p-imp')) {
         const r = (RECORDS || []).find(x => String(x.id) === String(id));
         const x = C2.calc(r);
         const ci = C2.caja.conceptos.find(c => c.activo && !c.vinculo && c.tipo === 'egreso' && /impuesto/i.test(c.nombre));
         if (x.it.imp.valor > 0) {
-          const i2 = await SB.from('c2_movimientos').insert({ fecha, tipo: 'egreso', cuenta_id: Number(cta), monto: x.it.imp.valor, concepto_id: ci ? ci.id : null, solicitud_id: id, detalle: IMP_DET, creado_por: quien() });
-          if (i2.error) toast('Se registró el pago pero no el impuesto: ' + i2.error.message, 'warn');
+          const i2 = await SB.from('c2_movimientos').insert({ fecha, tipo: 'egreso', cuenta_id: Number(cta), monto: x.it.imp.valor, concepto_id: ci ? ci.id : null, solicitud_id: id, detalle: vinculo === 'liquidacion' ? IMP_DET_LIQ : IMP_DET, creado_por: quien() });
+          if (i2.error) toast('Se registró el movimiento pero no el impuesto: ' + i2.error.message, 'warn');
         }
       }
       C2._ultCuenta = cta;
@@ -843,7 +857,7 @@
       <label class="c2m-l">Motivo (obligatorio)<input type="text" id="c2a-mot" placeholder="Ej.: monto mal cargado"></label>
       ${SYNC[m.vinculo] ? `<label class="c2m-chk"><input type="checkbox" id="c2a-dest"> ${m.vinculo === 'retribucion' ? 'El cobro' : 'El pago'} no se hizo: destildarlo también en la Contabilidad vieja</label>
         <div class="c2-f" style="font-size:11px;margin:4px 0 0 24px">Dejalo sin marcar si solo corregís un dato (monto, cuenta, fecha): después lo volvés a cargar con "Pasar a caja".</div>` : ''}
-      ${impDePago(m) ? `<label class="c2m-chk"><input type="checkbox" id="c2a-imp" checked> Anular también el impuesto débitos/créditos de este pago (${$c(num(impDePago(m).monto))})</label>` : ''}`,
+      ${impDePago(m) ? `<label class="c2m-chk"><input type="checkbox" id="c2a-imp" checked> Anular también el impuesto débitos/créditos de este ${m.vinculo === 'liquidacion' ? 'ingreso' : 'pago'} (${$c(num(impDePago(m).monto))})</label>` : ''}`,
       `<button class="c2-btn" style="background:#b91c1c;border-color:#b91c1c;color:#fff" onclick="C2.confirmarAnular('${esc(movId)}')">Anular</button>`);
   };
   C2.confirmarAnular = async function (movId) {
@@ -856,7 +870,7 @@
     let ok = true;
     const imp = impDePago(m);
     if (imp && val('c2a-imp')) {
-      const ri = await SB.from('c2_movimientos').update({ anulado: true, anulado_por: quien(), anulado_at: new Date().toISOString(), motivo_anulacion: 'Anulado junto con el pago a agencia: ' + mot }).eq('id', imp.id).eq('anulado', false);
+      const ri = await SB.from('c2_movimientos').update({ anulado: true, anulado_por: quien(), anulado_at: new Date().toISOString(), motivo_anulacion: 'Anulado junto con ' + (m.vinculo === 'liquidacion' ? 'el ingreso de liquidación' : 'el pago a agencia') + ': ' + mot }).eq('id', imp.id).eq('anulado', false);
       if (ri.error) toast('No se pudo anular el impuesto: ' + ri.error.message, 'warn');
     }
     if (SYNC[m.vinculo] && m.solicitud_id && val('c2a-dest')) {
@@ -1142,7 +1156,7 @@
   C2.pasoCaja = function (x, vinculo, yaHecho) {
     if (!C2.caja.ok) return '';
     const m = movsOp(x.r.id, vinculo)[0];
-    if (m) { const c = cuenta(m.cuenta_id); return `<div class="c2-f" style="font-size:11.5px;margin-top:3px">💰 en caja: ${esc(c ? c.nombre : '—')} · ${fD(m.fecha)} · ${$c(num(m.monto))}</div>`; }
+    if (m) { const c = cuenta(m.cuenta_id), im = impDePago(m); return `<div class="c2-f" style="font-size:11.5px;margin-top:3px">💰 en caja: ${esc(c ? c.nombre : '—')} · ${fD(m.fecha)} · ${$c(num(m.monto))}${im ? '<br>🧾 impuesto 1,2 %: −' + $c(num(im.monto)) : ''}</div>`; }
     if (yaHecho) {
       const fv = fechaVieja(x, vinculo);
       const nota = '<div class="c2-f" style="font-size:11.5px;margin-top:3px;color:#a8a29e">' + (fv && fv < arranque() ? 'anterior al arranque de Caja (' + fD(arranque()) + ')' : 'sin movimiento en caja (registrado en la Contabilidad vieja)') + '</div>';
