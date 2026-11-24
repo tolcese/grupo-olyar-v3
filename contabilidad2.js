@@ -1,11 +1,13 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.50)
+// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.52)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 // Etapa 3: Cobrar y pagar (pendientes agrupados por agencia / gestor / banco).
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
 // v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
+// v3.9.52: pagos extras en Caja (vínculo 'extras'; SQL c2_extras.sql).
+// v3.9.51: pago de comisión comercial/operativa en Caja (vínculo 'comercial'; SQL c2_comercial.sql).
 // v3.9.50: Caja limpia filtros al entrar, aviso de filtros activos y link "ver en caja ›" desde el recorrido.
 // v3.9.49: COLUMBIA debita el impuesto 1,2 % al liquidar (IMP_EN_LIQ): la casilla del impuesto va en Registrar ingreso.
 // v3.9.48: Caja y bancos → movimientos ordenables por columna (cliente, fecha, cuenta, concepto, montos…).
@@ -154,6 +156,10 @@
       agenciaPagada: !!(c && c.pagado), fechaAgencia: c && c.fecha_pagado,
       gestorPagado: !!(c && c.pago_gest), fechaGestor: c && c.fecha_pago_gest,
       retribCobrada, fechaRetrib: c && c.fecha_pago_banco,
+      // v3.9.51: la comisión comercial/operativa no tiene tilde en la vieja: está pagada si hay movimiento en Caja
+      comercialPagado: !!(C2.caja && C2.caja.ok && movsOp(r.id, 'comercial').length),
+      // v3.9.52: pagos extras, igual que la comisión comercial (pagado = hay movimiento en Caja)
+      extrasPagado: !!(C2.caja && C2.caja.ok && movsOp(r.id, 'extras').length),
       vieja: c ? { imp: g('imp_credito'), comLuk: g('com_lukaya'), retrib: g('retrib_banco'), gest: g('com_gestora'), aLiq: g('a_liquidar'), gan: g('ganancia') } : null
     };
   };
@@ -162,11 +168,18 @@
   const gestorOk = x => x.gestorPagado || x.it.gest.valor + x.gestoria <= 0;
   // retribución que no corresponde (NO) cuenta como resuelta
   const retribOk = x => x.retribCobrada || x.it.retrib.valor <= 0;
+  // comisión comercial/operativa: resuelta si no hay monto, si ya se pagó en Caja, o si Caja no está disponible
+  // operaciones liquidadas antes del arranque de Caja: la comisión se da por pagada (no se sigue)
+  const comercialAntes = x => !!(x.fechaLiq && String(x.fechaLiq).slice(0, 10) < arranque());
+  const comercialOk = x => x.comCom <= 0 || x.comercialPagado || !(C2.caja && C2.caja.ok) || comercialAntes(x);
+  const extrasOk = x => x.extras <= 0 || x.extrasPagado || !(C2.caja && C2.caja.ok) || comercialAntes(x);
   function estadoOp(x) {
-    if (x.agenciaPagada && gestorOk(x) && retribOk(x)) return ['Cerrada', 'gr'];
+    if (x.agenciaPagada && gestorOk(x) && retribOk(x) && comercialOk(x) && extrasOk(x)) return ['Cerrada', 'gr'];
     if (!x.agenciaPagada) return ['Falta pagar agencia', 'am'];
     if (!retribOk(x)) return ['Esperando retribución', 'am'];
-    return ['Falta pagar gestor', 'am'];
+    if (!gestorOk(x)) return ['Falta pagar gestor', 'am'];
+    if (!comercialOk(x)) return ['Falta pagar comisión comercial', 'am'];
+    return ['Falta pagar extras', 'am'];
   }
 
   // ── selección de operaciones ──
@@ -472,7 +485,9 @@
               : paso(x.retribCobrada, 'Retribución del banco', x.retribCobrada ? 'Cobrada ' + fD(x.fechaRetrib) : 'Pendiente' + (dRet !== null ? ' hace ' + dRet + ' días' : '') + ' · ' + $(x.it.retrib.valor), !x.retribCobrada, C2.pasoCaja(x, 'retribucion', x.retribCobrada))}
             ${!x.gestorPagado && gestorOk(x) ? ''
               : paso(x.gestorPagado, 'Comisión y gastos al gestor · ' + esc(r.gestorAsignado || '—'), x.gestorPagado ? fD(x.fechaGestor) : 'Pendiente · ' + $(x.it.gest.valor + x.gestoria), !x.gestorPagado, C2.pasoCaja(x, 'gestor', x.gestorPagado))}
-            ${paso(x.agenciaPagada && retribOk(x) && gestorOk(x), 'Cerrada', 'Cuando todo lo anterior esté hecho', false)}
+            ${x.comCom > 0 && C2.caja.ok && (x.comercialPagado || !comercialAntes(x)) ? paso(x.comercialPagado, 'Comisión comercial / operativa', x.comercialPagado ? fD(movsOp(x.r.id, 'comercial')[0].fecha) : 'Pendiente · ' + $(x.comCom), !x.comercialPagado, C2.pasoCaja(x, 'comercial', false)) : ''}
+            ${x.extras > 0 && C2.caja.ok && (x.extrasPagado || !comercialAntes(x)) ? paso(x.extrasPagado, 'Pagos extras', x.extrasPagado ? fD(movsOp(x.r.id, 'extras')[0].fecha) : 'Pendiente · ' + $(x.extras), !x.extrasPagado, C2.pasoCaja(x, 'extras', false)) : ''}
+            ${paso(x.agenciaPagada && retribOk(x) && gestorOk(x) && comercialOk(x) && extrasOk(x), 'Cerrada', 'Cuando todo lo anterior esté hecho', false)}
           </ul>
           <div class="c2-note">${C2.caja.ok ? 'Al registrar un pago o cobro acá se crea el movimiento en Caja y bancos y se tilda también en la Contabilidad vieja.' : 'Caja y bancos no está disponible: los pagos se siguen registrando en la Contabilidad vieja.'}</div>
         </div>
@@ -624,7 +639,9 @@
     liquidacion: { t: 'Ingreso de la liquidación del banco', tipo: 'ingreso' },
     agencia: { t: 'Pago a la agencia', tipo: 'egreso' },
     retribucion: { t: 'Cobro de la retribución del banco', tipo: 'ingreso' },
-    gestor: { t: 'Pago al gestor', tipo: 'egreso' }
+    gestor: { t: 'Pago al gestor', tipo: 'egreso' },
+    comercial: { t: 'Pago de comisión comercial / operativa', tipo: 'egreso' },
+    extras: { t: 'Pagos extras', tipo: 'egreso' }
   };
 
   async function cargarCaja() {
@@ -743,6 +760,8 @@
     if (vinculo === 'agencia') return x.aLiquidar;
     if (vinculo === 'retribucion') return x.it.retrib.valor;
     if (vinculo === 'gestor') return x.it.gest.valor + x.gestoria;
+    if (vinculo === 'comercial') return x.comCom;
+    if (vinculo === 'extras') return x.extras;
     return 0;
   }
   C2.abrirPago = function (id, vinculo, desdeVieja) {
@@ -755,7 +774,7 @@
     const fv = desdeVieja ? fechaVieja(x, vinculo) : '';
     const fechaDef = fv && fv >= arranque() ? fv
       : vinculo === 'liquidacion' && x.fechaLiq && String(x.fechaLiq).slice(0, 10) >= arranque() ? String(x.fechaLiq).slice(0, 10) : hoy();
-    const quienRecibe = vinculo === 'agencia' ? esc(r.concesionaria || '—') : vinculo === 'gestor' ? esc(r.gestorAsignado || '—') : esc(bancoDisplay(x.banco));
+    const quienRecibe = vinculo === 'agencia' ? esc(r.concesionaria || '—') : vinculo === 'gestor' ? esc(r.gestorAsignado || '—') : vinculo === 'comercial' ? 'comisión comercial / operativa' : vinculo === 'extras' ? 'pagos extras' : esc(bancoDisplay(x.banco));
     C2.modal((desdeVieja ? 'Pasar a caja · ' : '') + v.t, `
       <div class="c2-sub" style="margin-bottom:12px">${esc(r.nombrecliente || '—')} · ${v.tipo === 'egreso' ? 'a' : 'de'} <b>${quienRecibe}</b></div>
       <div class="c2m-g">
@@ -1146,7 +1165,7 @@
         <td class="n">${usos(c.id)}</td>
         <td><span class="c2-b ${c.activa ? 'gr' : 'gy'}">${c.activa ? 'activa' : 'inactiva'}</span></td>
         <td style="white-space:nowrap">${w ? `<button class="c2-btn" style="padding:3px 9px;font-size:12px" onclick="C2.abrirCuenta(${c.id})">Editar</button>` : ''}${w && !usos(c.id) ? ` <button class="c2-btn" style="padding:3px 9px;font-size:12px;color:#b91c1c;border-color:#fca5a5" onclick="C2.abrirEliminarCuenta(${c.id})" title="Solo cuentas sin movimientos activos">Eliminar</button>` : ''}</td></tr>`).join('');
-    const vin = { liquidacion: 'Liquidación del banco', agencia: 'Pago agencia', retribucion: 'Retribución banco', gestor: 'Pago gestor' };
+    const vin = { liquidacion: 'Liquidación del banco', agencia: 'Pago agencia', retribucion: 'Retribución banco', gestor: 'Pago gestor', comercial: 'Pago com. comercial', extras: 'Pagos extras' };
     const fK = k.conceptos.map(c => `<tr>
         <td style="font-weight:700">${esc(c.nombre)}</td>
         <td><span class="c2-b ${c.tipo === 'ingreso' ? 'gr' : 're'}">${c.tipo}</span></td>
@@ -1178,7 +1197,7 @@
       return nota + `<button class="c2-btn" style="padding:4px 10px;font-size:12px;margin-top:6px;border-color:#c2410c;color:#c2410c" onclick="C2.abrirPago('${esc(x.r.id)}','${vinculo}',true)">Pasar a caja</button>`;
     }
     if (!C2.puedeEscribir()) return '';
-    const lbl = { liquidacion: 'Registrar ingreso', agencia: 'Pagar agencia', retribucion: 'Registrar cobro', gestor: 'Pagar gestor' }[vinculo];
+    const lbl = { liquidacion: 'Registrar ingreso', agencia: 'Pagar agencia', retribucion: 'Registrar cobro', gestor: 'Pagar gestor', comercial: 'Pagar comisión', extras: 'Pagar extras' }[vinculo];
     return `<button class="c2-btn pri" style="padding:4px 10px;font-size:12px;margin-top:6px" onclick="C2.abrirPago('${esc(x.r.id)}','${vinculo}')">${lbl}</button>`;
   };
   // Abre Caja y bancos en la cuenta del movimiento y lo resalta
@@ -1212,6 +1231,8 @@
   const CP_TABS = [
     ['agencia', 'Agencias a pagar', 'pagar'],
     ['gestor', 'Gestores a pagar', 'pagar'],
+    ['comercial', 'Comisiones comerciales a pagar', 'pagar'],
+    ['extras', 'Pagos extras a pagar', 'pagar'],
     ['retribucion', 'Retribuciones a cobrar', 'cobrar'],
     ['liquidacion', 'Liquidaciones a ingresar en caja', 'caja'],
     ['pasar', 'Para pasar a caja', 'caja']
@@ -1229,6 +1250,8 @@
     ops.forEach(x => {
       if (!x.agenciaPagada) add('agencia', 'agencia', x, x.aLiquidar, x.r.concesionaria, 'pagar');
       if (!x.gestorPagado && x.it.gest.valor + x.gestoria > 0) add('gestor', 'gestor', x, x.it.gest.valor + x.gestoria, x.r.gestorAsignado, 'pagar');
+      if (C2.caja.ok && x.comCom > 0 && !x.comercialPagado && !comercialAntes(x)) add('comercial', 'comercial', x, x.comCom, x.r.concesionaria, 'pagar');
+      if (C2.caja.ok && x.extras > 0 && !x.extrasPagado && !comercialAntes(x)) add('extras', 'extras', x, x.extras, x.r.concesionaria, 'pagar');
       if (!x.retribCobrada && x.it.retrib.valor > 0) add('retribucion', 'retribucion', x, x.it.retrib.valor, bancoDisplay(x.banco), 'pagar');
       if (C2.caja.ok) {
         if (fl(x) && fl(x) >= arranque() && !movsOp(x.r.id, 'liquidacion').length) add('liquidacion', 'liquidacion', x, x.I, bancoDisplay(x.banco), 'pagar');
@@ -1262,7 +1285,7 @@
     const gs = Object.entries(grupos).map(([g, items]) => ({ g, items: items.sort((a, b) => (b.dias ?? -1) - (a.dias ?? -1)), total: items.reduce((s, p) => s + (p.monto || 0), 0), max: Math.max(...items.map(p => p.dias ?? -1)) }))
       .sort((a, b) => b.total - a.total);
     const colDias = d => d === null || d < 0 ? '<span style="color:var(--muted)">—</span>' : `<span class="c2-b ${d > 30 ? 're' : d > 10 ? 'am' : 'gy'}">${d} d</span>`;
-    const lblBtn = { agencia: 'Pagar', gestor: 'Pagar', retribucion: 'Registrar cobro', liquidacion: 'Registrar ingreso' };
+    const lblBtn = { agencia: 'Pagar', gestor: 'Pagar', comercial: 'Pagar', extras: 'Pagar', retribucion: 'Registrar cobro', liquidacion: 'Registrar ingreso' };
     const filasGrupo = items => items.map(p => `<tr>
         <td style="white-space:nowrap">${fD(p.desde)}</td>
         <td>${colDias(p.dias)}</td>
@@ -1285,6 +1308,8 @@
     const ayuda = {
       agencia: 'Operaciones con el pago a la agencia pendiente (A liquidar = I − bruta − gestoría). Agrupado por agencia.',
       gestor: 'Comisión del gestor + gastos de gestoría pendientes. Agrupado por gestor.',
+      comercial: 'Comisión comercial / operativa (dato cargado o ajustado) que todavía no tiene pago en Caja. Agrupado por agencia.',
+      extras: 'Pagos extras (dato cargado o ajustado) que todavía no tienen pago en Caja. Agrupado por agencia.',
       retribucion: 'Retribución (I × ' + pct(C2.coef.retribBanco) + ') que todavía no pagó el banco. Agrupado por banco.',
       liquidacion: 'Liquidadas desde el ' + fD(arranque()) + ' cuyo ingreso del banco todavía no se cargó en caja.',
       pasar: 'Pagos y cobros tildados en la Contabilidad vieja (desde el ' + fD(arranque()) + ') que todavía no tienen movimiento en caja.'
@@ -1293,7 +1318,7 @@
       <div class="c2-kick">Contabilidad 2 · etapa 3</div>
       <div class="c2-h1">Cobrar y pagar</div>
       <div class="c2-sub">Lo pendiente de las operaciones en Liquidado o Pagado. Días = desde la fecha de Liquidado.${w ? '' : C2.caja.ok ? ' Solo lectura: registran admin y claudionieva.' : ''}</div>
-      <div class="c2-kpis" style="grid-template-columns:repeat(${tabsVis.length},1fr)">${kpis}</div>
+      <div class="c2-kpis" style="grid-template-columns:repeat(auto-fit,minmax(165px,1fr))">${kpis}</div>
       <div class="c2-card">
         <div class="c2-fil" style="margin-top:0">
           <input id="c2-cpq" placeholder="🔍 Cliente, agencia, gestor, banco, DNI…" value="${esc(C2.cpQ)}" oninput="C2.cpQ=this.value;clearTimeout(C2._t);C2._t=setTimeout(()=>{C2.render();const i=document.getElementById('c2-cpq');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},250)" style="min-width:260px">
