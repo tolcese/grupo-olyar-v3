@@ -1,11 +1,12 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.47)
+// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.48)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 // Etapa 3: Cobrar y pagar (pendientes agrupados por agencia / gestor / banco).
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
 // v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
+// v3.9.48: Caja y bancos → movimientos ordenables por columna (cliente, fecha, cuenta, concepto, montos…).
 // v3.9.47: en el Recorrido del dinero no se muestran la retribución en NO ni el gestor sin nada para pagar.
 // v3.9.46: botón Eliminar cuenta (sin movimientos activos; función SQL c2_eliminar_cuenta).
 // v3.9.45: arranque de Caja = fecha de arranque más antigua de las cuentas activas (antes fijo 01/11).
@@ -580,6 +581,14 @@
   C2.caja = { cuentas: [], conceptos: [], movs: [], ok: false, err: null };
   C2.cajaF = { cuenta: '', desde: '', hasta: '', concepto: '', q: '', anulados: false };
   C2.cajaTab = 'movimientos';
+  // v3.9.48: orden de la tabla de movimientos (clic en el encabezado)
+  C2.cajaOrden = { k: 'fecha', dir: 'desc' };
+  C2.cajaOrdenar = function (k) {
+    const o = C2.cajaOrden;
+    if (o.k === k) o.dir = o.dir === 'asc' ? 'desc' : 'asc';
+    else { o.k = k; o.dir = ['fecha', 'ingreso', 'egreso'].includes(k) ? 'desc' : 'asc'; }
+    C2.render();
+  };
 
   C2.puedeEscribir = () => C2.puede() && (typeof canEdit !== 'function' || canEdit()) &&
     _C2_ESCRIBEN.includes(String(ME?.usr || '').toLowerCase());
@@ -1015,7 +1024,37 @@
       k.movs.filter(m => efecto(m, c.id) !== 0).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)) || a.id - b.id)
         .forEach(m => { s += efecto(m, c.id); saldoTras[m.id] = s; });
     }
-    lista.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)) || b.id - a.id);
+    // orden elegido; desempate por fecha y carga (más nuevo primero). Sin dato (p.ej. sin operación) va siempre al final.
+    const cliente = m => { if (!m.solicitud_id) return ''; const r = (RECORDS || []).find(x => String(x.id) === String(m.solicitud_id)); return String((r && r.nombrecliente) || '').trim().toUpperCase(); };
+    const montoCol = (m, lado) => {
+      const v = num(m.monto) || 0;
+      if (m.tipo === 'ingreso') return lado === 'ingreso' ? v : null;
+      if (m.tipo === 'egreso') return lado === 'egreso' ? v : null;
+      if (f.cuenta) return (String(m.cuenta_destino_id) === String(f.cuenta)) === (lado === 'ingreso') ? v : null;
+      return lado === 'ingreso' ? v : null;
+    };
+    const claveOrden = {
+      fecha: m => String(m.fecha),
+      cuenta: m => { const c = cuenta(m.cuenta_id); return c ? c.nombre.toUpperCase() : ''; },
+      concepto: m => descMov(m).toUpperCase(),
+      detalle: m => String(m.detalle || '').trim().toUpperCase(),
+      operacion: cliente,
+      ingreso: m => montoCol(m, 'ingreso'),
+      egreso: m => montoCol(m, 'egreso'),
+      usuario: m => String(m.creado_por || '').toUpperCase()
+    };
+    const ko = claveOrden[C2.cajaOrden.k] || claveOrden.fecha, sg = C2.cajaOrden.dir === 'asc' ? 1 : -1;
+    const vacio = v => v === null || v === '';
+    lista.sort((a, b) => {
+      const va = ko(a), vb = ko(b);
+      if (vacio(va) !== vacio(vb)) return vacio(va) ? 1 : -1;
+      if (!vacio(va)) {
+        const c = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb), 'es');
+        if (c) return c * sg;
+      }
+      return String(b.fecha).localeCompare(String(a.fecha)) || b.id - a.id;
+    });
+    const th = (k, t, cls) => { const on = C2.cajaOrden.k === k; return `<th${cls ? ' class="' + cls + '"' : ''} style="cursor:pointer;user-select:none${on ? ';color:#c2410c' : ''}" onclick="C2.cajaOrdenar('${k}')" title="Ordenar">${t}${on ? (C2.cajaOrden.dir === 'asc' ? ' ▲' : ' ▼') : ''}</th>`; };
     let ing = 0, egr = 0;
     lista.forEach(m => {
       if (m.anulado || m.tipo === 'transferencia' && !f.cuenta) return;
@@ -1062,9 +1101,9 @@
           <label class="c2-kick" style="display:flex;gap:5px;align-items:center"><input type="checkbox"${f.anulados ? ' checked' : ''} onchange="C2.cajaFiltrar('anulados',this.checked)"> ver anulados</label>
           <button class="c2-btn" onclick="C2.cajaF={cuenta:'',desde:'',hasta:'',concepto:'',q:'',anulados:false};C2.render()">✕ Limpiar</button>
         </div>
-        <div class="c2-sub" style="margin-bottom:8px">${lista.length} movimiento${lista.length !== 1 ? 's' : ''} · Ingresos <b class="pos">${$c(ing)}</b> · Egresos <b class="neg">${$c(egr)}</b>${f.cuenta ? '' : ' · (las transferencias no suman: con todas las cuentas se compensan)'}</div>
+        <div class="c2-sub" style="margin-bottom:8px">Tocá un encabezado para ordenar${C2.cajaOrden.k !== 'fecha' ? ` · <a href="#" onclick="C2.cajaOrden={k:'fecha',dir:'desc'};C2.render();return false">volver a ordenar por fecha</a>` : ''} · ${lista.length} movimiento${lista.length !== 1 ? 's' : ''} · Ingresos <b class="pos">${$c(ing)}</b> · Egresos <b class="neg">${$c(egr)}</b>${f.cuenta ? '' : ' · (las transferencias no suman: con todas las cuentas se compensan)'}</div>
         <div style="overflow-x:auto">
-        ${lista.length ? `<table class="c2-t ancha"><thead><tr><th>Fecha</th><th>Cuenta</th><th>Concepto</th><th>Detalle</th><th>Operación</th><th class="n">Ingreso</th><th class="n">Egreso</th>${f.cuenta ? '<th class="n">Saldo</th>' : ''}<th>Cargó</th><th></th></tr></thead><tbody>${filas}</tbody></table>`
+        ${lista.length ? `<table class="c2-t ancha"><thead><tr>${th('fecha', 'Fecha')}${th('cuenta', 'Cuenta')}${th('concepto', 'Concepto')}${th('detalle', 'Detalle')}${th('operacion', 'Operación (cliente)')}${th('ingreso', 'Ingreso', 'n')}${th('egreso', 'Egreso', 'n')}${f.cuenta ? '<th class="n">Saldo</th>' : ''}${th('usuario', 'Cargó')}<th></th></tr></thead><tbody>${filas}</tbody></table>`
         : '<div class="c2-empty">No hay movimientos con estos filtros.</div>'}
         </div>
       </div>`;
