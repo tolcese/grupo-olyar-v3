@@ -1,11 +1,13 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1, 2 y 3 (v3.9.52)
+// CONTABILIDAD 2 — Etapas 1, 2, 3 y Gastos de la 4 (v3.9.54)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 // Etapa 3: Cobrar y pagar (pendientes agrupados por agencia / gestor / banco).
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
 // v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
+// v3.9.54: Gastos por CATEGORÍA (tabla c2_gastos_cat + columna c2_movimientos.gasto_cat_id; SQL c2_gastos.sql), ingreso o egreso.
+// v3.9.53: sección Gastos (editar y anular con motivo).
 // v3.9.52: pagos extras en Caja (vínculo 'extras'; SQL c2_extras.sql).
 // v3.9.51: pago de comisión comercial/operativa en Caja (vínculo 'comercial'; SQL c2_comercial.sql).
 // v3.9.50: Caja limpia filtros al entrar, aviso de filtros activos y link "ver en caja ›" desde el recorrido.
@@ -337,7 +339,7 @@
     const root = document.getElementById('v-contabilidad2');
     if (!root) return;
     css();
-    const nav = SECCIONES.map(([k, t, etapa]) => etapa <= 3
+    const nav = SECCIONES.map(([k, t, etapa]) => etapa <= 3 || k === 'gastos'
       ? `<button class="${C2.seccion === k ? 'on' : ''}" onclick="C2.ir('${k}')">${t}</button>`
       : `<button disabled title="Próxima etapa">${t}<small>(etapa ${etapa})</small></button>`).join('');
     let body;
@@ -346,6 +348,7 @@
     else if (C2.seccion === 'liquidacion') body = vistaLista();
     else if (C2.seccion === 'caja') body = vistaCaja();
     else if (C2.seccion === 'cobrarpagar') body = vistaCobrarPagar();
+    else if (C2.seccion === 'gastos') body = vistaGastos();
     else if (C2.seccion === 'parametros') body = vistaParametros();
     else if (C2.seccion === 'controles') body = vistaControles();
     else body = '<div class="c2-card c2-empty">Próxima etapa</div>';
@@ -608,7 +611,7 @@
     if (!det) return null;
     return C2.caja.movs.find(i => !i.anulado && !i.vinculo && i.tipo === 'egreso' && String(i.solicitud_id) === String(m.solicitud_id) && String(i.fecha) === String(m.fecha) && String(i.cuenta_id) === String(m.cuenta_id) && i.detalle === det) || null;
   };
-  C2.caja = { cuentas: [], conceptos: [], movs: [], ok: false, err: null };
+  C2.caja = { cuentas: [], conceptos: [], movs: [], gcat: [], gcatOk: false, ok: false, err: null };
   C2.cajaF = { cuenta: '', desde: '', hasta: '', concepto: '', q: '', anulados: false };
   C2.cajaTab = 'movimientos';
   // v3.9.48: orden de la tabla de movimientos (clic en el encabezado)
@@ -655,6 +658,9 @@
       const e = a.error || b.error || c.error;
       if (e) throw e;
       k.cuentas = a.data || []; k.conceptos = b.data || []; k.movs = c.data || [];
+      // v3.9.54: categorías de Gastos (si falta c2_gastos.sql, la sección Gastos lo avisa)
+      const g = await SB.from('c2_gastos_cat').select('*').order('orden').order('nombre');
+      k.gcat = g.error ? [] : (g.data || []); k.gcatOk = !g.error;
       k.ok = true; k.err = null;
     } catch (e) {
       k.ok = false;
@@ -1010,6 +1016,7 @@
 
   // ── Vista ──
   function descMov(m) {
+    if (m.gasto_cat_id) { const g = gcat(m.gasto_cat_id); return 'Gastos · ' + (g ? g.nombre : '—'); }
     if (m.tipo === 'transferencia') { const d = cuenta(m.cuenta_destino_id); const o = cuenta(m.cuenta_id); return 'Transferencia ' + (o ? o.nombre : '—') + ' → ' + (d ? d.nombre : '—'); }
     const k = concepto(m.concepto_id);
     return k ? k.nombre : (m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso');
@@ -1045,7 +1052,8 @@
       if (f.desde && String(m.fecha) < f.desde) return false;
       if (f.hasta && String(m.fecha) > f.hasta) return false;
       if (f.concepto === 'transferencia' && m.tipo !== 'transferencia') return false;
-      if (f.concepto && f.concepto !== 'transferencia' && String(m.concepto_id) !== String(f.concepto)) return false;
+      if (f.concepto && String(f.concepto).startsWith('g:')) { if (String(m.gasto_cat_id || '') !== f.concepto.slice(2)) return false; }
+      else if (f.concepto && f.concepto !== 'transferencia' && String(m.concepto_id) !== String(f.concepto)) return false;
       if (f.q) {
         const r = m.solicitud_id ? (RECORDS || []).find(x => String(x.id) === String(m.solicitud_id)) : null;
         const t = [m.detalle, descMov(m), m.creado_por, r && r.nombrecliente, r && r.concesionaria, r && r.gestorAsignado, m.monto].join(' ').toLowerCase();
@@ -1122,7 +1130,8 @@
         <td>${w && !m.anulado ? `<button class="c2-btn" style="padding:3px 9px;font-size:12px" onclick="C2.abrirAnular('${m.id}')">Anular</button>` : ''}</td>
       </tr>`;
     }).join('');
-    const conOpts = k.conceptos.map(c => `<option value="${c.id}"${String(f.concepto) === String(c.id) ? ' selected' : ''}>${esc(c.nombre)}</option>`).join('');
+    const conOpts = k.conceptos.map(c => `<option value="${c.id}"${String(f.concepto) === String(c.id) ? ' selected' : ''}>${esc(c.nombre)}</option>`).join('')
+      + (k.gcat.length ? '<optgroup label="Gastos">' + k.gcat.map(g => `<option value="g:${g.id}"${f.concepto === 'g:' + g.id ? ' selected' : ''}>${esc(g.nombre)}</option>`).join('') + '</optgroup>' : '');
     return `
       <div class="c2-ctas">${tarjetas}<div class="c2-cta tot"><div class="l">Total en cuentas</div><div class="v ${total < 0 ? 'neg' : ''}">${$c(total)}</div><div class="c2-f" style="font-size:11px">${activas.length} cuenta${activas.length !== 1 ? 's' : ''}</div></div></div>
       ${w ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 14px">
@@ -1142,7 +1151,7 @@
         ${(() => {
           const act = [];
           if (f.cuenta) { const c = cuenta(f.cuenta); act.push('cuenta <b>' + esc(c ? c.nombre : '?') + '</b>'); }
-          if (f.concepto) act.push('concepto <b>' + esc(f.concepto === 'transferencia' ? 'Transferencias' : (concepto(f.concepto) || {}).nombre || '?') + '</b>');
+          if (f.concepto) act.push('concepto <b>' + esc(f.concepto === 'transferencia' ? 'Transferencias' : String(f.concepto).startsWith('g:') ? 'Gastos · ' + ((gcat(f.concepto.slice(2)) || {}).nombre || '?') : (concepto(f.concepto) || {}).nombre || '?') + '</b>');
           if (f.desde) act.push('desde <b>' + fD(f.desde) + '</b>');
           if (f.hasta) act.push('hasta <b>' + fD(f.hasta) + '</b>');
           if (f.q) act.push('búsqueda <b>“' + esc(f.q) + '”</b>');
@@ -1330,6 +1339,250 @@
       </div>`;
   }
 
+
+
+  // ══════════════════════════════════════════════════════════════
+  // ETAPA 4 — GASTOS (v3.9.53 / v3.9.54)
+  // Categorías en c2_gastos_cat (Alquiler, Sueldos, Servicios, Gastos bancarios + las que se agreguen).
+  // Cada gasto es un movimiento de Caja (ingreso o egreso) con gasto_cat_id; `detalle` = nota opcional.
+  // Editar: tipo, categoría, fecha, cuenta, monto y detalle. Borrar = anular con motivo (C2.abrirAnular).
+  // Categorías: agregar, renombrar, activar/desactivar y eliminar si no tienen gastos.
+  // Escriben solo admin y claudionieva (_C2_ESCRIBEN). SQL: c2_gastos.sql
+  // ══════════════════════════════════════════════════════════════
+  const gcat = id => C2.caja.gcat.find(g => String(g.id) === String(id));
+  const esGasto = m => !!m.gasto_cat_id && (m.tipo === 'ingreso' || m.tipo === 'egreso');
+  C2.gastF = { desde: '', hasta: '', cuenta: '', cat: '', tipo: '', q: '', anulados: false };
+  C2.gastTab = 'movimientos';
+  C2.gastFiltrar = function (k, v) { C2.gastF[k] = v; C2.render(); };
+  const mesDe = f => String(f || '').slice(0, 7);
+  const nombreMes = ym => { const [y, m] = ym.split('-').map(Number); const t = new Date(y, m - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }); return t.charAt(0).toUpperCase() + t.slice(1); };
+  const montoTxt = v => { v = num(v) || 0; return Number.isInteger(v) ? v.toLocaleString('es-AR') : v.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  const optCats = sel => C2.caja.gcat.filter(g => g.activo || String(g.id) === String(sel))
+    .map(g => `<option value="${g.id}"${String(g.id) === String(sel) ? ' selected' : ''}>${esc(g.nombre)}${g.activo ? '' : ' (inactiva)'}</option>`).join('');
+
+  // ── alta / edición de un gasto ──
+  C2.abrirGasto = function (id) {
+    if (!C2.puedeEscribir()) { toast('Solo admin y claudionieva cargan gastos', 'warn'); return; }
+    if (!C2.caja.ok) { toast('Caja y bancos no está disponible', 'er'); return; }
+    if (!C2.caja.gcatOk) { toast('Falta correr c2_gastos.sql en Supabase', 'warn'); return; }
+    if (!C2.caja.cuentas.some(c => c.activa)) { toast('Primero cargá una cuenta en Caja y bancos → Cuentas y conceptos', 'warn'); return; }
+    const m = id ? C2.caja.movs.find(x => String(x.id) === String(id)) : null;
+    if (id && (!m || m.anulado)) { toast('Ese gasto ya no se puede editar', 'warn'); return; }
+    const tipo = m ? m.tipo : 'egreso';
+    const catSel = m ? m.gasto_cat_id : C2.gastF.cat;
+    C2.modal(m ? '✏️ Editar gasto' : '➕ Nuevo gasto', `<div class="c2m-g">
+        <label>Tipo<select id="c2g-tipo"><option value="egreso"${tipo === 'egreso' ? ' selected' : ''}>➖ Egreso (sale plata)</option><option value="ingreso"${tipo === 'ingreso' ? ' selected' : ''}>➕ Ingreso (entra plata)</option></select></label>
+        <label>Categoría<select id="c2g-cat" onchange="document.getElementById('c2g-nuevawrap').style.display=this.value==='__nueva'?'':'none';if(this.value==='__nueva')setTimeout(()=>document.getElementById('c2g-nueva').focus(),20)"><option value="">— elegí —</option>${optCats(catSel)}<option value="__nueva">➕ Nueva categoría…</option></select></label>
+        <label id="c2g-nuevawrap" style="grid-column:1/-1;display:none">Nombre de la nueva categoría<input type="text" id="c2g-nueva" placeholder="Ej.: Publicidad" autocomplete="off"></label>
+        <label>Fecha<input type="date" id="c2g-fecha" value="${m ? String(m.fecha).slice(0, 10) : hoy()}" min="${arranque()}" max="${hoy()}"></label>
+        <label>Cuenta<select id="c2g-cuenta">${optCuentas(m ? m.cuenta_id : (C2.gastF.cuenta || C2._ultCuenta))}</select></label>
+        <label>Monto<input type="text" inputmode="decimal" id="c2g-monto" value="${m ? montoTxt(m.monto) : ''}" placeholder="0"></label>
+        <label>Detalle (opcional)<input type="text" id="c2g-det" value="${esc(m ? m.detalle || '' : '')}" placeholder="Ej.: noviembre, factura 0012…"></label>
+      </div>
+      <div class="c2-f" style="margin-top:8px">Queda como movimiento en Caja y bancos: el egreso baja el saldo de la cuenta y el ingreso lo sube.</div>`,
+      `<button class="c2-btn pri" onclick="C2.guardarGasto(${m ? m.id : 'null'})">Guardar</button>`);
+  };
+
+  // crea una categoría (o reactiva una inactiva con el mismo nombre) y la devuelve
+  async function crearCategoria(nombre) {
+    const ex = C2.caja.gcat.find(g => g.nombre.trim().toLowerCase() === nombre.toLowerCase());
+    if (ex) {
+      if (!ex.activo) { const r = await SB.from('c2_gastos_cat').update({ activo: true }).eq('id', ex.id); if (r.error) throw r.error; ex.activo = true; }
+      return ex;
+    }
+    const orden = C2.caja.gcat.reduce((mx, g) => Math.max(mx, g.orden || 0), 0) + 1;
+    const r = await SB.from('c2_gastos_cat').insert({ nombre, orden, creado_por: quien() }).select().single();
+    if (r.error) throw r.error;
+    C2.caja.gcat.push(r.data);
+    if (typeof registrarHistorial === 'function') registrarHistorial('c2_gastos_cat', r.data.id, [{ campo: 'alta', ant: null, nuevo: nombre }]);
+    return r.data;
+  }
+
+  C2.guardarGasto = async function (id) {
+    const tipo = val('c2g-tipo'), catV = val('c2g-cat'), fecha = val('c2g-fecha'), cta = val('c2g-cuenta'), monto = numIn(val('c2g-monto'));
+    const det = String(val('c2g-det') || '').trim(), nueva = String(val('c2g-nueva') || '').trim();
+    if (!['ingreso', 'egreso'].includes(tipo)) return mErr('Elegí si es ingreso o egreso');
+    if (!catV) return mErr('Elegí la categoría');
+    if (catV === '__nueva' && nueva.length < 2) return mErr('Escribí el nombre de la nueva categoría');
+    const e = validarFechaCuenta(fecha, cta); if (e) return mErr(e);
+    if (!monto || monto <= 0) return mErr('El monto tiene que ser mayor a cero');
+    bloquear(true); mErr('');
+    try {
+      const cat = catV === '__nueva' ? await crearCategoria(nueva) : gcat(catV);
+      if (!cat) throw new Error('categoría inexistente');
+      const row = { tipo, gasto_cat_id: cat.id, fecha, cuenta_id: Number(cta), monto, detalle: det || null };
+      if (id) {
+        const ant = C2.caja.movs.find(x => String(x.id) === String(id));
+        if (!ant || ant.anulado) throw new Error('el gasto ya no existe o está anulado');
+        const cambios = [['tipo', ant.tipo, tipo], ['categoría', (gcat(ant.gasto_cat_id) || {}).nombre, cat.nombre], ['fecha', String(ant.fecha).slice(0, 10), fecha],
+          ['cuenta', (cuenta(ant.cuenta_id) || {}).nombre, (cuenta(cta) || {}).nombre], ['monto', num(ant.monto), monto], ['detalle', ant.detalle || '', det]]
+          .filter(([, a, b]) => typeof b === 'number' ? num(a) !== b : String(a ?? '') !== String(b ?? ''));
+        if (!cambios.length) { C2.cerrarModal(); return; }
+        const res = await SB.from('c2_movimientos').update(row).eq('id', id).eq('anulado', false).select();
+        if (res.error) throw res.error;
+        if (!(res.data || []).length) throw new Error('no se pudo modificar (puede que la base no permita editar movimientos)');
+        if (typeof registrarHistorial === 'function') registrarHistorial('c2_movimientos', id, cambios.map(([campo, a, b]) => ({ campo: 'gasto · ' + campo, ant: a ?? null, nuevo: b })));
+        toast('Gasto modificado ✓', 'ok');
+      } else {
+        const res = await SB.from('c2_movimientos').insert({ ...row, creado_por: quien() }).select().single();
+        if (res.error) throw res.error;
+        toast((tipo === 'ingreso' ? 'Ingreso' : 'Gasto') + ' guardado ✓', 'ok');
+      }
+      C2._ultCuenta = cta;
+      C2.cerrarModal();
+      await cargarCaja(); C2.render();
+    } catch (err) { bloquear(false); mErr('Error: ' + (err.message || err)); }
+  };
+
+  // ── categorías ──
+  C2.abrirCategoria = function (id) {
+    if (!C2.puedeEscribir() || !C2.caja.gcatOk) return;
+    const g = id ? gcat(id) : null;
+    C2.modal(g ? 'Editar categoría' : 'Nueva categoría', `<div class="c2m-g">
+        <label style="grid-column:1/-1">Nombre<input type="text" id="c2gc-nom" value="${esc(g ? g.nombre : '')}" placeholder="Ej.: Publicidad" autocomplete="off"></label>
+        ${g ? `<label class="c2m-chk" style="grid-column:1/-1"><input type="checkbox" id="c2gc-act"${g.activo ? ' checked' : ''}> Activa (si la desactivás no aparece para cargar gastos nuevos; los cargados quedan igual)</label>` : ''}
+      </div>`,
+      `<button class="c2-btn pri" onclick="C2.guardarCategoria(${g ? g.id : 'null'})">Guardar</button>`);
+  };
+  C2.guardarCategoria = async function (id) {
+    const nombre = String(val('c2gc-nom') || '').trim();
+    if (nombre.length < 2) return mErr('Poné el nombre');
+    if (C2.caja.gcat.some(g => g.nombre.trim().toLowerCase() === nombre.toLowerCase() && String(g.id) !== String(id))) return mErr('Ya existe una categoría con ese nombre');
+    bloquear(true); mErr('');
+    try {
+      if (id) {
+        const g = gcat(id), row = { nombre, activo: !!val('c2gc-act') };
+        const r = await SB.from('c2_gastos_cat').update(row).eq('id', id);
+        if (r.error) throw r.error;
+        const cambios = [['nombre', g.nombre, row.nombre], ['activa', g.activo, row.activo]].filter(([, a, b]) => String(a) !== String(b));
+        if (cambios.length && typeof registrarHistorial === 'function') registrarHistorial('c2_gastos_cat', id, cambios.map(([campo, a, b]) => ({ campo, ant: a, nuevo: b })));
+      } else await crearCategoria(nombre);
+      C2.cerrarModal(); toast('Categoría guardada ✓', 'ok');
+      await cargarCaja(); C2.render();
+    } catch (err) { bloquear(false); mErr('Error: ' + (err.message || err)); }
+  };
+  C2.eliminarCategoria = function (id) {
+    if (!C2.puedeEscribir()) return;
+    const g = gcat(id); if (!g) return;
+    if (C2.caja.movs.some(m => String(m.gasto_cat_id) === String(id))) { toast('La categoría tiene gastos cargados (aunque estén anulados): desactivala en vez de eliminarla', 'warn'); return; }
+    C2.modal('Eliminar categoría', `<div style="font-size:13.5px">¿Eliminar la categoría <b>${esc(g.nombre)}</b>? No tiene gastos cargados.</div>`,
+      `<button class="c2-btn" style="background:#b91c1c;border-color:#b91c1c;color:#fff" onclick="C2.confirmarEliminarCategoria(${g.id})">Eliminar</button>`);
+  };
+  C2.confirmarEliminarCategoria = async function (id) {
+    const g = gcat(id); if (!g) return;
+    bloquear(true); mErr('');
+    const r = await SB.from('c2_gastos_cat').delete().eq('id', id);
+    if (r.error) { bloquear(false); return mErr('Error: ' + r.error.message); }
+    if (typeof registrarHistorial === 'function') registrarHistorial('c2_gastos_cat', id, [{ campo: 'eliminada', ant: g.nombre, nuevo: null }]);
+    if (String(C2.gastF.cat) === String(id)) C2.gastF.cat = '';
+    C2.cerrarModal(); toast('Categoría eliminada', 'ok');
+    await cargarCaja(); C2.render();
+  };
+
+  // ── vista ──
+  function vistaGastos() {
+    const k = C2.caja, w = C2.puedeEscribir() && k.ok && k.gcatOk;
+    const head = `<div class="c2-kick">Contabilidad 2 · etapa 4</div><div class="c2-h1">Gastos</div>
+      <div class="c2-sub">Gastos e ingresos que no son de una operación, por categoría. Cada uno queda como movimiento en Caja y bancos.${C2.puedeEscribir() ? '' : ' Solo lectura: cargan admin y claudionieva.'}</div>`;
+    if (k.err === 'faltaSQL') return head + `<div class="c2-card c2-empty" style="margin-top:16px">⚠️ Todavía no están creadas las tablas de Caja y bancos (c2_etapa2.sql).</div>`;
+    if (k.err) return head + `<div class="c2-card c2-empty" style="margin-top:16px">Error al cargar Caja y bancos: ${esc(k.err)}</div>`;
+    if (!k.gcatOk) return head + `<div class="c2-card c2-empty" style="margin-top:16px">⚠️ Falta crear las categorías de Gastos.<br><small>Hay que correr <b>c2_gastos.sql</b> en el SQL Editor de Supabase y después tocar 🔄 Actualizar datos.</small></div>`;
+    const tabs = `<div class="c2-tabs"><button class="${C2.gastTab === 'movimientos' ? 'on' : ''}" onclick="C2.gastTab='movimientos';C2.render()">Gastos</button><button class="${C2.gastTab === 'categorias' ? 'on' : ''}" onclick="C2.gastTab='categorias';C2.render()">Categorías</button></div>`;
+    return head + tabs + (C2.gastTab === 'categorias' ? vistaGastosCat(w) : vistaGastosMovs(w));
+  }
+
+  function vistaGastosCat(w) {
+    const k = C2.caja;
+    const usos = id => k.movs.filter(m => !m.anulado && String(m.gasto_cat_id) === String(id)).length;
+    const alguno = id => k.movs.some(m => String(m.gasto_cat_id) === String(id));
+    const filas = k.gcat.map(g => `<tr>
+        <td style="font-weight:700">${esc(g.nombre)}</td>
+        <td class="n">${usos(g.id)}</td>
+        <td><span class="c2-b ${g.activo ? 'gr' : 'gy'}">${g.activo ? 'activa' : 'inactiva'}</span></td>
+        <td style="white-space:nowrap;text-align:right">${w ? `<button class="c2-btn" style="padding:3px 9px;font-size:12px" onclick="C2.abrirCategoria(${g.id})">Editar</button>${alguno(g.id) ? '' : ` <button class="c2-btn" style="padding:3px 9px;font-size:12px;color:#b91c1c;border-color:#fca5a5" onclick="C2.eliminarCategoria(${g.id})">Eliminar</button>`}` : ''}</td></tr>`).join('');
+    return `<div class="c2-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h3>Categorías</h3><div class="c2-sub">Las que tienen gastos cargados no se pueden eliminar: se desactivan.</div></div>
+        ${w ? '<button class="c2-btn pri" onclick="C2.abrirCategoria()">+ Nueva categoría</button>' : ''}</div>
+        <div style="overflow-x:auto;margin-top:10px">${k.gcat.length ? `<table class="c2-t"><thead><tr><th>Categoría</th><th class="n">Gastos</th><th>Estado</th><th></th></tr></thead><tbody>${filas}</tbody></table>` : '<div class="c2-empty">Sin categorías</div>'}</div>
+      </div>`;
+  }
+
+  function vistaGastosMovs(w) {
+    const k = C2.caja, f = C2.gastF;
+    const todos = k.movs.filter(esGasto);
+    const activos = todos.filter(m => !m.anulado);
+    const mesHoy = hoy().slice(0, 7);
+    const dAnt = new Date(); dAnt.setDate(1); dAnt.setMonth(dAnt.getMonth() - 1);
+    const mesAnt = dAnt.getFullYear() + '-' + String(dAnt.getMonth() + 1).padStart(2, '0');
+    const suma = (arr, t) => arr.filter(m => !m.anulado && m.tipo === t).reduce((s, m) => s + (num(m.monto) || 0), 0);
+    const delMes = ym => activos.filter(m => mesDe(m.fecha) === ym);
+    let lista = todos.filter(m => {
+      if (!f.anulados && m.anulado) return false;
+      if (f.cuenta && String(m.cuenta_id) !== String(f.cuenta)) return false;
+      if (f.cat && String(m.gasto_cat_id) !== String(f.cat)) return false;
+      if (f.tipo && m.tipo !== f.tipo) return false;
+      if (f.desde && String(m.fecha) < f.desde) return false;
+      if (f.hasta && String(m.fecha) > f.hasta) return false;
+      if (f.q) { const c = cuenta(m.cuenta_id), g = gcat(m.gasto_cat_id); if (![m.detalle, g && g.nombre, c && c.nombre, m.creado_por, m.monto].join(' ').toLowerCase().includes(f.q.toLowerCase())) return false; }
+      return true;
+    }).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)) || b.id - a.id);
+    const filtrando = f.cuenta || f.cat || f.tipo || f.desde || f.hasta || f.q;
+    const egF = suma(lista, 'egreso'), inF = suma(lista, 'ingreso');
+    let filas = '', mesAct = null;
+    lista.forEach(m => {
+      const ym = mesDe(m.fecha);
+      if (ym !== mesAct) {
+        mesAct = ym;
+        const lm = lista.filter(x => mesDe(x.fecha) === ym);
+        const im = suma(lm, 'ingreso'), em = suma(lm, 'egreso');
+        filas += `<tr class="tot"><td colspan="4">${esc(nombreMes(ym))}</td><td class="n pos">${im ? $c(im) : ''}</td><td class="n neg">${em ? $c(em) : ''}</td><td colspan="2"></td></tr>`;
+      }
+      const c = cuenta(m.cuenta_id), g = gcat(m.gasto_cat_id);
+      const st = m.anulado ? ' style="opacity:.5;text-decoration:line-through"' : '';
+      filas += `<tr${m.anulado ? ` title="Anulado por ${esc(m.anulado_por || '—')}: ${esc(m.motivo_anulacion || '')}"` : ''}>
+        <td style="white-space:nowrap"${st}>${fD(m.fecha)}</td>
+        <td><b${st}>${esc(g ? g.nombre : '—')}</b>${m.anulado ? ` <span class="c2-b re">anulado</span><div class="c2-f" style="font-size:11px">Motivo: ${esc(m.motivo_anulacion || '—')}</div>` : ''}</td>
+        <td${st}>${esc(m.detalle || '')}</td>
+        <td${st}>${esc(c ? c.nombre : '—')}</td>
+        <td class="n pos"${st}>${m.tipo === 'ingreso' ? $c(num(m.monto)) : ''}</td>
+        <td class="n neg"${st}>${m.tipo === 'egreso' ? $c(num(m.monto)) : ''}</td>
+        <td style="font-size:12px;color:var(--muted)">${esc(m.creado_por || '—')}</td>
+        <td style="white-space:nowrap;text-align:right">${w && !m.anulado ? `<button class="c2-btn" style="padding:3px 9px;font-size:12px" onclick="C2.abrirGasto(${m.id})">Editar</button> <button class="c2-btn" style="padding:3px 9px;font-size:12px;color:#b91c1c;border-color:#fca5a5" onclick="C2.abrirAnular('${m.id}')">Anular</button>` : ''}</td>
+      </tr>`;
+    });
+    // totales por categoría (con los filtros)
+    const porCat = {};
+    lista.filter(m => !m.anulado).forEach(m => { const o = porCat[m.gasto_cat_id] = porCat[m.gasto_cat_id] || { id: m.gasto_cat_id, e: 0, i: 0, c: 0 }; o[m.tipo === 'ingreso' ? 'i' : 'e'] += num(m.monto) || 0; o.c++; });
+    const cats = Object.values(porCat).sort((a, b) => b.e - a.e || b.i - a.i);
+    const sel = (k2, v, t) => `<option value="${v}"${String(f[k2]) === String(v) ? ' selected' : ''}>${t}</option>`;
+    return `
+      <div class="c2-kpis" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+        <div class="c2-kpi"><div class="l">Egresos · ${esc(nombreMes(mesHoy))}</div><div class="v neg">${$c(suma(delMes(mesHoy), 'egreso'))}</div></div>
+        <div class="c2-kpi"><div class="l">Ingresos · ${esc(nombreMes(mesHoy))}</div><div class="v pos">${$c(suma(delMes(mesHoy), 'ingreso'))}</div></div>
+        <div class="c2-kpi"><div class="l">Egresos · ${esc(nombreMes(mesAnt))}</div><div class="v">${$c(suma(delMes(mesAnt), 'egreso'))}</div></div>
+        <div class="c2-kpi"><div class="l">${filtrando ? 'Neto filtrado' : 'Neto desde el arranque'}</div><div class="v ${inF - egF < 0 ? 'neg' : 'pos'}">${$c(inF - egF)}</div></div>
+      </div>
+      ${w ? `<div style="margin:0 0 14px"><button class="c2-btn pri" onclick="C2.abrirGasto()">➕ Nuevo gasto</button></div>` : ''}
+      ${cats.length ? `<div class="c2-sub" style="margin:0 0 6px">Por categoría · ${filtrando ? 'con los filtros aplicados' : 'todos los gastos'} · tocá una para filtrar</div>
+      <div class="c2-ctas">${cats.map(o => `<div class="c2-cta${String(f.cat) === String(o.id) ? ' on' : ''}" onclick="C2.gastFiltrar('cat','${String(f.cat) === String(o.id) ? '' : o.id}')"><div class="l">${esc((gcat(o.id) || {}).nombre || '—')} <span class="c2-f" style="font-size:11px">×${o.c}</span></div><div class="v" style="font-size:17px">${o.e ? `<span class="neg">${$c(o.e)}</span>` : ''}${o.i ? `${o.e ? ' ' : ''}<span class="pos">+${$c(o.i)}</span>` : ''}</div></div>`).join('')}</div>` : ''}
+      <div class="c2-card">
+          <div class="c2-fil" style="margin-top:0">
+            <select onchange="C2.gastFiltrar('cat',this.value)"><option value="">Todas las categorías</option>${k.gcat.map(g => sel('cat', g.id, esc(g.nombre))).join('')}</select>
+            <select onchange="C2.gastFiltrar('tipo',this.value)">${sel('tipo', '', 'Ingresos y egresos')}${sel('tipo', 'egreso', 'Solo egresos')}${sel('tipo', 'ingreso', 'Solo ingresos')}</select>
+            <select onchange="C2.gastFiltrar('cuenta',this.value)"><option value="">Todas las cuentas</option>${k.cuentas.map(c => sel('cuenta', c.id, esc(c.nombre))).join('')}</select>
+            <span class="c2-kick">desde</span><input type="date" value="${f.desde}" onchange="C2.gastFiltrar('desde',this.value)">
+            <span class="c2-kick">hasta</span><input type="date" value="${f.hasta}" onchange="C2.gastFiltrar('hasta',this.value)">
+            <input id="c2-gq" placeholder="🔍 Detalle, categoría, monto…" value="${esc(f.q)}" oninput="C2.gastF.q=this.value;clearTimeout(C2._t);C2._t=setTimeout(()=>{C2.render();const i=document.getElementById('c2-gq');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},250)" style="min-width:180px">
+            <label class="c2-kick" style="display:flex;gap:5px;align-items:center"><input type="checkbox"${f.anulados ? ' checked' : ''} onchange="C2.gastFiltrar('anulados',this.checked)"> ver anulados</label>
+            <button class="c2-btn" onclick="C2.gastF={desde:'',hasta:'',cuenta:'',cat:'',tipo:'',q:'',anulados:false};C2.render()">✕ Limpiar</button>
+          </div>
+          <div class="c2-sub" style="margin-bottom:8px">${lista.length} movimiento${lista.length !== 1 ? 's' : ''} · Ingresos <b class="pos">${$c(inF)}</b> · Egresos <b class="neg">${$c(egF)}</b></div>
+          <div style="overflow-x:auto">
+          ${lista.length ? `<table class="c2-t" style="min-width:760px"><thead><tr><th>Fecha</th><th>Categoría</th><th>Detalle</th><th>Cuenta</th><th class="n">Ingreso</th><th class="n">Egreso</th><th>Cargó</th><th></th></tr></thead><tbody>${filas}</tbody></table>`
+          : `<div class="c2-empty">${todos.length ? 'No hay gastos con estos filtros.' : 'Todavía no hay gastos cargados.' + (w ? '<br><br><button class="c2-btn pri" onclick="C2.abrirGasto()">➕ Cargar el primero</button>' : '')}</div>`}
+          </div>
+        </div>`;
+  }
 
   // ══════════════════════════════════════════════════════════════
   // AJUSTES MANUALES POR OPERACIÓN (v3.9.42) — tabla c2_ajustes
