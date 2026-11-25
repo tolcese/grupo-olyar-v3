@@ -735,6 +735,11 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
             <div style="font-size:16px;font-weight:800;color:var(--ink)">Administración</div>
             <div style="font-size:12px;color:var(--muted);margin-top:4px">Acceso exclusivo de administración</div>
           </div>
+          <div class="pp-card" id="pp-card-cordoba" onclick="showV('cordoba')" style="display:none;cursor:pointer;border:1.5px solid var(--line);border-radius:16px;padding:34px 22px;text-align:center;transition:all .15s;background:#fff" onmouseenter="this.style.borderColor='var(--blue)';this.style.boxShadow='0 8px 24px rgba(29,111,206,.12)';this.style.transform='translateY(-3px)'" onmouseleave="this.style.borderColor='var(--line)';this.style.boxShadow='none';this.style.transform='none'">
+            <div style="font-size:46px;margin-bottom:14px">📍</div>
+            <div style="font-size:16px;font-weight:800;color:var(--ink)">Córdoba</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">En construcción</div>
+          </div>
         </div>
       </div>
     </div>
@@ -3288,6 +3293,17 @@ pre{background:#0f172a;color:#7dd3fc;padding:18px;font-family:'JetBrains Mono',m
           <div style="font-size:15px;font-weight:700;color:var(--ink2)">Sin cuotas</div>
         </div>
       </div>
+    </div>
+
+    <!-- CÓRDOBA (v3.9.55: por ahora vacía) -->
+    <div id="v-cordoba" style="display:none">
+      <div class="ph">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-s" onclick="showV('panel-principal')" style="padding:6px 12px">← Volver</button>
+          <div><div class="ph-t">📍 Córdoba</div><div class="ph-s">Sección en construcción</div></div>
+        </div>
+      </div>
+      <div style="background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:60px 20px;text-align:center;color:var(--muted);font-size:14px">🚧 Esta sección está en construcción.</div>
     </div>
 
     <!-- CONTABILIDAD -->
@@ -11969,6 +11985,8 @@ function aplicarModoSidebar(modo) {
 // v3.9.33: usuarios que NO ven Contabilidad ni Contabilidad 2 aunque sean admin
 const _BLOQ_CONTAB = ['abarco'];
 function _bloqContab() { return _BLOQ_CONTAB.includes(String(ME?.usr || '').toLowerCase()); }
+// v3.9.55: tarjeta y sección Córdoba: admin, claudionieva y yohanavarro
+function _puedeCordoba() { return !!ME && (ME.rol === 'admin' || ['claudionieva','yohanavarro'].includes(ME.usr)); }
 function _puedeContabilidad2() {
   if (_bloqContab()) return false;
   return (typeof canEdit !== 'function' || canEdit()) && (ME?.rol === 'admin' || ['claudionieva','golcese','tolcese','Invitado'].includes(ME?.usr));
@@ -12060,6 +12078,7 @@ function showV(v) {
   if ((v === 'contabilidad' || v === 'bancos') && !canEdit()) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
   if (v === 'contabilidad' && (_bloqContab() || !(ME?.rol === 'admin' || ['claudionieva','golcese','tolcese','Invitado'].includes(ME?.usr)))) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
   if (v === 'contabilidad2' && !_puedeContabilidad2()) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
+  if (v === 'cordoba' && !_puedeCordoba()) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
   if (v === 'administracion' && ['abarco','yohanavarro'].includes(ME?.usr)) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
   if (v === 'reportes') {
     if (!_avanzaFechasCargando) _avanzaFechas = null; // v3.9.30: recargar fechas de paso a AVANZA al entrar
@@ -12091,7 +12110,7 @@ function showV(v) {
       setTimeout(renderReportes, 50);
     }
   }
-  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','contabilidad2','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','codigopostal','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','seguros','seguros-nueva','central-deudores','copas','prendas-finalizadas','prendas-entregadas','prendas-canceladas'].forEach(id => {
+  ['sol','gestores','prendas','prenda-edit','nueva','usuarios','config','micuenta','reportes','backup','contabilidad','contabilidad2','cordoba','creditos','bancos','datero','calendario','presupuestos','historico-presup','calculadores','codigopostal','genpdf','envios-gestor','administracion','calc-galicia-mail','sociedades','soc-nueva','soc-seguimiento','soc-seguimiento-lista','soc-presupuestos','soc-presupuesto-form','panel-principal','seguros','seguros-nueva','central-deudores','copas','prendas-finalizadas','prendas-entregadas','prendas-canceladas'].forEach(id => {
     const el = document.getElementById('v-'+id);
     if (el) el.style.display = id===v ? '' : 'none';
 
@@ -12110,6 +12129,7 @@ function showV(v) {
   document.body.classList.toggle('in-copas', v === 'copas');
   if (v==='panel-principal') {
     const _pk=document.getElementById('pp-card-copas'); if(_pk) _pk.style.display=(ME && (ME.rol==='admin'||ME.usr==='rrodriguez'))?'':'none';
+    const _pc=document.getElementById('pp-card-cordoba'); if(_pc) _pc.style.display=_puedeCordoba()?'':'none';
     if (ME?.usr==='rrodriguez') aplicarMenuRrodriguez();
   }
   if (v==='seguros')  loadSeguros();
