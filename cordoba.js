@@ -1,5 +1,7 @@
 // ══════════════════════════════════════════════════════════════
-// CÓRDOBA — seguimiento de trámites de registro (v3.9.56)
+// CÓRDOBA — seguimiento de trámites de registro (v3.9.56 / v3.9.57)
+// v3.9.57: Nuevo ingreso y edición en pantalla propia (no ventana); sin botón actualizar: se refresca al instante
+//          (aviso Broadcast 'cba' en el canal olyar-sync, ver _olyarFetch en index).
 // Tablas: cba_tramites, cba_listas (SQL cba_tramites.sql)
 // Ven, cargan y editan: admin, claudionieva y yohanavarro (_puedeCordoba en index). Borra solo admin.
 // Usa globales de index.html: SB, ME, toast, showV, registrarHistorial, _sbAll, _puedeCordoba
@@ -9,6 +11,7 @@
 
   const CBA = window.CBA = {
     rows: [], listas: [], ok: false, err: null, cargando: false, cargado: false,
+    modo: 'lista', formId: null,   // v3.9.57: 'lista' = vista general, 'form' = pantalla de ingreso / edición
     f: { q: '', tramite: '', registro: '', desde: '', hasta: '' },
     orden: { k: 'ingreso_oficina', dir: 'desc' }
   };
@@ -59,8 +62,8 @@
   const escTxt = r => [fD(r.escribania), r.escribania_txt || ''].filter(Boolean).join(' · ');
 
   // ── carga ──
-  CBA.cargar = async function () {
-    CBA.cargando = true; CBA.render();
+  CBA.cargar = async function (silencioso) {
+    CBA.cargando = true; if (!silencioso) CBA.render();
     try {
       const all = typeof _sbAll === 'function' ? _sbAll : (f => f());
       const [a, b] = await Promise.all([
@@ -75,7 +78,15 @@
       CBA.ok = false; CBA.err = /does not exist|relation|schema cache|Could not find/i.test(m) ? 'faltaSQL' : m;
       console.warn('Córdoba:', m);
     }
-    CBA.cargando = false; CBA.cargado = true; CBA.render();
+    CBA.cargando = false; CBA.cargado = true;
+    // con el formulario abierto no se redibuja (no se pierde lo que se está escribiendo)
+    if (!(silencioso && CBA.modo === 'form')) CBA.render();
+  };
+  // v3.9.57: aviso de otro usuario (Broadcast 'cba'): recarga al instante si la sección está abierta
+  CBA.alAviso = function () {
+    const v = document.getElementById('v-cordoba');
+    if (!v || v.style.display === 'none' || !CBA.ok) { CBA.cargado = false; return; }
+    clearTimeout(CBA._av); CBA._av = setTimeout(() => CBA.cargar(true), 300);
   };
 
   // ── estilos ──
@@ -103,29 +114,32 @@
 #v-cordoba table.cba-t th:nth-child(2){z-index:3}
 #v-cordoba .cba-no{display:inline-block;padding:1px 7px;border-radius:6px;background:#f1f5f9;color:#475569;font-weight:700;font-size:11px}
 #v-cordoba .cba-empty{text-align:center;color:var(--muted);padding:40px 10px}
+#v-cordoba .cba-form{background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:18px 20px;max-width:1000px;margin-top:14px}
+#v-cordoba .cba-form .ft{display:flex;gap:10px;align-items:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+#v-cordoba .cba-form .err{margin:12px 0 0}
 #cba-modal{position:fixed;inset:0;background:rgba(15,15,15,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px}
 #cba-modal .b{background:#fff;border-radius:14px;width:100%;max-width:760px;max-height:94vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.25)}
 #cba-modal .h{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e7e5e4;font-size:15.5px}
 #cba-modal .x{border:none;background:none;font-size:16px;cursor:pointer;color:#78716c}
 #cba-modal .c{padding:14px 18px;overflow:auto;font-size:13.5px}
 #cba-modal .ft{display:flex;gap:10px;align-items:center;padding:12px 18px;border-top:1px solid #e7e5e4}
-#cba-modal .sec{font-size:10.5px;font-weight:800;color:#78716c;text-transform:uppercase;letter-spacing:.07em;margin:14px 0 8px;padding-bottom:5px;border-bottom:1px solid #e7e5e4}
-#cba-modal .sec:first-child{margin-top:0}
-#cba-modal .g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px}
-#cba-modal label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#57534e}
-#cba-modal input,#cba-modal select,#cba-modal textarea{border:1.5px solid #e7e5e4;border-radius:8px;padding:7px 9px;font-size:13.5px;font-weight:400;color:#1c1917;background:#fff;font-family:inherit;min-width:0}
-#cba-modal input:disabled{background:#f5f5f4;color:#a8a29e}
-#cba-modal .chk{flex-direction:row;align-items:center;gap:6px;font-weight:600;white-space:nowrap}
-#cba-modal .row2{display:flex;gap:6px;align-items:center}
-#cba-modal .row2>*{flex:1}
-#cba-modal .row2>.chk{flex:none}
-#cba-modal .err{display:none;margin:0 18px 6px;padding:8px 10px;border-radius:8px;background:#fee2e2;color:#991b1b;font-size:12.5px;font-weight:600}
-#cba-modal .meta{font-size:11.5px;color:#78716c;margin-right:auto}
-#cba-modal .btn2{border:1.5px solid #e7e5e4;background:#fff;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer}
-#cba-modal .btn2.pri{background:#1d6fce;border-color:#1d6fce;color:#fff}
-#cba-modal .btn2.del{color:#b91c1c;border-color:#fca5a5}
-#cba-modal .btn2[disabled]{opacity:.45;cursor:not-allowed}
-@media (max-width:700px){#cba-modal .g{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/*f*/.cba-f .sec{font-size:10.5px;font-weight:800;color:#78716c;text-transform:uppercase;letter-spacing:.07em;margin:14px 0 8px;padding-bottom:5px;border-bottom:1px solid #e7e5e4}
+/*f*/.cba-f .sec:first-child{margin-top:0}
+.cba-f .g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px}
+.cba-f label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#57534e}
+.cba-f input,.cba-f select,.cba-f textarea{border:1.5px solid #e7e5e4;border-radius:8px;padding:7px 9px;font-size:13.5px;font-weight:400;color:#1c1917;background:#fff;font-family:inherit;min-width:0}
+.cba-f input:disabled{background:#f5f5f4;color:#a8a29e}
+.cba-f .chk{flex-direction:row;align-items:center;gap:6px;font-weight:600;white-space:nowrap}
+.cba-f .row2{display:flex;gap:6px;align-items:center}
+.cba-f .row2>*{flex:1}
+.cba-f .row2>.chk{flex:none}
+.cba-f .err{display:none;margin:0 18px 6px;padding:8px 10px;border-radius:8px;background:#fee2e2;color:#991b1b;font-size:12.5px;font-weight:600}
+.cba-f .meta{font-size:11.5px;color:#78716c;margin-right:auto}
+.cba-f .btn2{border:1.5px solid #e7e5e4;background:#fff;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer}
+.cba-f .btn2.pri{background:#1d6fce;border-color:#1d6fce;color:#fff}
+.cba-f .btn2.del{color:#b91c1c;border-color:#fca5a5}
+.cba-f .btn2[disabled]{opacity:.45;cursor:not-allowed}
+@media (max-width:700px){.cba-f .g{grid-template-columns:repeat(2,minmax(0,1fr))}}
 `;
     document.head.appendChild(s);
   }
@@ -134,19 +148,19 @@
   CBA.render = function () {
     const root = document.getElementById('v-cordoba'); if (!root) return;
     css();
+    if (CBA.modo === 'form' && CBA.ok) { root.innerHTML = vistaForm(); return; }
     const head = `<div class="ph">
         <div style="display:flex;align-items:center;gap:12px">
           <button class="btn btn-s" onclick="showV('panel-principal')" style="padding:6px 12px">← Volver</button>
           <div><div class="ph-t">📍 Córdoba</div><div class="ph-s">Seguimiento de trámites de registro</div></div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-s" onclick="CBA.cargar()">🔄</button>
           ${CBA.ok && puede() ? '<button class="btn btn-p" onclick="CBA.abrir()">➕ Nuevo ingreso</button>' : ''}
         </div>
       </div>`;
     let body;
     if (!CBA.cargado || CBA.cargando && !CBA.ok) body = '<div class="cba-card cba-empty">⏳ Cargando trámites…</div>';
-    else if (CBA.err === 'faltaSQL') body = '<div class="cba-card cba-empty">⚠️ Todavía no están creadas las tablas de Córdoba.<br><small>Hay que correr <b>cba_tramites.sql</b> en el SQL Editor de Supabase y después tocar 🔄.</small></div>';
+    else if (CBA.err === 'faltaSQL') body = '<div class="cba-card cba-empty">⚠️ Todavía no están creadas las tablas de Córdoba.<br><small>Hay que correr <b>cba_tramites.sql</b> en el SQL Editor de Supabase y volver a entrar a Córdoba.</small></div>';
     else if (CBA.err) body = `<div class="cba-card cba-empty">Error al cargar: ${esc(CBA.err)}</div>`;
     else body = vistaGeneral();
     root.innerHTML = head + body;
@@ -240,7 +254,7 @@
   // ── modal ──
   function modal(titulo, html, pie) {
     cerrar();
-    const ov = document.createElement('div'); ov.id = 'cba-modal';
+    const ov = document.createElement('div'); ov.id = 'cba-modal'; ov.className = 'cba-f';
     ov.innerHTML = `<div class="b"><div class="h"><b>${titulo}</b><button class="x" onclick="CBA.cerrar()">✕</button></div>
       <div class="c">${html}</div><div class="err" id="cba-err"></div><div class="ft">${pie}</div></div>`;
     ov.addEventListener('mousedown', e => { if (e.target === ov) cerrar(); });
@@ -250,7 +264,7 @@
   CBA.cerrar = cerrar;
   const err = t => { const e = document.getElementById('cba-err'); if (e) { e.textContent = t; e.style.display = t ? 'block' : 'none'; } };
   const v = id => { const e = document.getElementById(id); return e ? (e.type === 'checkbox' ? e.checked : e.value) : null; };
-  const bloquear = b => document.querySelectorAll('#cba-modal .ft button').forEach(x => { x.disabled = b; });
+  const bloquear = b => document.querySelectorAll('#cba-modal .ft button, #v-cordoba .cba-form .ft button').forEach(x => { x.disabled = b; });
 
   // desplegable con opción "➕ Agregar nuevo…"
   function lista(tipo, actual) {
@@ -263,8 +277,18 @@
 
   CBA.abrir = function (id) {
     if (!puede()) { toast('No tenés permisos para esta sección', 'warn'); return; }
+    if (id && !CBA.rows.find(x => String(x.id) === String(id))) { toast('No se encontró el trámite', 'warn'); return; }
+    cerrar();
+    CBA.modo = 'form'; CBA.formId = id || null;
+    CBA.render();
+    try { document.getElementById('v-cordoba').scrollIntoView({ block: 'start' }); } catch (e) {}
+    setTimeout(() => { const i = document.getElementById('cba-dominio'); if (i && !id) i.focus(); }, 30);
+  };
+  CBA.volver = function () { cerrar(); CBA.modo = 'lista'; CBA.formId = null; CBA.render(); };
+
+  function vistaForm() {
+    const id = CBA.formId;
     const r = id ? CBA.rows.find(x => String(x.id) === String(id)) : null;
-    if (id && !r) { toast('No se encontró el trámite', 'warn'); return; }
     const d = r || { ingreso_oficina: hoy() };
     const fe = (k, t) => `<label>${t}<input type="date" id="cba-${k}" value="${d[k] ? String(d[k]).slice(0, 10) : ''}" max="${hoy()}"></label>`;
     const tx = (k, t, extra) => `<label>${t}<input type="text" id="cba-${k}" value="${esc(d[k] || '')}" ${extra || ''}></label>`;
@@ -299,11 +323,18 @@
       <div class="sec">Observaciones</div>
       <textarea id="cba-obs" rows="3" style="width:100%;box-sizing:border-box">${esc(d.obs || '')}</textarea>`;
     const meta = r ? `<span class="meta">Cargó ${esc(r.creado_por || '—')} el ${fD(String(r.created_at).slice(0, 10))}${r.actualizado_por ? ` · última edición: ${esc(r.actualizado_por)} ${fD(String(r.updated_at).slice(0, 10))}` : ''}</span>` : '<span class="meta">* obligatorio</span>';
-    modal(r ? `✏️ ${esc(r.dominio)} · ${esc(r.tramite || 'Trámite')}` : '➕ Nuevo ingreso', html,
-      meta + (r && puedeBorrar() ? `<button class="btn2 del" onclick="CBA.borrar(${r.id})">🗑 Borrar</button>` : '') +
-      `<button class="btn2" onclick="CBA.cerrar()">Cancelar</button><button class="btn2 pri" onclick="CBA.guardar(${r ? r.id : 'null'})">Guardar</button>`);
-    setTimeout(() => { const i = document.getElementById(r ? 'cba-control' : 'cba-dominio'); if (i && !r) i.focus(); }, 30);
-  };
+    const titulo = r ? `✏️ ${esc(r.dominio)} · ${esc(r.tramite || 'Trámite')}` : '➕ Nuevo ingreso';
+    return `<div class="ph">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-s" onclick="CBA.volver()" style="padding:6px 12px">← Volver</button>
+          <div><div class="ph-t">${titulo}</div><div class="ph-s">📍 Córdoba · ${r ? 'completá o corregí los datos del trámite' : 'cargá los datos del nuevo trámite'}</div></div>
+        </div>
+      </div>
+      <div class="cba-form cba-f">${html}
+        <div class="err" id="cba-err"></div>
+        <div class="ft">${meta}${r && puedeBorrar() ? `<button class="btn2 del" onclick="CBA.borrar(${r.id})">🗑 Borrar</button>` : ''}<button class="btn2" onclick="CBA.volver()">Cancelar</button><button class="btn2 pri" onclick="CBA.guardar(${r ? r.id : 'null'})">Guardar</button></div>
+      </div>`;
+  }
 
   // valor de un desplegable (crea el ítem en cba_listas si es nuevo)
   async function valorLista(tipo) {
@@ -353,9 +384,10 @@
         const norm = (k, x) => x === null || x === undefined || x === '' ? '' : (k === 'ef_monto' ? String(num(x)) : String(x).slice(0, k === 'obs' ? 99999 : 500));
         const cambios = Object.keys(row).filter(k => norm(k, ant[k]) !== norm(k, row[k]) && !(k === 'ef_no' && !!ant[k] === row[k]))
           .map(k => ({ campo: NOMBRE[k] || k, ant: ant[k] ?? null, nuevo: row[k] }));
-        if (!cambios.length) { cerrar(); return; }
+        if (!cambios.length) { CBA.volver(); return; }
         const res = await SB.from('cba_tramites').update({ ...row, actualizado_por: quien(), updated_at: new Date().toISOString() }).eq('id', id).select();
         if (res.error) throw res.error;
+        if (!(res.data || []).length) throw new Error('el trámite ya no existe (puede que lo hayan borrado)');
         if (typeof registrarHistorial === 'function') registrarHistorial('cba_tramites', id, cambios);
         toast('Trámite actualizado ✓', 'ok');
       } else {
@@ -364,8 +396,8 @@
         if (typeof registrarHistorial === 'function') registrarHistorial('cba_tramites', res.data.id, [{ campo: 'alta', ant: null, nuevo: row.dominio + ' · ' + (row.tramite || '') }]);
         toast('Ingreso cargado ✓', 'ok');
       }
-      cerrar();
-      await CBA.cargar();
+      CBA.modo = 'lista'; CBA.formId = null;
+      await CBA.cargar(true);
     } catch (e) { bloquear(false); err('Error: ' + (e.message || e)); }
   };
 
@@ -373,7 +405,7 @@
     if (!puedeBorrar()) return;
     const r = CBA.rows.find(x => String(x.id) === String(id)); if (!r) return;
     modal('🗑 Borrar trámite', `<div>Vas a borrar el trámite <b>${esc(r.dominio)}</b> · ${esc(r.tramite || '—')} · ${esc(r.comprador || '')} (ingreso ${fD(r.ingreso_oficina)}).<br><br>No se puede deshacer.</div>`,
-      `<span class="meta"></span><button class="btn2" onclick="CBA.abrir(${r.id})">Volver</button><button class="btn2 pri" style="background:#b91c1c;border-color:#b91c1c" onclick="CBA.confirmarBorrar(${r.id})">Borrar</button>`);
+      `<span class="meta"></span><button class="btn2" onclick="CBA.cerrar()">Volver</button><button class="btn2 pri" style="background:#b91c1c;border-color:#b91c1c" onclick="CBA.confirmarBorrar(${r.id})">Borrar</button>`);
   };
   CBA.confirmarBorrar = async function (id) {
     if (!puedeBorrar()) return;
@@ -383,12 +415,14 @@
     if (res.error) { bloquear(false); return err('Error: ' + res.error.message); }
     if (typeof registrarHistorial === 'function') registrarHistorial('cba_tramites', id, [{ campo: 'borrado', ant: JSON.stringify(r), nuevo: null }]);
     cerrar(); toast('Trámite borrado', 'ok');
-    await CBA.cargar();
+    CBA.modo = 'lista'; CBA.formId = null;
+    await CBA.cargar(true);
   };
 
   CBA.init = function () {
     if (!puede()) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
+    cerrar(); CBA.modo = 'lista'; CBA.formId = null;
     CBA.render();
-    CBA.cargar();
+    CBA.cargar(CBA.cargado && CBA.ok);
   };
 })();

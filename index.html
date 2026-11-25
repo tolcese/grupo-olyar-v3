@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.56</title>
+<title>Grupo Olyar — Solicitudes v3.9.57</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.56';
+    var APP_VER='v3.9.57';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -3757,6 +3757,7 @@ async function _olyarFetch(input, init) {
       const u = String(typeof input === 'string' ? input : (input && input.url) || '');
       if (/\/rest\/v1\/solicitudes(\?|$)/.test(u)) _olyarNotify('sol');
       else if (/\/rest\/v1\/presupuestos(\?|$)/.test(u)) _olyarNotify('presup');
+      else if (/\/rest\/v1\/cba_(tramites|listas)(\?|$)/.test(u)) _olyarNotify('cba'); // v3.9.57: sección Córdoba
     }
   } catch(e) {}
   return res;
@@ -5441,6 +5442,7 @@ function _olyarSyncInit() {
         }).catch(() => {});
       }, 400);
     })
+    .on('broadcast', { event: 'cba' }, () => { try { if (window.CBA && typeof window.CBA.alAviso === 'function') window.CBA.alAviso(); } catch(e) {} })
     .on('broadcast', { event: 'presup' }, () => {
       clearTimeout(_presupRtTimer);
       _presupRtTimer = setTimeout(() => {
