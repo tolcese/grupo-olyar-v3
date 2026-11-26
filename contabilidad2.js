@@ -6,6 +6,7 @@
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
 // v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
+// v3.9.63: malvarez (Mariano Alvarez) entra a Contabilidad 2 (solo lectura, como golcese/tolcese).
 // v3.9.62: sección Trámites (plata de los trámites de Córdoba; SQL cba_caja.sql). Caja reconoce esos movimientos.
 // v3.9.54: Gastos por CATEGORÍA (tabla c2_gastos_cat + columna c2_movimientos.gasto_cat_id; SQL c2_gastos.sql), ingreso o egreso.
 // v3.9.53: sección Gastos (editar y anular con motivo).
@@ -53,7 +54,7 @@
   const dias = f => { if (!f) return null; const d = new Date(String(f).slice(0, 10) + 'T00:00:00'); if (isNaN(d)) return null; const h = new Date(); h.setHours(0, 0, 0, 0); return Math.floor((h - d) / 86400000); };
 
   C2.puede = () => (typeof _bloqContab !== 'function' || !_bloqContab()) && (typeof canEdit !== 'function' || canEdit()) &&
-    (ME?.rol === 'admin' || ['claudionieva', 'golcese', 'tolcese', 'Invitado'].includes(ME?.usr));
+    (ME?.rol === 'admin' || ['claudionieva', 'golcese', 'tolcese', 'Invitado', 'malvarez'].includes(ME?.usr));   // v3.9.63: + malvarez (solo ve)
 
   // v3.9.44: impuesto al crédito FIJO en 1,2 % (no se toma de Parámetros / coeficientes)
   const IMP_CREDITO_PCT = 1.2;
