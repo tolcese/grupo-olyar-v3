@@ -28,13 +28,13 @@ document.documentElement.scrollTop = 0;
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Grupo Olyar — Solicitudes v3.9.60</title>
+<title>Grupo Olyar — Solicitudes v3.9.61</title>
   <script>
   /* Auto-recuperación de versión (rompe la trampa de service worker con versión vieja cacheada).
      Nota: usa localStorage SOLO como marcador de versión de despliegue (plumbing), no estado de negocio.
      Guard con sessionStorage para no entrar en loop de recargas. */
   (function(){
-    var APP_VER='v3.9.60';
+    var APP_VER='v3.9.61';
     try{ window.OLYAR_VER = APP_VER; }catch(e){}
     try{
       if(sessionStorage.getItem('olyar_boot_ver')===APP_VER) return;
@@ -12087,7 +12087,7 @@ function showV(v) {
   const hb = document.getElementById('hamburger-btn');
   if (hb) hb.style.display = v === 'panel-principal' ? 'none' : '';
   const tbNav = document.querySelector('.tb-nav');
-  if (tbNav) tbNav.style.display = v === 'panel-principal' ? 'none' : '';
+  if (tbNav) tbNav.style.display = (v === 'panel-principal' || v === 'cordoba') ? 'none' : ''; // v3.9.61: Córdoba sin la barra de accesos de arriba
   if (v === 'panel-principal') closeSidebar();
   document.body.classList.toggle('pp-bg', v === 'panel-principal');
 
