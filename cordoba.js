@@ -1,5 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 // CÓRDOBA — seguimiento de trámites de registro (v3.9.56 / v3.9.57)
+// v3.9.62: plata de cada trámite (ingresos/egresos → Caja y bancos y Contabilidad 2 → Trámites). SQL cba_caja.sql.
 // v3.9.59: vista general paginada de a 20 (como Comercializadora).
 // v3.9.58: sin la línea vertical entre Dominio y Agencia.
 // v3.9.57: Nuevo ingreso y edición en pantalla propia (no ventana); sin botón actualizar: se refresca al instante
@@ -75,6 +76,7 @@
       const e = a.error || b.error; if (e) throw e;
       CBA.rows = a.data || []; CBA.listas = b.data || [];
       CBA.ok = true; CBA.err = null;
+      await cargarCaja();
     } catch (e) {
       const m = String(e.message || e);
       CBA.ok = false; CBA.err = /does not exist|relation|schema cache|Could not find/i.test(m) ? 'faltaSQL' : m;
@@ -83,6 +85,7 @@
     CBA.cargando = false; CBA.cargado = true;
     // con el formulario abierto no se redibuja (no se pierde lo que se está escribiendo)
     if (!(silencioso && CBA.modo === 'form')) CBA.render();
+    else if (!CBA.movForm) pintarMovs();
   };
   // v3.9.57: aviso de otro usuario (Broadcast 'cba'): recarga al instante si la sección está abierta
   CBA.alAviso = function () {
@@ -121,6 +124,21 @@
 #v-cordoba .cba-form{background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:18px 20px;max-width:1000px;margin-top:14px}
 #v-cordoba .cba-form .ft{display:flex;gap:10px;align-items:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
 #v-cordoba .cba-form .err{margin:12px 0 0}
+#v-cordoba .cba-form h3{font-size:15px;font-weight:800;margin:0 0 2px}
+#v-cordoba .cba-tot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+#v-cordoba .cba-tot>div{border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;flex-direction:column}
+#v-cordoba .cba-tot span{font-size:11.5px;color:var(--muted);font-weight:600}
+#v-cordoba .cba-tot b{font-size:18px;font-weight:900}
+#v-cordoba .pos{color:#15803d}#v-cordoba .neg{color:#b91c1c}
+#v-cordoba .cba-mini{font-size:11.5px;color:var(--muted)}
+#v-cordoba .cba-nota{background:#f5f5f4;border-radius:10px;padding:10px 12px;font-size:12.5px;margin:8px 0}
+#v-cordoba table.cba-mt{width:100%;min-width:0;border-collapse:collapse;font-size:13px}
+#v-cordoba table.cba-mt th:first-child,#v-cordoba table.cba-mt td:first-child{position:static;box-shadow:none}
+#v-cordoba table.cba-mt th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);padding:7px 8px;border-bottom:1.5px solid var(--line)}
+#v-cordoba table.cba-mt td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+#v-cordoba table.cba-mt .n{text-align:right;white-space:nowrap}
+#v-cordoba .cba-movf{border:1.5px solid #bfdbfe;background:#f8fbff;border-radius:12px;padding:12px 14px;margin-top:12px}
+#v-cordoba .cba-movf-t{font-weight:800;font-size:13.5px;margin-bottom:8px}
 #cba-modal{position:fixed;inset:0;background:rgba(15,15,15,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px}
 #cba-modal .b{background:#fff;border-radius:14px;width:100%;max-width:760px;max-height:94vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.25)}
 #cba-modal .h{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e7e5e4;font-size:15.5px}
@@ -281,7 +299,7 @@
   }
   function cerrar() { const m = document.getElementById('cba-modal'); if (m) m.remove(); }
   CBA.cerrar = cerrar;
-  const err = t => { const e = document.getElementById('cba-err'); if (e) { e.textContent = t; e.style.display = t ? 'block' : 'none'; } };
+  const err = t => { const e = document.querySelector('#cba-modal #cba-err') || document.getElementById('cba-err'); if (e) { e.textContent = t; e.style.display = t ? 'block' : 'none'; } };
   const v = id => { const e = document.getElementById(id); return e ? (e.type === 'checkbox' ? e.checked : e.value) : null; };
   const bloquear = b => document.querySelectorAll('#cba-modal .ft button, #v-cordoba .cba-form .ft button').forEach(x => { x.disabled = b; });
 
@@ -298,12 +316,12 @@
     if (!puede()) { toast('No tenés permisos para esta sección', 'warn'); return; }
     if (id && !CBA.rows.find(x => String(x.id) === String(id))) { toast('No se encontró el trámite', 'warn'); return; }
     cerrar();
-    CBA.modo = 'form'; CBA.formId = id || null;
+    CBA.modo = 'form'; CBA.formId = id || null; CBA.movForm = null; CBA._verAnul = false;
     CBA.render();
     try { document.getElementById('v-cordoba').scrollIntoView({ block: 'start' }); } catch (e) {}
     setTimeout(() => { const i = document.getElementById('cba-dominio'); if (i && !id) i.focus(); }, 30);
   };
-  CBA.volver = function () { cerrar(); CBA.modo = 'lista'; CBA.formId = null; CBA.render(); };
+  CBA.volver = function () { cerrar(); CBA.modo = 'lista'; CBA.formId = null; CBA.movForm = null; CBA.render(); };
 
   function vistaForm() {
     const id = CBA.formId;
@@ -352,6 +370,11 @@
       <div class="cba-form cba-f">${html}
         <div class="err" id="cba-err"></div>
         <div class="ft">${meta}${r && puedeBorrar() ? `<button class="btn2 del" onclick="CBA.borrar(${r.id})">🗑 Borrar</button>` : ''}<button class="btn2" onclick="CBA.volver()">Cancelar</button><button class="btn2 pri" onclick="CBA.guardar(${r ? r.id : 'null'})">Guardar</button></div>
+      </div>
+      <div class="cba-form cba-f">
+        <h3>💰 Plata del trámite</h3>
+        <div class="cba-mini">Ingresos (efectivo entregado, honorarios) y egresos (presentación de prenda, sellado…). Se guardan al instante en Caja y bancos, aparte del botón Guardar de arriba.</div>
+        ${r ? `<div id="cba-movs">${movsHTML(r)}</div>` : '<div class="cba-nota">Guardá el trámite primero; después vas a poder cargar la plata.</div>'}
       </div>`;
   }
 
@@ -423,6 +446,8 @@
   CBA.borrar = function (id) {
     if (!puedeBorrar()) return;
     const r = CBA.rows.find(x => String(x.id) === String(id)); if (!r) return;
+    const activos = CBA.caja.movs.filter(m => !m.anulado && String(m.cba_tramite_id) === String(id)).length;
+    if (activos) { toast('El trámite tiene ' + activos + ' movimiento(s) de plata activos: anulalos primero', 'warn'); return; }
     modal('🗑 Borrar trámite', `<div>Vas a borrar el trámite <b>${esc(r.dominio)}</b> · ${esc(r.tramite || '—')} · ${esc(r.comprador || '')} (ingreso ${fD(r.ingreso_oficina)}).<br><br>No se puede deshacer.</div>`,
       `<span class="meta"></span><button class="btn2" onclick="CBA.cerrar()">Volver</button><button class="btn2 pri" style="background:#b91c1c;border-color:#b91c1c" onclick="CBA.confirmarBorrar(${r.id})">Borrar</button>`);
   };
@@ -438,10 +463,172 @@
     await CBA.cargar(true);
   };
 
+  // ══════════════════════════════════════════════════════════════
+  // v3.9.62 — PLATA DE CADA TRÁMITE (SQL cba_caja.sql)
+  // Cada ingreso / egreso es un movimiento de Caja y bancos (c2_movimientos) con cba_tramite_id y cba_concepto_id.
+  // Lo cargan los usuarios de Córdoba. Los de Córdoba solo usan cuentas de efectivo; admin y claudionieva, cualquiera.
+  // Los movimientos no se borran: se anulan con motivo (igual que en Caja). Aparecen en Contabilidad 2 → Trámites.
+  // ══════════════════════════════════════════════════════════════
+  CBA.caja = { ok: false, err: null, movs: [], conceptos: [], cuentas: [] };
+  CBA.movForm = null;   // { tipo, concepto, monto } mientras se carga un movimiento
+  const EF_NOMBRE = 'efectivo entregado';
+  const escribeC2 = () => ME?.rol === 'admin' || ['admin', 'claudionieva'].includes(String(ME?.usr || '').toLowerCase());
+  const cuentasMov = () => CBA.caja.cuentas.filter(c => c.activa && (escribeC2() || c.tipo === 'efectivo'));
+  const ctaDef = () => { const l = cuentasMov(); const e = l.find(c => /c[oó]rdoba/i.test(c.nombre) && c.tipo === 'efectivo') || l.find(c => c.tipo === 'efectivo') || l[0]; return e ? e.id : ''; };
+  const conc = id => CBA.caja.conceptos.find(c => String(c.id) === String(id));
+  const cta = id => CBA.caja.cuentas.find(c => String(c.id) === String(id));
+  const $c = v => { v = Math.round((v || 0) * 100) / 100; const d = Math.abs(v % 1) > 0.004 ? 2 : 0; return (v < 0 ? '−$' : '$') + Math.abs(v).toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+  const movsDe = id => CBA.caja.movs.filter(m => String(m.cba_tramite_id) === String(id));
+  const esEF = m => { const c = conc(m.cba_concepto_id); return !!c && c.tipo === 'ingreso' && c.nombre.trim().toLowerCase() === EF_NOMBRE; };
+
+  async function cargarCaja() {
+    const k = CBA.caja;
+    try {
+      const all = typeof _sbAll === 'function' ? _sbAll : (f => f());
+      const [m, c, a] = await Promise.all([
+        all(() => SB.from('c2_movimientos').select('id,fecha,tipo,cuenta_id,monto,detalle,creado_por,anulado,anulado_por,motivo_anulacion,cba_tramite_id,cba_concepto_id').not('cba_tramite_id', 'is', null).order('id')),
+        SB.from('cba_conceptos').select('*').order('orden').order('nombre'),
+        SB.from('c2_cuentas').select('id,nombre,tipo,fecha_inicio,activa').order('orden').order('id')
+      ]);
+      const e = m.error || c.error || a.error; if (e) throw e;
+      k.movs = m.data || []; k.conceptos = c.data || []; k.cuentas = a.data || [];
+      k.ok = true; k.err = null;
+    } catch (e) {
+      const t = String(e.message || e);
+      k.ok = false; k.err = /does not exist|relation|schema cache|Could not find|cba_tramite_id|cba_concepto_id/i.test(t) ? 'faltaSQL' : t;
+      console.warn('Córdoba caja:', t);
+    }
+  }
+  CBA.cargarCaja = cargarCaja;
+  // redibuja solo el bloque de plata (no toca lo que se está escribiendo en el trámite)
+  function pintarMovs() { const b = document.getElementById('cba-movs'); const r = CBA.rows.find(x => String(x.id) === String(CBA.formId)); if (b && r) b.innerHTML = movsHTML(r); }
+  CBA.pintarMovs = pintarMovs;
+
+  function movsHTML(r) {
+    const k = CBA.caja;
+    if (k.err === 'faltaSQL') return '<div class="cba-nota">⚠️ Para cargar la plata del trámite hay que correr <b>cba_caja.sql</b> en Supabase.</div>';
+    if (!k.ok) return `<div class="cba-nota">No se pudieron cargar los movimientos: ${esc(k.err || '—')}</div>`;
+    const ms = movsDe(r.id).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)) || a.id - b.id);
+    const act = ms.filter(m => !m.anulado), anul = ms.length - act.length;
+    const ing = act.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + (num(m.monto) || 0), 0);
+    const egr = act.filter(m => m.tipo === 'egreso').reduce((s, m) => s + (num(m.monto) || 0), 0);
+    const efPend = !r.ef_no && num(r.ef_monto) > 0 && !act.some(esEF);
+    const pm = puede();
+    const filas = ms.filter(m => !m.anulado || CBA._verAnul).map(m => {
+      const c = conc(m.cba_concepto_id), a = cta(m.cuenta_id);
+      const st = m.anulado ? ' style="opacity:.5;text-decoration:line-through"' : '';
+      return `<tr${m.anulado ? ` title="Anulado por ${esc(m.anulado_por || '—')}: ${esc(m.motivo_anulacion || '')}"` : ''}>
+        <td${st}>${fD(m.fecha)}</td><td${st}><b>${esc(c ? c.nombre : '—')}</b>${m.detalle ? `<div class="cba-mini">${esc(m.detalle)}</div>` : ''}${m.anulado ? `<div class="cba-mini">Anulado: ${esc(m.motivo_anulacion || '—')}</div>` : ''}</td>
+        <td${st}>${esc(a ? a.nombre : '—')}</td>
+        <td class="n pos"${st}>${m.tipo === 'ingreso' ? $c(num(m.monto)) : ''}</td><td class="n neg"${st}>${m.tipo === 'egreso' ? $c(num(m.monto)) : ''}</td>
+        <td class="cba-mini">${esc(m.creado_por || '')}</td>
+        <td style="text-align:right">${pm && !m.anulado ? `<button class="btn2" style="padding:3px 9px;font-size:12px" onclick="CBA.anularMov(${m.id})">Anular</button>` : ''}</td></tr>`;
+    }).join('');
+    const f = CBA.movForm;
+    let form = '';
+    if (f) {
+      const cons = CBA.caja.conceptos.filter(c => c.tipo === f.tipo && c.activo);
+      form = `<div class="cba-movf">
+        <div class="cba-movf-t">${f.tipo === 'ingreso' ? '➕ Nuevo ingreso de plata' : '➖ Nuevo egreso de plata'}</div>
+        <div class="g">
+          <label>Concepto<select id="cba-m-con" onchange="var w=document.getElementById('cba-m-nw');w.style.display=this.value==='__nuevo'?'':'none';if(this.value==='__nuevo')document.getElementById('cba-m-nv').focus()">
+            <option value="">— elegí —</option>${cons.map(c => `<option value="${c.id}"${String(f.concepto) === String(c.id) ? ' selected' : ''}>${esc(c.nombre)}</option>`).join('')}<option value="__nuevo">➕ Agregar nuevo…</option></select>
+            <span id="cba-m-nw" style="display:none"><input id="cba-m-nv" placeholder="Nuevo concepto" style="margin-top:4px;width:100%"></span></label>
+          <label>Monto<input type="text" inputmode="decimal" id="cba-m-monto" value="${f.monto ? Math.round(f.monto).toLocaleString('es-AR') : ''}" placeholder="$ 0"></label>
+          <label>Fecha<input type="date" id="cba-m-fecha" value="${hoy()}" max="${hoy()}"></label>
+          <label>Cuenta<select id="cba-m-cta">${cuentasMov().map(c => `<option value="${c.id}"${String(c.id) === String(ctaDef()) ? ' selected' : ''}>${esc(c.nombre)}</option>`).join('') || '<option value="">(no hay cuenta de efectivo)</option>'}</select></label>
+          <label style="grid-column:span 2">Detalle (opcional)<input type="text" id="cba-m-det" placeholder="N° de recibo, observación…"></label>
+        </div>
+        <div class="err" id="cba-m-err"></div>
+        <div class="ft" style="margin-top:10px;padding-top:0;border:none"><span class="meta">Queda como movimiento en Caja y bancos</span><button class="btn2" onclick="CBA.movForm=null;CBA.pintarMovs()">Cancelar</button><button class="btn2 pri" id="cba-m-ok" onclick="CBA.guardarMov(${r.id})">Guardar</button></div>
+      </div>`;
+    }
+    return `
+      <div class="cba-tot">
+        <div><span>Ingresos</span><b class="pos">${$c(ing)}</b></div>
+        <div><span>Egresos</span><b class="neg">${$c(egr)}</b></div>
+        <div><span>Resultado</span><b class="${ing - egr < 0 ? 'neg' : 'pos'}">${$c(ing - egr)}</b></div>
+      </div>
+      ${efPend && pm && !f ? `<div class="cba-nota" style="background:#fef3c7">El trámite tiene <b>EF entregado ${$c(num(r.ef_monto))}</b> que todavía no entró en caja. <button class="btn2 pri" style="padding:4px 10px;font-size:12px;margin-left:6px" onclick="CBA.nuevoMov('ingreso',true)">Ingresar a caja</button></div>` : ''}
+      ${ms.length ? `<div style="overflow-x:auto"><table class="cba-mt"><thead><tr><th>Fecha</th><th>Concepto</th><th>Cuenta</th><th class="n">Ingreso</th><th class="n">Egreso</th><th>Cargó</th><th></th></tr></thead><tbody>${filas || '<tr><td colspan="7" class="cba-mini" style="text-align:center;padding:12px">Sin movimientos activos</td></tr>'}</tbody></table></div>` : '<div class="cba-mini" style="padding:6px 0 10px">Todavía no hay movimientos de plata en este trámite.</div>'}
+      ${anul ? `<label class="cba-mini" style="display:flex;gap:6px;align-items:center;margin-top:6px;font-weight:600"><input type="checkbox"${CBA._verAnul ? ' checked' : ''} onchange="CBA._verAnul=this.checked;CBA.pintarMovs()"> ver anulados (${anul})</label>` : ''}
+      ${form || (pm ? `<div style="display:flex;gap:8px;margin-top:12px"><button class="btn2 pri" onclick="CBA.nuevoMov('ingreso')">➕ Ingreso</button><button class="btn2" onclick="CBA.nuevoMov('egreso')">➖ Egreso</button></div>` : '')}`;
+  }
+
+  CBA.nuevoMov = function (tipo, ef) {
+    if (!puede() || !CBA.caja.ok) return;
+    if (!cuentasMov().length) { toast('No hay ninguna cuenta de efectivo activa en Caja y bancos', 'warn'); return; }
+    const r = CBA.rows.find(x => String(x.id) === String(CBA.formId)); if (!r) return;
+    const efc = CBA.caja.conceptos.find(c => c.tipo === 'ingreso' && c.nombre.trim().toLowerCase() === EF_NOMBRE);
+    CBA.movForm = ef ? { tipo: 'ingreso', concepto: efc ? efc.id : '', monto: num(r.ef_monto) } : { tipo };
+    pintarMovs();
+    setTimeout(() => { const i = document.getElementById(ef ? 'cba-m-ok' : 'cba-m-con'); if (i) i.focus(); }, 30);
+  };
+
+  CBA.guardarMov = async function (tramiteId) {
+    const f = CBA.movForm; if (!f) return;
+    const e2 = t => { const x = document.getElementById('cba-m-err'); if (x) { x.textContent = t; x.style.display = t ? 'block' : 'none'; } };
+    const conV = v('cba-m-con'), nuevo = String(v('cba-m-nv') || '').trim().replace(/\s+/g, ' ');
+    const monto = numIn(v('cba-m-monto')), fecha = v('cba-m-fecha'), ctaId = v('cba-m-cta'), det = String(v('cba-m-det') || '').trim();
+    if (!conV) return e2('Elegí el concepto');
+    if (conV === '__nuevo' && nuevo.length < 2) return e2('Escribí el nuevo concepto');
+    if (!monto || monto <= 0) return e2('El monto tiene que ser mayor a cero');
+    if (!fecha) return e2('Poné la fecha');
+    if (fecha > hoy()) return e2('La fecha no puede ser futura');
+    const c = cta(ctaId); if (!c) return e2('Elegí la cuenta');
+    if (c.fecha_inicio && fecha < String(c.fecha_inicio).slice(0, 10)) return e2(`La cuenta ${c.nombre} arranca el ${fD(c.fecha_inicio)}: la fecha no puede ser anterior`);
+    const btn = document.getElementById('cba-m-ok'); if (btn) btn.disabled = true; e2('');
+    try {
+      let con = conc(conV);
+      if (conV === '__nuevo') {
+        con = CBA.caja.conceptos.find(x => x.tipo === f.tipo && x.nombre.trim().toLowerCase() === nuevo.toLowerCase());
+        if (con && !con.activo) { await SB.from('cba_conceptos').update({ activo: true }).eq('id', con.id); con.activo = true; }
+        if (!con) {
+          const orden = CBA.caja.conceptos.filter(x => x.tipo === f.tipo).reduce((m, x) => Math.max(m, x.orden || 0), 0) + 1;
+          const rc = await SB.from('cba_conceptos').insert({ tipo: f.tipo, nombre: nuevo, orden, creado_por: quien() }).select().single();
+          if (rc.error) throw rc.error;
+          con = rc.data; CBA.caja.conceptos.push(con);
+        }
+      }
+      const res = await SB.from('c2_movimientos').insert({ fecha, tipo: f.tipo, cuenta_id: Number(ctaId), monto, detalle: det || null, creado_por: quien(), cba_tramite_id: Number(tramiteId), cba_concepto_id: con.id }).select().single();
+      if (res.error) throw res.error;
+      const r = CBA.rows.find(x => String(x.id) === String(tramiteId));
+      if (typeof registrarHistorial === 'function') registrarHistorial('cba_tramites', tramiteId, [{ campo: 'plata · ' + f.tipo, ant: null, nuevo: con.nombre + ' ' + monto + ' · ' + c.nombre }]);
+      try { if (typeof _olyarNotify === 'function') _olyarNotify('cba'); } catch (e) {}
+      CBA.movForm = null;
+      toast((f.tipo === 'ingreso' ? 'Ingreso' : 'Egreso') + ' registrado en ' + c.nombre + ' ✓', 'ok');
+      await cargarCaja(); pintarMovs();
+    } catch (err) { if (btn) btn.disabled = false; e2('Error: ' + (err.message || err)); }
+  };
+
+  CBA.anularMov = function (id) {
+    const m = CBA.caja.movs.find(x => String(x.id) === String(id)); if (!m || !puede()) return;
+    const c = conc(m.cba_concepto_id);
+    modal('Anular movimiento', `<div style="margin-bottom:10px">${fD(m.fecha)} · <b>${esc(c ? c.nombre : '—')}</b> · ${$c(num(m.monto))} (${m.tipo})</div>
+      <label>Motivo (obligatorio)<input type="text" id="cba-a-mot" placeholder="Ej.: monto mal cargado"></label>
+      <div class="cba-mini" style="margin-top:8px">El movimiento no se borra: deja de contar en el trámite y en el saldo de la cuenta.</div>`,
+      `<span class="meta"></span><button class="btn2" onclick="CBA.cerrar()">Volver</button><button class="btn2 pri" style="background:#b91c1c;border-color:#b91c1c" onclick="CBA.confirmarAnularMov(${m.id})">Anular</button>`);
+    setTimeout(() => { const i = document.getElementById('cba-a-mot'); if (i) i.focus(); }, 30);
+  };
+  CBA.confirmarAnularMov = async function (id) {
+    const mot = String(v('cba-a-mot') || '').trim();
+    if (mot.length < 3) return err('Escribí el motivo');
+    const m = CBA.caja.movs.find(x => String(x.id) === String(id)); if (!m) return;
+    const bm = b => document.querySelectorAll('#cba-modal .ft button').forEach(x => { x.disabled = b; });   // solo los de la ventanita
+    bm(true); err('');
+    const res = await SB.from('c2_movimientos').update({ anulado: true, anulado_por: quien(), anulado_at: new Date().toISOString(), motivo_anulacion: mot }).eq('id', id).eq('anulado', false);
+    if (res.error) { bm(false); return err('Error: ' + res.error.message); }
+    if (typeof registrarHistorial === 'function') registrarHistorial('c2_movimientos', id, [{ campo: 'anulado', ant: 'false', nuevo: 'true · ' + mot }]);
+    try { if (typeof _olyarNotify === 'function') _olyarNotify('cba'); } catch (e) {}
+    cerrar(); toast('Movimiento anulado', 'ok');
+    await cargarCaja(); pintarMovs();
+  };
+
   CBA.init = function () {
     if (!puede()) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
-    cerrar(); CBA.modo = 'lista'; CBA.formId = null; CBA.pag = 1;
+    cerrar(); CBA.modo = 'lista'; CBA.formId = null; CBA.movForm = null; CBA.pag = 1;
+    const pend = window._cbaAbrir; window._cbaAbrir = null;   // v3.9.62: trámite pedido desde Contabilidad 2 → Trámites
     CBA.render();
-    CBA.cargar(CBA.cargado && CBA.ok);
+    CBA.cargar(CBA.cargado && CBA.ok).then(() => { if (pend && CBA.rows.some(x => String(x.id) === String(pend))) CBA.abrir(pend); });
   };
 })();

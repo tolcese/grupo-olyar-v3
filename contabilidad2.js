@@ -1,11 +1,12 @@
 // ══════════════════════════════════════════════════════════════
-// CONTABILIDAD 2 — Etapas 1, 2, 3 y Gastos de la 4 (v3.9.54)
+// CONTABILIDAD 2 — Etapas 1, 2, 3 y 4 (Gastos y Trámites) (v3.9.62)
 // Etapa 1 (lectura): liquidación, parámetros, controles.
 // Etapa 2: Caja y bancos (tablas c2_*). Los pagos de una operación también tildan la tabla contabilidad.
 // Etapa 3: Cobrar y pagar (pendientes agrupados por agencia / gestor / banco).
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
 // v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
+// v3.9.62: sección Trámites (plata de los trámites de Córdoba; SQL cba_caja.sql). Caja reconoce esos movimientos.
 // v3.9.54: Gastos por CATEGORÍA (tabla c2_gastos_cat + columna c2_movimientos.gasto_cat_id; SQL c2_gastos.sql), ingreso o egreso.
 // v3.9.53: sección Gastos (editar y anular con motivo).
 // v3.9.52: pagos extras en Caja (vínculo 'extras'; SQL c2_extras.sql).
@@ -339,7 +340,7 @@
     const root = document.getElementById('v-contabilidad2');
     if (!root) return;
     css();
-    const nav = SECCIONES.map(([k, t, etapa]) => etapa <= 3 || k === 'gastos'
+    const nav = SECCIONES.map(([k, t, etapa]) => etapa <= 3 || k === 'gastos' || k === 'tramites'
       ? `<button class="${C2.seccion === k ? 'on' : ''}" onclick="C2.ir('${k}')">${t}</button>`
       : `<button disabled title="Próxima etapa">${t}<small>(etapa ${etapa})</small></button>`).join('');
     let body;
@@ -349,6 +350,7 @@
     else if (C2.seccion === 'caja') body = vistaCaja();
     else if (C2.seccion === 'cobrarpagar') body = vistaCobrarPagar();
     else if (C2.seccion === 'gastos') body = vistaGastos();
+    else if (C2.seccion === 'tramites') body = vistaTramites();
     else if (C2.seccion === 'parametros') body = vistaParametros();
     else if (C2.seccion === 'controles') body = vistaControles();
     else body = '<div class="c2-card c2-empty">Próxima etapa</div>';
@@ -611,7 +613,7 @@
     if (!det) return null;
     return C2.caja.movs.find(i => !i.anulado && !i.vinculo && i.tipo === 'egreso' && String(i.solicitud_id) === String(m.solicitud_id) && String(i.fecha) === String(m.fecha) && String(i.cuenta_id) === String(m.cuenta_id) && i.detalle === det) || null;
   };
-  C2.caja = { cuentas: [], conceptos: [], movs: [], gcat: [], gcatOk: false, ok: false, err: null };
+  C2.caja = { cuentas: [], conceptos: [], movs: [], gcat: [], gcatOk: false, cba: { ok: false, tram: [], con: [] }, ok: false, err: null };
   C2.cajaF = { cuenta: '', desde: '', hasta: '', concepto: '', q: '', anulados: false };
   C2.cajaTab = 'movimientos';
   // v3.9.48: orden de la tabla de movimientos (clic en el encabezado)
@@ -661,6 +663,15 @@
       // v3.9.54: categorías de Gastos (si falta c2_gastos.sql, la sección Gastos lo avisa)
       const g = await SB.from('c2_gastos_cat').select('*').order('orden').order('nombre');
       k.gcat = g.error ? [] : (g.data || []); k.gcatOk = !g.error;
+      // v3.9.62: trámites de Córdoba y sus conceptos (si falta cba_caja.sql, la sección Trámites lo avisa)
+      try {
+        const [ct, cc] = await Promise.all([
+          _sbAll(() => SB.from('cba_tramites').select('id,ingreso_oficina,dominio,comprador,agencia,tramite,registro,ef_monto,ef_no').order('id')),
+          SB.from('cba_conceptos').select('*').order('orden').order('nombre')
+        ]);
+        const okCols = k.movs.length === 0 || 'cba_tramite_id' in k.movs[0];
+        k.cba = { ok: !ct.error && !cc.error && okCols, tram: ct.data || [], con: cc.data || [] };
+      } catch (e) { k.cba = { ok: false, tram: [], con: [] }; }
       k.ok = true; k.err = null;
     } catch (e) {
       k.ok = false;
@@ -1016,6 +1027,7 @@
 
   // ── Vista ──
   function descMov(m) {
+    if (m.cba_tramite_id) { const c = cbaC(m.cba_concepto_id); return 'Trámite · ' + (c ? c.nombre : '—'); }
     if (m.gasto_cat_id) { const g = gcat(m.gasto_cat_id); return 'Gastos · ' + (g ? g.nombre : '—'); }
     if (m.tipo === 'transferencia') { const d = cuenta(m.cuenta_destino_id); const o = cuenta(m.cuenta_id); return 'Transferencia ' + (o ? o.nombre : '—') + ' → ' + (d ? d.nombre : '—'); }
     const k = concepto(m.concepto_id);
@@ -1053,10 +1065,12 @@
       if (f.hasta && String(m.fecha) > f.hasta) return false;
       if (f.concepto === 'transferencia' && m.tipo !== 'transferencia') return false;
       if (f.concepto && String(f.concepto).startsWith('g:')) { if (String(m.gasto_cat_id || '') !== f.concepto.slice(2)) return false; }
+      else if (f.concepto && String(f.concepto).startsWith('t:')) { if (String(m.cba_concepto_id || '') !== f.concepto.slice(2)) return false; }
       else if (f.concepto && f.concepto !== 'transferencia' && String(m.concepto_id) !== String(f.concepto)) return false;
       if (f.q) {
         const r = m.solicitud_id ? (RECORDS || []).find(x => String(x.id) === String(m.solicitud_id)) : null;
-        const t = [m.detalle, descMov(m), m.creado_por, r && r.nombrecliente, r && r.concesionaria, r && r.gestorAsignado, m.monto].join(' ').toLowerCase();
+        const tr = m.cba_tramite_id ? cbaT(m.cba_tramite_id) : null;
+        const t = [m.detalle, descMov(m), m.creado_por, r && r.nombrecliente, r && r.concesionaria, r && r.gestorAsignado, tr && tr.dominio, tr && tr.comprador, m.monto].join(' ').toLowerCase();
         if (!t.includes(f.q.toLowerCase())) return false;
       }
       return true;
@@ -1070,7 +1084,7 @@
         .forEach(m => { s += efecto(m, c.id); saldoTras[m.id] = s; });
     }
     // orden elegido; desempate por fecha y carga (más nuevo primero). Sin dato (p.ej. sin operación) va siempre al final.
-    const cliente = m => { if (!m.solicitud_id) return ''; const r = (RECORDS || []).find(x => String(x.id) === String(m.solicitud_id)); return String((r && r.nombrecliente) || '').trim().toUpperCase(); };
+    const cliente = m => { if (m.cba_tramite_id) { const t = cbaT(m.cba_tramite_id); return t ? String(t.dominio || '').toUpperCase() : ''; } if (!m.solicitud_id) return ''; const r = (RECORDS || []).find(x => String(x.id) === String(m.solicitud_id)); return String((r && r.nombrecliente) || '').trim().toUpperCase(); };
     const montoCol = (m, lado) => {
       const v = num(m.monto) || 0;
       if (m.tipo === 'ingreso') return lado === 'ingreso' ? v : null;
@@ -1122,7 +1136,7 @@
         <td${st}>${esc(c ? c.nombre : '—')}${m.tipo === 'transferencia' && cuenta(m.cuenta_destino_id) ? ' → ' + esc(cuenta(m.cuenta_destino_id).nombre) : ''}</td>
         <td${st}>${esc(descMov(m))}${m.anulado ? ' <span class="c2-b re" style="text-decoration:none">anulado</span>' : ''}</td>
         <td${st}>${esc(m.detalle || '')}${m.anulado ? `<div class="c2-f" style="font-size:11px;text-decoration:none">Motivo: ${esc(m.motivo_anulacion || '—')}</div>` : ''}</td>
-        <td>${r ? `<a href="#" onclick="C2.ir('liquidacion','${esc(r.id)}');return false">${esc(r.nombrecliente || r.id)}</a>` : ''}</td>
+        <td>${r ? `<a href="#" onclick="C2.ir('liquidacion','${esc(r.id)}');return false">${esc(r.nombrecliente || r.id)}</a>` : m.cba_tramite_id ? (() => { const t = cbaT(m.cba_tramite_id); return t ? `<a href="#" onclick="C2.verTramite(${t.id});return false" title="Trámite de Córdoba">📍 ${esc(t.dominio || '—')}</a>` : '📍 trámite'; })() : ''}</td>
         <td class="n pos"${st}>${colI}</td>
         <td class="n neg"${st}>${colE}</td>
         ${f.cuenta ? `<td class="n" style="font-weight:700">${m.anulado ? '' : $c(saldoTras[m.id])}</td>` : ''}
@@ -1131,6 +1145,7 @@
       </tr>`;
     }).join('');
     const conOpts = k.conceptos.map(c => `<option value="${c.id}"${String(f.concepto) === String(c.id) ? ' selected' : ''}>${esc(c.nombre)}</option>`).join('')
+      + (k.cba.con.length ? '<optgroup label="Trámites Córdoba">' + k.cba.con.map(c => `<option value="t:${c.id}"${f.concepto === 't:' + c.id ? ' selected' : ''}>${esc(c.nombre)}</option>`).join('') + '</optgroup>' : '')
       + (k.gcat.length ? '<optgroup label="Gastos">' + k.gcat.map(g => `<option value="g:${g.id}"${f.concepto === 'g:' + g.id ? ' selected' : ''}>${esc(g.nombre)}</option>`).join('') + '</optgroup>' : '');
     return `
       <div class="c2-ctas">${tarjetas}<div class="c2-cta tot"><div class="l">Total en cuentas</div><div class="v ${total < 0 ? 'neg' : ''}">${$c(total)}</div><div class="c2-f" style="font-size:11px">${activas.length} cuenta${activas.length !== 1 ? 's' : ''}</div></div></div>
@@ -1151,7 +1166,7 @@
         ${(() => {
           const act = [];
           if (f.cuenta) { const c = cuenta(f.cuenta); act.push('cuenta <b>' + esc(c ? c.nombre : '?') + '</b>'); }
-          if (f.concepto) act.push('concepto <b>' + esc(f.concepto === 'transferencia' ? 'Transferencias' : String(f.concepto).startsWith('g:') ? 'Gastos · ' + ((gcat(f.concepto.slice(2)) || {}).nombre || '?') : (concepto(f.concepto) || {}).nombre || '?') + '</b>');
+          if (f.concepto) act.push('concepto <b>' + esc(f.concepto === 'transferencia' ? 'Transferencias' : String(f.concepto).startsWith('g:') ? 'Gastos · ' + ((gcat(f.concepto.slice(2)) || {}).nombre || '?') : String(f.concepto).startsWith('t:') ? 'Trámite · ' + ((cbaC(f.concepto.slice(2)) || {}).nombre || '?') : (concepto(f.concepto) || {}).nombre || '?') + '</b>');
           if (f.desde) act.push('desde <b>' + fD(f.desde) + '</b>');
           if (f.hasta) act.push('hasta <b>' + fD(f.hasta) + '</b>');
           if (f.q) act.push('búsqueda <b>“' + esc(f.q) + '”</b>');
@@ -1582,6 +1597,95 @@
           : `<div class="c2-empty">${todos.length ? 'No hay gastos con estos filtros.' : 'Todavía no hay gastos cargados.' + (w ? '<br><br><button class="c2-btn pri" onclick="C2.abrirGasto()">➕ Cargar el primero</button>' : '')}</div>`}
           </div>
         </div>`;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // ETAPA 4 — TRÁMITES (v3.9.62)
+  // Plata de los trámites de Córdoba: movimientos de c2_movimientos con cba_tramite_id (se cargan en Córdoba).
+  // Acá solo se consulta: por trámite, ingresos − egresos = resultado; EF entregado sin ingresar a caja.
+  // ══════════════════════════════════════════════════════════════
+  const cbaT = id => C2.caja.cba.tram.find(t => String(t.id) === String(id));
+  const cbaC = id => C2.caja.cba.con.find(c => String(c.id) === String(id));
+  const cbaEsEF = m => { const c = cbaC(m.cba_concepto_id); return !!c && c.tipo === 'ingreso' && c.nombre.trim().toLowerCase() === 'efectivo entregado'; };
+  C2.trF = { desde: '', hasta: '', q: '', tramite: '', solo: '' };
+  C2.trFiltrar = function (k, v) { C2.trF[k] = v; C2.render(); };
+  // abre el trámite en la sección Córdoba
+  C2.verTramite = function (id) {
+    if (typeof _puedeCordoba === 'function' && !_puedeCordoba()) { toast('No tenés acceso a la sección Córdoba', 'warn'); return; }
+    window._cbaAbrir = id;
+    if (typeof abrirCordoba === 'function') abrirCordoba();
+  };
+
+  function vistaTramites() {
+    const k = C2.caja, x = k.cba, f = C2.trF;
+    const head = `<div class="c2-kick">Contabilidad 2 · etapa 4</div><div class="c2-h1">Trámites</div>
+      <div class="c2-sub">Plata de los trámites de la sección Córdoba. Se carga desde Córdoba, dentro de cada trámite; acá se consulta.</div>`;
+    if (k.err) return head + `<div class="c2-card c2-empty" style="margin-top:16px">Error al cargar Caja y bancos: ${esc(k.err)}</div>`;
+    if (!x.ok) return head + `<div class="c2-card c2-empty" style="margin-top:16px">⚠️ Falta preparar la plata de los trámites.<br><small>Hay que correr <b>cba_caja.sql</b> en el SQL Editor de Supabase y después tocar 🔄 Actualizar datos.</small></div>`;
+    const movs = k.movs.filter(m => m.cba_tramite_id && !m.anulado);
+    const porT = {};
+    movs.forEach(m => { const o = porT[m.cba_tramite_id] = porT[m.cba_tramite_id] || { i: 0, e: 0, n: 0, ef: false, ult: '' }; o[m.tipo === 'ingreso' ? 'i' : 'e'] += num(m.monto) || 0; o.n++; if (cbaEsEF(m)) o.ef = true; if (String(m.fecha) > o.ult) o.ult = String(m.fecha); });
+    const efPend = t => !t.ef_no && (num(t.ef_monto) || 0) > 0 && !(porT[t.id] && porT[t.id].ef);
+    // KPIs del mes (por fecha del movimiento)
+    const mes = hoy().slice(0, 7);
+    const mm = movs.filter(m => String(m.fecha).slice(0, 7) === mes);
+    const iM = mm.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + (num(m.monto) || 0), 0), eM = mm.filter(m => m.tipo === 'egreso').reduce((s, m) => s + (num(m.monto) || 0), 0);
+    const pend = x.tram.filter(efPend), pendTot = pend.reduce((s, t) => s + (num(t.ef_monto) || 0), 0);
+    let lista = x.tram.filter(t => porT[t.id] || efPend(t)).filter(t => {
+      if (f.solo === 'ef' && !efPend(t)) return false;
+      if (f.solo === 'mov' && !porT[t.id]) return false;
+      if (f.tramite && t.tramite !== f.tramite) return false;
+      if (f.desde && String(t.ingreso_oficina) < f.desde) return false;
+      if (f.hasta && String(t.ingreso_oficina) > f.hasta) return false;
+      if (f.q && ![t.dominio, t.comprador, t.agencia, t.tramite, t.registro].join(' ').toLowerCase().includes(f.q.toLowerCase())) return false;
+      return true;
+    }).sort((a, b) => String(b.ingreso_oficina).localeCompare(String(a.ingreso_oficina)) || b.id - a.id);
+    const tot = lista.reduce((s, t) => { const o = porT[t.id] || { i: 0, e: 0 }; s.i += o.i; s.e += o.e; return s; }, { i: 0, e: 0 });
+    // por concepto (de los trámites listados)
+    const ids = new Set(lista.map(t => String(t.id)));
+    const porC = {};
+    movs.filter(m => ids.has(String(m.cba_tramite_id))).forEach(m => { const o = porC[m.cba_concepto_id] = porC[m.cba_concepto_id] || { id: m.cba_concepto_id, tipo: m.tipo, t: 0, c: 0 }; o.t += num(m.monto) || 0; o.c++; });
+    const cs = Object.values(porC).sort((a, b) => (a.tipo === b.tipo ? b.t - a.t : a.tipo === 'ingreso' ? -1 : 1));
+    const linkOk = typeof _puedeCordoba !== 'function' || _puedeCordoba();
+    const filas = lista.map(t => {
+      const o = porT[t.id] || { i: 0, e: 0, n: 0 };
+      return `<tr${linkOk ? ` class="click" onclick="C2.verTramite(${t.id})" title="Abrir en Córdoba"` : ''}>
+        <td style="white-space:nowrap">${fD(t.ingreso_oficina)}</td>
+        <td style="font-weight:800;letter-spacing:.03em">${esc(t.dominio || '—')}</td>
+        <td>${esc(t.comprador || '—')}</td>
+        <td>${esc(t.tramite || '—')}</td>
+        <td class="n pos">${o.i ? $c(o.i) : ''}</td>
+        <td class="n neg">${o.e ? $c(o.e) : ''}</td>
+        <td class="n" style="font-weight:800">${o.n ? `<span class="${o.i - o.e < 0 ? 'neg' : 'pos'}">${$c(o.i - o.e)}</span>` : ''}</td>
+        <td>${efPend(t) ? `<span class="c2-b am">EF ${$c(num(t.ef_monto))} sin ingresar</span>` : o.n ? '<span class="c2-b gr">en caja</span>' : ''}</td>
+      </tr>`;
+    }).join('');
+    const opsTram = [...new Set(x.tram.map(t => t.tramite).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'))
+      .map(v => `<option${f.tramite === v ? ' selected' : ''}>${esc(v)}</option>`).join('');
+    return head + `
+      <div class="c2-kpis" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+        <div class="c2-kpi"><div class="l">Ingresos del mes</div><div class="v pos">${$c(iM)}</div></div>
+        <div class="c2-kpi"><div class="l">Egresos del mes</div><div class="v neg">${$c(eM)}</div></div>
+        <div class="c2-kpi"><div class="l">Resultado del mes</div><div class="v ${iM - eM < 0 ? 'neg' : 'pos'}">${$c(iM - eM)}</div></div>
+        <div class="c2-kpi c2-kpi-click${f.solo === 'ef' ? ' on' : ''}" onclick="C2.trFiltrar('solo','${f.solo === 'ef' ? '' : 'ef'}')" title="Ver solo estos"><div class="l">EF entregado sin ingresar a caja</div><div class="v">${$c(pendTot)}</div><div class="c2-f" style="font-size:11px">${pend.length} trámite${pend.length !== 1 ? 's' : ''}</div></div>
+      </div>
+      ${cs.length ? `<div class="c2-sub" style="margin:0 0 6px">Por concepto · de los trámites de la lista</div>
+      <div class="c2-ctas">${cs.map(o => `<div class="c2-cta" style="cursor:default"><div class="l">${esc((cbaC(o.id) || {}).nombre || '—')} <span class="c2-f" style="font-size:11px">×${o.c}</span></div><div class="v ${o.tipo === 'ingreso' ? 'pos' : 'neg'}" style="font-size:17px">${o.tipo === 'ingreso' ? '+' : '−'}${$c(o.t)}</div></div>`).join('')}</div>` : ''}
+      <div class="c2-card">
+        <div class="c2-fil" style="margin-top:0">
+          <input id="c2-trq" placeholder="🔍 Dominio, comprador, agencia…" value="${esc(f.q)}" oninput="C2.trF.q=this.value;clearTimeout(C2._t);C2._t=setTimeout(()=>{C2.render();const i=document.getElementById('c2-trq');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},250)" style="min-width:220px">
+          <select onchange="C2.trFiltrar('tramite',this.value)"><option value="">Todos los trámites</option>${opsTram}</select>
+          <select onchange="C2.trFiltrar('solo',this.value)"><option value=""${!f.solo ? ' selected' : ''}>Con plata o EF pendiente</option><option value="mov"${f.solo === 'mov' ? ' selected' : ''}>Solo con movimientos</option><option value="ef"${f.solo === 'ef' ? ' selected' : ''}>Solo EF sin ingresar</option></select>
+          <span class="c2-kick">Ingreso desde</span><input type="date" value="${f.desde}" onchange="C2.trFiltrar('desde',this.value)">
+          <span class="c2-kick">hasta</span><input type="date" value="${f.hasta}" onchange="C2.trFiltrar('hasta',this.value)">
+          <button class="c2-btn" onclick="C2.trF={desde:'',hasta:'',q:'',tramite:'',solo:''};C2.render()">✕ Limpiar</button>
+        </div>
+        <div class="c2-sub" style="margin-bottom:8px">${lista.length} trámite${lista.length !== 1 ? 's' : ''} · Ingresos <b class="pos">${$c(tot.i)}</b> · Egresos <b class="neg">${$c(tot.e)}</b> · Resultado <b class="${tot.i - tot.e < 0 ? 'neg' : 'pos'}">${$c(tot.i - tot.e)}</b>${linkOk ? ' · tocá un trámite para abrirlo en Córdoba' : ''}</div>
+        <div style="overflow-x:auto">
+        ${lista.length ? `<table class="c2-t" style="min-width:760px"><thead><tr><th>Ingreso</th><th>Dominio</th><th>Comprador</th><th>Trámite</th><th class="n">Ingresos</th><th class="n">Egresos</th><th class="n">Resultado</th><th>Estado</th></tr></thead><tbody>${filas}</tbody></table>`
+        : '<div class="c2-empty">No hay trámites con plata cargada todavía.<br><small>Se carga en Córdoba → abrir un trámite → 💰 Plata del trámite.</small></div>'}
+        </div>
+      </div>`;
   }
 
   // ══════════════════════════════════════════════════════════════
