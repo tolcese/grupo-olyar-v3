@@ -6,7 +6,8 @@
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
 // v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
-// v3.9.63: malvarez (Mariano Alvarez) entra a Contabilidad 2 (solo lectura, como golcese/tolcese).
+// v3.9.64: malvarez carga, edita y anula en Contabilidad 2 (igual que admin, claudionieva y malvarez).
+// v3.9.63: malvarez (Mariano Alvarez) entra a Contabilidad 2.
 // v3.9.62: sección Trámites (plata de los trámites de Córdoba; SQL cba_caja.sql). Caja reconoce esos movimientos.
 // v3.9.54: Gastos por CATEGORÍA (tabla c2_gastos_cat + columna c2_movimientos.gasto_cat_id; SQL c2_gastos.sql), ingreso o egreso.
 // v3.9.53: sección Gastos (editar y anular con motivo).
@@ -54,7 +55,7 @@
   const dias = f => { if (!f) return null; const d = new Date(String(f).slice(0, 10) + 'T00:00:00'); if (isNaN(d)) return null; const h = new Date(); h.setHours(0, 0, 0, 0); return Math.floor((h - d) / 86400000); };
 
   C2.puede = () => (typeof _bloqContab !== 'function' || !_bloqContab()) && (typeof canEdit !== 'function' || canEdit()) &&
-    (ME?.rol === 'admin' || ['claudionieva', 'golcese', 'tolcese', 'Invitado', 'malvarez'].includes(ME?.usr));   // v3.9.63: + malvarez (solo ve)
+    (ME?.rol === 'admin' || ['claudionieva', 'golcese', 'tolcese', 'Invitado', 'malvarez'].includes(ME?.usr));   // v3.9.63: + malvarez
 
   // v3.9.44: impuesto al crédito FIJO en 1,2 % (no se toma de Parámetros / coeficientes)
   const IMP_CREDITO_PCT = 1.2;
@@ -600,7 +601,7 @@
   const arranque = () => { const fs = C2.caja.cuentas.filter(c => c.activa && c.fecha_inicio).map(c => String(c.fecha_inicio).slice(0, 10)).sort(); return fs[0] || FECHA_ARRANQUE; };
   // pesos con centavos solo si los hay
   const $c = v => { v = Math.round((v || 0) * 100) / 100; const d = Math.abs(v % 1) > 0.004 ? 2 : 0; return (v < 0 ? '−$' : '$') + Math.abs(v).toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d }); };
-  const _C2_ESCRIBEN = ['admin', 'claudionieva'];
+  const _C2_ESCRIBEN = ['admin', 'claudionieva', 'malvarez'];   // v3.9.64: + malvarez (mismos permisos que admin en C2)
   const IMP_DET = 'Impuesto débitos/créditos · pago agencia';
   const IMP_DET_LIQ = 'Impuesto débitos/créditos · liquidación';
   // v3.9.49: bancos que debitan el impuesto (1,2 %) al LIQUIDAR en vez de al pagar a la agencia
@@ -783,7 +784,7 @@
     return 0;
   }
   C2.abrirPago = function (id, vinculo, desdeVieja) {
-    if (!C2.puedeEscribir()) { toast('Solo admin y claudionieva registran movimientos', 'warn'); return; }
+    if (!C2.puedeEscribir()) { toast('Solo admin, claudionieva y malvarez registran movimientos', 'warn'); return; }
     if (!C2.caja.ok) { toast('Caja y bancos no está disponible', 'er'); return; }
     if (!C2.caja.cuentas.some(c => c.activa)) { toast('Primero cargá una cuenta en Caja y bancos → Cuentas y conceptos', 'warn'); return; }
     const r = (RECORDS || []).find(x => String(x.id) === String(id)); if (!r) return;
@@ -1039,7 +1040,7 @@
   function vistaCaja() {
     const k = C2.caja, w = C2.puedeEscribir();
     const head = `<div class="c2-kick">Contabilidad 2 · etapa 2</div><div class="c2-h1">Caja y bancos</div>
-      <div class="c2-sub">Saldos y movimientos de cada cuenta desde el ${fD(arranque())}.${w ? '' : ' Solo lectura: registran movimientos admin y claudionieva.'}</div>`;
+      <div class="c2-sub">Saldos y movimientos de cada cuenta desde el ${fD(arranque())}.${w ? '' : ' Solo lectura: registran movimientos admin, claudionieva y malvarez.'}</div>`;
     if (k.err === 'faltaSQL') return head + `<div class="c2-card c2-empty" style="margin-top:16px">⚠️ Todavía no están creadas las tablas de Caja y bancos.<br><small>Hay que correr <b>c2_etapa2.sql</b> en el SQL Editor de Supabase y después tocar 🔄 Actualizar datos.</small></div>`;
     if (k.err) return head + `<div class="c2-card c2-empty" style="margin-top:16px">Error al cargar Caja y bancos: ${esc(k.err)}</div>`;
     const tabs = `<div class="c2-tabs"><button class="${C2.cajaTab === 'movimientos' ? 'on' : ''}" onclick="C2.cajaTab='movimientos';C2.render()">Movimientos</button><button class="${C2.cajaTab === 'config' ? 'on' : ''}" onclick="C2.cajaTab='config';C2.render()">Cuentas y conceptos</button></div>`;
@@ -1342,7 +1343,7 @@
     return `
       <div class="c2-kick">Contabilidad 2 · etapa 3</div>
       <div class="c2-h1">Cobrar y pagar</div>
-      <div class="c2-sub">Lo pendiente de las operaciones en Liquidado o Pagado. Días = desde la fecha de Liquidado.${w ? '' : C2.caja.ok ? ' Solo lectura: registran admin y claudionieva.' : ''}</div>
+      <div class="c2-sub">Lo pendiente de las operaciones en Liquidado o Pagado. Días = desde la fecha de Liquidado.${w ? '' : C2.caja.ok ? ' Solo lectura: registran admin, claudionieva y malvarez.' : ''}</div>
       <div class="c2-kpis" style="grid-template-columns:repeat(auto-fit,minmax(165px,1fr))">${kpis}</div>
       <div class="c2-card">
         <div class="c2-fil" style="margin-top:0">
@@ -1363,7 +1364,7 @@
   // Cada gasto es un movimiento de Caja (ingreso o egreso) con gasto_cat_id; `detalle` = nota opcional.
   // Editar: tipo, categoría, fecha, cuenta, monto y detalle. Borrar = anular con motivo (C2.abrirAnular).
   // Categorías: agregar, renombrar, activar/desactivar y eliminar si no tienen gastos.
-  // Escriben solo admin y claudionieva (_C2_ESCRIBEN). SQL: c2_gastos.sql
+  // Escriben solo admin, claudionieva y malvarez (_C2_ESCRIBEN). SQL: c2_gastos.sql
   // ══════════════════════════════════════════════════════════════
   const gcat = id => C2.caja.gcat.find(g => String(g.id) === String(id));
   const esGasto = m => !!m.gasto_cat_id && (m.tipo === 'ingreso' || m.tipo === 'egreso');
@@ -1378,7 +1379,7 @@
 
   // ── alta / edición de un gasto ──
   C2.abrirGasto = function (id) {
-    if (!C2.puedeEscribir()) { toast('Solo admin y claudionieva cargan gastos', 'warn'); return; }
+    if (!C2.puedeEscribir()) { toast('Solo admin, claudionieva y malvarez cargan gastos', 'warn'); return; }
     if (!C2.caja.ok) { toast('Caja y bancos no está disponible', 'er'); return; }
     if (!C2.caja.gcatOk) { toast('Falta correr c2_gastos.sql en Supabase', 'warn'); return; }
     if (!C2.caja.cuentas.some(c => c.activa)) { toast('Primero cargá una cuenta en Caja y bancos → Cuentas y conceptos', 'warn'); return; }
@@ -1499,7 +1500,7 @@
   function vistaGastos() {
     const k = C2.caja, w = C2.puedeEscribir() && k.ok && k.gcatOk;
     const head = `<div class="c2-kick">Contabilidad 2 · etapa 4</div><div class="c2-h1">Gastos</div>
-      <div class="c2-sub">Gastos e ingresos que no son de una operación, por categoría. Cada uno queda como movimiento en Caja y bancos.${C2.puedeEscribir() ? '' : ' Solo lectura: cargan admin y claudionieva.'}</div>`;
+      <div class="c2-sub">Gastos e ingresos que no son de una operación, por categoría. Cada uno queda como movimiento en Caja y bancos.${C2.puedeEscribir() ? '' : ' Solo lectura: cargan admin, claudionieva y malvarez.'}</div>`;
     if (k.err === 'faltaSQL') return head + `<div class="c2-card c2-empty" style="margin-top:16px">⚠️ Todavía no están creadas las tablas de Caja y bancos (c2_etapa2.sql).</div>`;
     if (k.err) return head + `<div class="c2-card c2-empty" style="margin-top:16px">Error al cargar Caja y bancos: ${esc(k.err)}</div>`;
     if (!k.gcatOk) return head + `<div class="c2-card c2-empty" style="margin-top:16px">⚠️ Falta crear las categorías de Gastos.<br><small>Hay que correr <b>c2_gastos.sql</b> en el SQL Editor de Supabase y después tocar 🔄 Actualizar datos.</small></div>`;
