@@ -1,5 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 // CÓRDOBA — seguimiento de trámites de registro (v3.9.56 / v3.9.57)
+// v3.9.58: sin la línea vertical entre Dominio y Agencia.
 // v3.9.57: Nuevo ingreso y edición en pantalla propia (no ventana); sin botón actualizar: se refresca al instante
 //          (aviso Broadcast 'cba' en el canal olyar-sync, ver _olyarFetch en index).
 // Tablas: cba_tramites, cba_listas (SQL cba_tramites.sql)
@@ -110,7 +111,7 @@
 #v-cordoba table.cba-t tr:hover td{background:#f5f9ff;cursor:pointer}
 #v-cordoba table.cba-t td.obs{max-width:260px;overflow:hidden;text-overflow:ellipsis}
 #v-cordoba table.cba-t td.dom{font-weight:800;letter-spacing:.03em}
-#v-cordoba table.cba-t th:nth-child(2),#v-cordoba table.cba-t td:nth-child(2){position:sticky;left:0;z-index:1;box-shadow:1px 0 0 var(--line)}
+#v-cordoba table.cba-t th:nth-child(2),#v-cordoba table.cba-t td:nth-child(2){position:sticky;left:0;z-index:1}
 #v-cordoba table.cba-t th:nth-child(2){z-index:3}
 #v-cordoba .cba-no{display:inline-block;padding:1px 7px;border-radius:6px;background:#f1f5f9;color:#475569;font-weight:700;font-size:11px}
 #v-cordoba .cba-empty{text-align:center;color:var(--muted);padding:40px 10px}
