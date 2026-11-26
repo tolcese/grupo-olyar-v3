@@ -1,5 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 // CÓRDOBA — seguimiento de trámites de registro (v3.9.56 / v3.9.57)
+// v3.9.59: vista general paginada de a 20 (como Comercializadora).
 // v3.9.58: sin la línea vertical entre Dominio y Agencia.
 // v3.9.57: Nuevo ingreso y edición en pantalla propia (no ventana); sin botón actualizar: se refresca al instante
 //          (aviso Broadcast 'cba' en el canal olyar-sync, ver _olyarFetch en index).
@@ -12,7 +13,7 @@
 
   const CBA = window.CBA = {
     rows: [], listas: [], ok: false, err: null, cargando: false, cargado: false,
-    modo: 'lista', formId: null,   // v3.9.57: 'lista' = vista general, 'form' = pantalla de ingreso / edición
+    modo: 'lista', formId: null, pag: 1,   // v3.9.58: página actual de la vista general (20 por página)   // v3.9.57: 'lista' = vista general, 'form' = pantalla de ingreso / edición
     f: { q: '', tramite: '', registro: '', desde: '', hasta: '' },
     orden: { k: 'ingreso_oficina', dir: 'desc' }
   };
@@ -103,7 +104,9 @@
 #v-cordoba .cba-fil{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
 #v-cordoba .cba-fil input,#v-cordoba .cba-fil select{border:1.5px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;background:#fff}
 #v-cordoba .cba-k{font-size:12px;color:var(--muted);font-weight:600}
-#v-cordoba .cba-wrap{overflow:auto;max-height:calc(100vh - 290px);border:1px solid var(--line);border-radius:10px}
+#v-cordoba .cba-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px 10px 0 0}
+#v-cordoba .cba-wrap.solo{border-radius:10px}
+#v-cordoba .pagination{border:1px solid var(--line);border-top:none;border-radius:0 0 10px 10px}
 #v-cordoba table.cba-t{border-collapse:separate;border-spacing:0;font-size:12.5px;width:max-content;min-width:100%}
 #v-cordoba table.cba-t th{position:sticky;top:0;z-index:2;background:#f8fafc;text-align:left;font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);padding:8px 9px;border-bottom:1.5px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
 #v-cordoba table.cba-t th.on{color:#1d6fce}
@@ -192,19 +195,26 @@
   CBA.ordenar = function (k) {
     const o = CBA.orden;
     if (o.k === k) o.dir = o.dir === 'asc' ? 'desc' : 'asc'; else { o.k = k; o.dir = 'asc'; }
+    CBA.pag = 1;
     CBA.render();
   };
-  CBA.filtrar = function (k, v) { CBA.f[k] = v; CBA.render(); };
+  CBA.filtrar = function (k, v) { CBA.f[k] = v; CBA.pag = 1; CBA.render(); };
+  const POR_PAG = 20;
+  CBA.irPag = function (d) { CBA.pag += d; CBA.render(); try { document.getElementById('v-cordoba').scrollIntoView({ block: 'start' }); } catch (e) {} };
 
   function vistaGeneral() {
     const f = CBA.f, l = filtrados();
+    const total = l.length, maxPag = Math.max(1, Math.ceil(total / POR_PAG));
+    CBA.pag = Math.min(Math.max(CBA.pag || 1, 1), maxPag);
+    const ini = (CBA.pag - 1) * POR_PAG, fin = Math.min(ini + POR_PAG, total);
+    const pagina = l.slice(ini, fin);
     const mes = hoy().slice(0, 7);
     const delMes = CBA.rows.filter(r => String(r.ingreso_oficina).slice(0, 7) === mes).length;
     const sinEntregar = CBA.rows.filter(r => !r.entrega_doc_cliente).length;
     const ops = tipo => CBA.listas.filter(x => x.tipo === tipo && (x.activo || CBA.rows.some(r => r[tipo] === x.valor)))
       .map(x => `<option${f[tipo] === x.valor ? ' selected' : ''}>${esc(x.valor)}</option>`).join('');
     const th = CBA_th;
-    const filas = l.map(r => `<tr onclick="CBA.abrir(${r.id})" title="Tocá para editar">
+    const filas = pagina.map(r => `<tr onclick="CBA.abrir(${r.id})" title="Tocá para editar">
         <td>${fD(r.ingreso_oficina)}</td>
         <td class="dom">${esc(r.dominio)}</td>
         <td>${esc(r.agencia || '')}</td>
@@ -235,15 +245,23 @@
       <div class="cba-card">
         <div class="cba-fil">
           <input id="cba-q" placeholder="🔍 Dominio, comprador, DNI, agencia, obs…" value="${esc(f.q)}" style="min-width:250px"
-            oninput="CBA.f.q=this.value;clearTimeout(CBA._t);CBA._t=setTimeout(()=>{CBA.render();const i=document.getElementById('cba-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},250)">
+            oninput="CBA.f.q=this.value;CBA.pag=1;clearTimeout(CBA._t);CBA._t=setTimeout(()=>{CBA.render();const i=document.getElementById('cba-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},250)">
           <select onchange="CBA.filtrar('tramite',this.value)"><option value="">Todos los trámites</option>${ops('tramite')}</select>
           <select onchange="CBA.filtrar('registro',this.value)"><option value="">Todos los registros</option>${ops('registro')}</select>
           <span class="cba-k">Ingreso desde</span><input type="date" value="${f.desde}" onchange="CBA.filtrar('desde',this.value)">
           <span class="cba-k">hasta</span><input type="date" value="${f.hasta}" onchange="CBA.filtrar('hasta',this.value)">
-          ${filtrando ? `<button class="btn btn-s" onclick="CBA.f={q:'',tramite:'',registro:'',desde:'',hasta:''};CBA.render()">✕ Limpiar</button>` : ''}
+          ${filtrando ? `<button class="btn btn-s" onclick="CBA.f={q:'',tramite:'',registro:'',desde:'',hasta:''};CBA.pag=1;CBA.render()">✕ Limpiar</button>` : ''}
           <span class="cba-k" style="margin-left:auto">${l.length} de ${CBA.rows.length} · tocá una fila para editar</span>
         </div>
-        ${l.length ? `<div class="cba-wrap"><table class="cba-t"><thead><tr>${COLS.map(c => th(c[0], c[1])).join('')}</tr></thead><tbody>${filas}</tbody></table></div>`
+        ${l.length ? `<div class="cba-wrap${total > POR_PAG ? '' : ' solo'}"><table class="cba-t"><thead><tr>${COLS.map(c => th(c[0], c[1])).join('')}</tr></thead><tbody>${filas}</tbody></table></div>
+        ${total > POR_PAG ? `<div class="pagination">
+          <div class="pag-info">Mostrando ${ini + 1}–${fin} de ${total} registros</div>
+          <div class="pag-btns">
+            <button class="pag-btn" onclick="CBA.irPag(-1)"${CBA.pag <= 1 ? ' disabled' : ''}>← Anterior</button>
+            <span class="pag-num">Página ${CBA.pag} de ${maxPag}</span>
+            <button class="pag-btn" onclick="CBA.irPag(1)"${CBA.pag >= maxPag ? ' disabled' : ''}>Siguiente →</button>
+          </div>
+        </div>` : ''}`
         : `<div class="cba-empty">${CBA.rows.length ? 'No hay trámites con estos filtros.' : 'Todavía no hay trámites cargados.' + (puede() ? '<br><br><button class="btn btn-p" onclick="CBA.abrir()">➕ Nuevo ingreso</button>' : '')}</div>`}
       </div>`;
   }
@@ -422,7 +440,7 @@
 
   CBA.init = function () {
     if (!puede()) { toast('No tenés permisos para acceder a esta sección', 'warn'); return; }
-    cerrar(); CBA.modo = 'lista'; CBA.formId = null;
+    cerrar(); CBA.modo = 'lista'; CBA.formId = null; CBA.pag = 1;
     CBA.render();
     CBA.cargar(CBA.cargado && CBA.ok);
   };
