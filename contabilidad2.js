@@ -6,6 +6,7 @@
 // v3.9.42: montos calculados con % de Parámetros + ajustes manuales (tabla c2_ajustes) + SÍ/NO comisión gestor.
 // v3.9.43: SÍ/NO retribución banco (campo retrib_aplica).
 // v3.9.44: impuesto al crédito fijo 1,2 % (IMP_CREDITO_PCT).
+// v3.9.67: SÍ/NO impuesto al crédito (campo imp_aplica; SQL c2_imp_aplica.sql).
 // v3.9.64: malvarez carga, edita y anula en Contabilidad 2 (igual que admin, claudionieva y malvarez).
 // v3.9.63: malvarez (Mariano Alvarez) entra a Contabilidad 2.
 // v3.9.62: sección Trámites (plata de los trámites de Córdoba; SQL cba_caja.sql). Caja reconoce esos movimientos.
@@ -136,9 +137,10 @@
     };
     const aplicaGest = !(A.gest_aplica && num(A.gest_aplica.valor) === 0);
     const aplicaRetrib = !(A.retrib_aplica && num(A.retrib_aplica.valor) === 0);
+    const aplicaImp = !(A.imp_aplica && num(A.imp_aplica.valor) === 0);   // v3.9.67
     const it = {
       bruta: item(r0(I * p.bruta / 100), 'bruta'),
-      imp: item(r0(I * p.imp / 100), 'imp'),
+      imp: aplicaImp ? item(r0(I * p.imp / 100), 'imp') : { calc: 0, valor: 0, ajuste: false, campo: 'imp', noAplica: true },
       retrib: aplicaRetrib ? item(r0(I * p.retrib / 100), 'retrib') : { calc: 0, valor: 0, ajuste: false, campo: 'retrib', noAplica: true },
       gest: aplicaGest ? item(r0(I * p.gest / 100), 'gest') : { calc: 0, valor: 0, ajuste: false, campo: 'gest', noAplica: true },
       gestoria: item(g('gastos_gestoria') || 0, 'gestoria'),
@@ -156,7 +158,7 @@
     let fLiqEstimada = false;
     if (!fLiq && r.creditoEstado === 'Pagado') { fLiq = fechaPagadoCredito(r); fLiqEstimada = !!fLiq; }
     return {
-      r, c, I, banco, p, it, gestoria, comCom, extras, bruta, aLiquidar, ganancia, gananciaCobrada, aplicaGest, aplicaRetrib,
+      r, c, I, banco, p, it, gestoria, comCom, extras, bruta, aLiquidar, ganancia, gananciaCobrada, aplicaGest, aplicaRetrib, aplicaImp,
       fechaLiq: fLiq, fLiqEstimada,
       agenciaPagada: !!(c && c.pagado), fechaAgencia: c && c.fecha_pagado,
       gestorPagado: !!(c && c.pago_gest), fechaGestor: c && c.fecha_pago_gest,
@@ -429,6 +431,7 @@
     const sw = (campo, si, tit) => `<span class="c2-sw${puedeAj ? '' : ' ro'}"${puedeAj ? ` onclick="C2.toggleAplica('${esc(r.id)}','${campo}')" title="${tit}"` : ''}><b class="${si ? 'on' : ''}">SÍ</b><b class="${si ? '' : 'on no'}">NO</b></span>`;
     const swGest = sw('gest_aplica', x.aplicaGest, '¿Lleva comisión gestor?');
     const swRetrib = sw('retrib_aplica', x.aplicaRetrib, '¿Corresponde retribución del banco?');
+    const swImp = sw('imp_aplica', x.aplicaImp, '¿Corresponde impuesto al crédito?');
     const dRet = dias(x.fechaLiq);
     const paso = (ok, titulo, sub, pend, extra) => `<li><span class="c2-dot" style="background:${ok ? '#15803d' : pend ? '#c2410c' : '#a8a29e'}"></span><div><div style="font-weight:700">${titulo}</div><div style="font-size:12.5px;color:var(--muted)">${sub}</div>${extra || ''}</div></li>`;
     const liqVieja = x.fechaLiq && String(x.fechaLiq).slice(0, 10) < arranque() && !movsOp(x.r.id, 'liquidacion').length;
@@ -460,7 +463,7 @@
             <table class="c2-t" style="margin-top:10px"><thead><tr><th>Concepto</th><th>Fórmula</th><th class="n">Monto</th><th style="width:34px"></th></tr></thead><tbody>
               <tr><td>Importe del crédito (I)</td><td class="c2-f">dato de la solicitud</td><td class="n">${$(x.I)}</td><td></td></tr>
               <tr><td>Comisión bruta ${aj(x.it.bruta)}</td><td class="c2-f">I × ${pct(x.p.bruta)} (${esc(bancoDisplay(x.banco))})</td><td class="n">${$(x.it.bruta.valor)}${ajF(x.it.bruta)}</td><td>${ed('bruta')}</td></tr>
-              <tr><td>Impuesto al crédito ${aj(x.it.imp)}</td><td class="c2-f">I × ${pct(x.p.imp)}</td><td class="n neg">${$(-x.it.imp.valor)}${ajF(x.it.imp)}</td><td>${ed('imp')}</td></tr>
+              <tr><td>Impuesto al crédito ${swImp} ${aj(x.it.imp)}</td><td class="c2-f">${x.aplicaImp ? 'I × ' + pct(x.p.imp) : 'no corresponde'}</td><td class="n ${x.it.imp.valor ? 'neg' : ''}">${$(-x.it.imp.valor)}${ajF(x.it.imp)}</td><td>${x.aplicaImp ? ed('imp') : ''}</td></tr>
               <tr><td>Comisión LUKAYA</td><td class="c2-f">bruta − imp. crédito</td><td class="n">${$(x.it.comLuk.valor)}</td><td>${ed('comLuk')}</td></tr>
               <tr><td>Gastos de gestoría ${aj(x.it.gestoria)}</td><td class="c2-f">dato cargado</td><td class="n">${$(x.gestoria)}${ajF(x.it.gestoria)}</td><td>${ed('gestoria')}</td></tr>
               <tr class="tot"><td>A liquidar a la agencia</td><td class="c2-f">I − bruta − gestoría</td><td class="n">${$(x.aLiquidar)}</td><td>${ed('aLiq')}</td></tr>
@@ -546,6 +549,7 @@
       Object.keys(x.it).forEach(k => { const i = x.it[k]; if (i.ajuste) probs.push(['am', `Ajuste ${AJN[i.campo]}: ${$(i.valor)} (calculado ${$(i.calc)})`]); });
       if (!x.aplicaGest) probs.push(['gy', 'Sin comisión gestor']);
       if (!x.aplicaRetrib) probs.push(['gy', 'Sin retribución banco']);
+      if (!x.aplicaImp) probs.push(['gy', 'Sin impuesto al crédito']);
       if (x.vieja) {
         const vv = [['comLuk', 'Com. LUKAYA', x.it.comLuk.valor], ['imp', 'Imp. crédito', x.it.imp.valor], ['retrib', 'Retribución', x.it.retrib.valor], ['gest', 'Com. gestor', x.it.gest.valor], ['aLiq', 'A liquidar', x.aLiquidar], ['gan', 'Ganancia', x.ganancia]];
         vv.forEach(([k, t, v]) => { const o = x.vieja[k]; if (o !== null && Math.abs(o - v) > 1) probs.push(['bl', `${t}: vieja ${$(o)} · C2 ${$(v)}`]); });
@@ -1695,7 +1699,7 @@
   // Un ajuste reemplaza el valor calculado de un concepto. "Volver al calculado" lo borra.
   // Com. LUKAYA y A liquidar no se guardan: se editan como ajuste de la comisión bruta.
   // ══════════════════════════════════════════════════════════════
-  const AJN = { bruta: 'comisión bruta', imp: 'impuesto al crédito', retrib: 'retribución banco', gest: 'comisión gestor', gestoria: 'gastos de gestoría', comcom: 'comisión comercial / operativa', extras: 'pagos extras', gest_aplica: 'lleva comisión gestor', retrib_aplica: 'corresponde retribución' };
+  const AJN = { bruta: 'comisión bruta', imp: 'impuesto al crédito', retrib: 'retribución banco', gest: 'comisión gestor', gestoria: 'gastos de gestoría', comcom: 'comisión comercial / operativa', extras: 'pagos extras', gest_aplica: 'lleva comisión gestor', retrib_aplica: 'corresponde retribución', imp_aplica: 'corresponde impuesto al crédito' };
   const AJ_EDIT = {
     bruta: { t: 'Comisión bruta', pct: true },
     imp: { t: 'Impuesto al crédito', pct: true },
@@ -1797,7 +1801,8 @@
   // SÍ / NO: comisión gestor (gest_aplica) y retribución banco (retrib_aplica)
   const APLICA = {
     gest_aplica: { k: 'aplicaGest', no: 'No lleva comisión gestor', t: 'comisión gestor', hecho: 'gestorPagado', aviso: 'Ojo: el gestor ya figura pagado' },
-    retrib_aplica: { k: 'aplicaRetrib', no: 'No corresponde retribución', t: 'retribución banco', hecho: 'retribCobrada', aviso: 'Ojo: la retribución ya figura cobrada' }
+    retrib_aplica: { k: 'aplicaRetrib', no: 'No corresponde retribución', t: 'retribución banco', hecho: 'retribCobrada', aviso: 'Ojo: la retribución ya figura cobrada' },
+    imp_aplica: { k: 'aplicaImp', no: 'No corresponde impuesto al crédito', t: 'impuesto al crédito', hecho: 'agenciaPagada', aviso: 'Ojo: la agencia ya figura pagada; si se registró el impuesto en Caja, anulalo a mano' }
   };
   C2.toggleAplica = async function (id, campo) {
     if (!C2.puedeEscribir() || !C2.ajOk || !APLICA[campo]) return;
@@ -1807,7 +1812,7 @@
       ? await SB.from('c2_ajustes').upsert({ solicitud_id: id, campo, valor: 0, motivo: d.no, usuario: quien(), updated_at: new Date().toISOString() }, { onConflict: 'solicitud_id,campo' })
       : await SB.from('c2_ajustes').delete().eq('solicitud_id', id).eq('campo', campo);
     if (res.error) {
-      toast(/check constraint|violates/i.test(res.error.message) ? 'Falta correr c2_ajustes_v2.sql en Supabase' : 'Error: ' + res.error.message, 'er');
+      toast(/check constraint|violates/i.test(res.error.message) ? (campo === 'imp_aplica' ? 'Falta correr c2_imp_aplica.sql en Supabase' : 'Falta correr c2_ajustes_v2.sql en Supabase') : 'Error: ' + res.error.message, 'er');
       return;
     }
     if (typeof registrarHistorial === 'function') registrarHistorial('c2_ajustes', id, [{ campo: d.t, ant: si ? 'SÍ' : 'NO', nuevo: si ? 'NO' : 'SÍ' }]);
